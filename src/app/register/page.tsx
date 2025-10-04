@@ -8,7 +8,8 @@ const RegisterPage = () => {
     lastName: "",
     email: "",
     password: "",
-    role: "etudiant",
+    city: "", // nouvelle propriété pour la ville
+    role: "etudiant", // rôle fixé par défaut
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -18,6 +19,7 @@ const RegisterPage = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     console.log("Register:", form);
+    alert("Inscription soumise. L'admin local validera votre compte.");
   };
 
   return (
@@ -26,7 +28,8 @@ const RegisterPage = () => {
         onSubmit={handleSubmit}
         className="bg-white p-8 rounded-2xl shadow-lg w-full max-w-md"
       >
-        <h1 className="text-2xl font-bold mb-6 text-center">Inscription</h1>
+        <h1 className="text-2xl font-bold mb-6 text-center text-purple-700">Inscription Étudiant</h1>
+
         <input
           type="text"
           name="firstName"
@@ -36,6 +39,7 @@ const RegisterPage = () => {
           className="w-full p-3 mb-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400"
           required
         />
+
         <input
           type="text"
           name="lastName"
@@ -45,6 +49,7 @@ const RegisterPage = () => {
           className="w-full p-3 mb-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400"
           required
         />
+
         <input
           type="email"
           name="email"
@@ -54,6 +59,7 @@ const RegisterPage = () => {
           className="w-full p-3 mb-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400"
           required
         />
+
         <input
           type="password"
           name="password"
@@ -63,16 +69,22 @@ const RegisterPage = () => {
           className="w-full p-3 mb-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400"
           required
         />
+
         <select
-          name="role"
-          value={form.role}
+          name="city"
+          value={form.city}
           onChange={handleChange}
           className="w-full p-3 mb-6 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400"
+          required
         >
-          <option value="etudiant">Étudiant</option>
-          <option value="formateur">Formateur</option>
-          <option value="admin">Administrateur</option>
+          <option value="">Sélectionnez votre ville</option>
+          <option value="Antananarivo">Antananarivo</option>
+          <option value="Fianarantsoa">Fianarantsoa</option>
+          <option value="Toliara">Toliara</option>
+          <option value="Mahajanga">Mahajanga</option>
+          <option value="Toamasina">Toamasina</option>
         </select>
+
         <button
           type="submit"
           className="w-full bg-purple-600 text-white py-3 rounded-lg hover:bg-purple-700 transition"
