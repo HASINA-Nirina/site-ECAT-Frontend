@@ -8,18 +8,21 @@ interface SettingsModalProps {
 }
 
 export default function SettingsModal({ darkMode, lang, setDarkMode, setShowSettings }: SettingsModalProps) {
-  // Ternaires extraits pour lisibilité
-  const modeText = darkMode
-    ? lang === "fr" ? "Passer en mode clair" : "Switch to Light Mode"
-    : lang === "fr" ? "Passer en mode sombre" : "Switch to Dark Mode";
+  // Extraire les ternaires pour lisibilité
+  const isDarkMode = darkMode;
+  const isFrench = lang === "fr";
+
+  const modeText = isDarkMode 
+    ? isFrench ? "Passer en mode clair" : "Switch to Light Mode"
+    : isFrench ? "Passer en mode sombre" : "Switch to Dark Mode";
 
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm z-50">
       <div className={`p-6 rounded-lg shadow-lg w-96 ${darkMode ? "bg-gray-800 text-white" : "bg-white text-gray-800"}`}>
-        <h2 className="text-xl font-bold mb-4">{lang === "fr" ? "Paramètres" : "Settings"}</h2>
+        <h2 className="text-xl font-bold mb-4">{isFrench ? "Paramètres" : "Settings"}</h2>
 
         <div className="mb-4">
-          <label className="block mb-2">{lang === "fr" ? "Langue :" : "Language:"}</label>
+          <label className="block mb-2">{isFrench ? "Langue :" : "Language:"}</label>
           <select
             value={lang}
             onChange={() => {}}
@@ -31,7 +34,7 @@ export default function SettingsModal({ darkMode, lang, setDarkMode, setShowSett
         </div>
 
         <div className="mb-4">
-          <label className="block mb-2">{lang === "fr" ? "Thème :" : "Theme:"}</label>
+          <label className="block mb-2">{isFrench ? "Thème :" : "Theme:"}</label>
           <button
             onClick={() => setDarkMode(!darkMode)}
             className="px-4 py-2 rounded-lg bg-purple-600 text-white"
@@ -45,7 +48,7 @@ export default function SettingsModal({ darkMode, lang, setDarkMode, setShowSett
             onClick={() => setShowSettings(false)}
             className="px-4 py-2 bg-red-500 text-white rounded-lg"
           >
-            {lang === "fr" ? "Fermer" : "Close"}
+            {isFrench ? "Fermer" : "Close"}
           </button>
         </div>
       </div>
