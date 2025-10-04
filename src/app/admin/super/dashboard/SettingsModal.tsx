@@ -7,25 +7,33 @@ interface SettingsModalProps {
   readonly setShowSettings: (show: boolean) => void;
 }
 
-export default function SettingsModal({ darkMode, lang, setDarkMode, setShowSettings }: SettingsModalProps) {
-  // Extraire les ternaires pour lisibilité
-  const isDarkMode = darkMode;
-  const isFrench = lang === "fr";
+export default function SettingsModal(props: SettingsModalProps) {
+  const { darkMode, lang, setDarkMode, setShowSettings } = props;
 
-  const modeText = isDarkMode 
-    ? isFrench ? "Passer en mode clair" : "Switch to Light Mode"
-    : isFrench ? "Passer en mode sombre" : "Switch to Dark Mode";
+  // Extraire les ternaires imbriqués dans des variables simples
+  const isFrench = lang === "fr";
+  const themeText = darkMode
+    ? isFrench
+      ? "Passer en mode clair"
+      : "Switch to Light Mode"
+    : isFrench
+    ? "Passer en mode sombre"
+    : "Switch to Dark Mode";
 
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm z-50">
-      <div className={`p-6 rounded-lg shadow-lg w-96 ${darkMode ? "bg-gray-800 text-white" : "bg-white text-gray-800"}`}>
+      <div
+        className={`p-6 rounded-lg shadow-lg w-96 ${
+          darkMode ? "bg-gray-800 text-white" : "bg-white text-gray-800"
+        }`}
+      >
         <h2 className="text-xl font-bold mb-4">{isFrench ? "Paramètres" : "Settings"}</h2>
 
         <div className="mb-4">
           <label className="block mb-2">{isFrench ? "Langue :" : "Language:"}</label>
           <select
             value={lang}
-            onChange={() => {}}
+            onChange={() => {}} // aucune variable inutile
             className="p-2 border rounded-lg w-full text-black"
           >
             <option value="fr">Français</option>
@@ -39,7 +47,7 @@ export default function SettingsModal({ darkMode, lang, setDarkMode, setShowSett
             onClick={() => setDarkMode(!darkMode)}
             className="px-4 py-2 rounded-lg bg-purple-600 text-white"
           >
-            {modeText}
+            {themeText}
           </button>
         </div>
 

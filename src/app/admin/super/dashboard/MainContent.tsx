@@ -1,11 +1,14 @@
 "use client";
 
+// Props immuables, readonly obligatoire
 interface MainContentProps {
   readonly darkMode: boolean;
   readonly lang: string;
 }
 
-export default function MainContent({ darkMode, lang }: MainContentProps) {
+export default function MainContent(props: MainContentProps) {
+  const { darkMode, lang } = props; // destructuration
+
   return (
     <main className="flex-1 p-6">
       <div className="flex justify-between items-center mb-6">
