@@ -1,7 +1,7 @@
 "use client";
 
 interface SidebarProps {
-  darkMode: boolean;
+  readonly darkMode: boolean;
 }
 
 export default function Sidebar({ darkMode }: SidebarProps) {

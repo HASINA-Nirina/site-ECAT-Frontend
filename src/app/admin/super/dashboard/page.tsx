@@ -8,12 +8,12 @@ import SettingsModal from "@/app/admin/super/dashboard/SettingsModal";
 
 export default function AdminLocalDashboard() {
   const [darkMode, setDarkMode] = useState(false);
-  const [lang, setLang] = useState("fr");
+  const [lang] = useState("fr"); // supprime setLang inutilisé
   const [showSettings, setShowSettings] = useState(false);
 
   return (
     <div className={darkMode ? "bg-gray-900 text-white min-h-screen" : "bg-white text-gray-800 min-h-screen"}>
-      <Header darkMode={darkMode} setShowSettings={setShowSettings} />
+      <Header setShowSettings={setShowSettings} />
       <div className="flex">
         <Sidebar darkMode={darkMode} />
         <MainContent darkMode={darkMode} lang={lang} />

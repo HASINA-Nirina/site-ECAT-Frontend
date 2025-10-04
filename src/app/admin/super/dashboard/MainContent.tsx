@@ -1,15 +1,13 @@
 "use client";
 
 interface MainContentProps {
-  darkMode: boolean;
-  lang: string;
+  readonly darkMode: boolean;
+  readonly lang: string;
 }
 
 export default function MainContent({ darkMode, lang }: MainContentProps) {
-
   return (
     <main className="flex-1 p-6">
-      {/* Barre de recherche */}
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">
           {lang === "fr" ? "Dashboard Admin Local" : "Local Admin Dashboard"}
@@ -21,7 +19,6 @@ export default function MainContent({ darkMode, lang }: MainContentProps) {
         />
       </div>
 
-      {/* Zone de graphiques */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className={`p-6 rounded-lg shadow-md ${darkMode ? "bg-gray-800" : "bg-white"}`}>
           <h2 className="text-lg font-semibold mb-4">Statistiques Étudiants</h2>

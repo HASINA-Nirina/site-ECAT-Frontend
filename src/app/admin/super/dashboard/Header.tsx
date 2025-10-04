@@ -4,11 +4,10 @@ import Image from "next/image";
 import logo from "@/app/assets/logo.jpeg";
 
 interface HeaderProps {
-  darkMode: boolean;
-  setShowSettings: (show: boolean) => void;
+  readonly setShowSettings: (show: boolean) => void;
 }
 
-export default function Header({ darkMode, setShowSettings }: HeaderProps) {
+export default function Header({ setShowSettings }: HeaderProps) {
   return (
     <header className="flex justify-between items-center px-6 py-4 shadow-md bg-opacity-90 backdrop-blur-md">
       <div className="flex items-center gap-4">

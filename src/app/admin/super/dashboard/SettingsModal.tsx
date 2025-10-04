@@ -1,16 +1,17 @@
 "use client";
 
 interface SettingsModalProps {
-  darkMode: boolean;
-  lang: string;
-  setDarkMode: (mode: boolean) => void;
-  setShowSettings: (show: boolean) => void;
+  readonly darkMode: boolean;
+  readonly lang: string;
+  readonly setDarkMode: (mode: boolean) => void;
+  readonly setShowSettings: (show: boolean) => void;
 }
 
 export default function SettingsModal({ darkMode, lang, setDarkMode, setShowSettings }: SettingsModalProps) {
-  const modeText = darkMode 
-    ? (lang === "fr" ? "Passer en mode clair" : "Switch to Light Mode") 
-    : (lang === "fr" ? "Passer en mode sombre" : "Switch to Dark Mode");
+  // Ternaires extraits pour lisibilité
+  const modeText = darkMode
+    ? lang === "fr" ? "Passer en mode clair" : "Switch to Light Mode"
+    : lang === "fr" ? "Passer en mode sombre" : "Switch to Dark Mode";
 
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm z-50">
@@ -21,7 +22,7 @@ export default function SettingsModal({ darkMode, lang, setDarkMode, setShowSett
           <label className="block mb-2">{lang === "fr" ? "Langue :" : "Language:"}</label>
           <select
             value={lang}
-            onChange={(e) => {}}
+            onChange={() => {}}
             className="p-2 border rounded-lg w-full text-black"
           >
             <option value="fr">Français</option>
