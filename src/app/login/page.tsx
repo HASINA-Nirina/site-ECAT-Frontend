@@ -56,7 +56,7 @@ const LoginPage = () => {
         <p className="text-center text-black mt-4">
           Pas encore de compte ?{" "}
           <a
-            href="/signup"
+            href="/AlocalRegister"
             className="text-purple-700 font-semibold hover:underline"
           >
             S&apos;inscrire
