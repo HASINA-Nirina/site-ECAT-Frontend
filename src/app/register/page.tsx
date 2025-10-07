@@ -146,10 +146,11 @@ const RegisterPage = () => {
                 exit={{ opacity: 0, x: -50 }}
                 transition={{ duration: 0.4 }}
               >
-                <label className="block text-black font-semibold mb-2">
+                <label htmlFor="paymentMethod" className="block text-black font-semibold mb-2">
                   Choisissez un mode de paiement :
                 </label>
                 <select
+                  id="paymentMethod"
                   name="paymentMethod"
                   value={form.paymentMethod}
                   onChange={handleChange}
