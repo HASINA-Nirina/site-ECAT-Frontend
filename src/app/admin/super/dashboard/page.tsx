@@ -13,7 +13,7 @@ export default function AdminLocalDashboard() {
 
   return (
     <div className={darkMode ? "bg-gray-900 text-white min-h-screen" : "bg-white text-gray-800 min-h-screen"}>
-      <Header setShowSettings={setShowSettings} />
+      <Header setShowSettings={setShowSettings} darkMode={darkMode} />
       <div className="flex">
         <Sidebar darkMode={darkMode} />
         <MainContent darkMode={darkMode} lang={lang} />
