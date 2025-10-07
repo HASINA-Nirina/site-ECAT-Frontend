@@ -60,7 +60,7 @@ const LoginPage = () => {
 
           {/* Mot de passe oublié */}
           <div className="flex justify-end mb-8">
-            <a href="/forgot-password" className="text-purple-700 font-semibold hover:underline">
+            <a href="/ForgotPassword" className="text-purple-700 font-semibold hover:underline">
               Mot de passe oublié ?
             </a>
           </div>
