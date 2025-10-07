@@ -3,17 +3,51 @@
 import React, { useState } from "react";
 import background from "@/app/assets/background.png";
 import { Eye, EyeOff } from "lucide-react";
+import { useRouter } from "next/navigation"; 
+
+
+
+
 
 const LoginPage = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showRegisterChoice, setShowRegisterChoice] = useState(false);
+  const router = useRouter();
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    console.log("Login:", { email, password });
+ const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+
+  const data = {
+    email: email,
+    role: string,
+    mot_de_passe: password,
   };
+
+  const res = await fetch("http://127.0.0.1:8000/auth/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+
+  const result = await res.json();
+  console.log(data.role); 
+
+  if (res.ok) {
+    if (data.role === "admin") {
+        router.push("/admin/super/dashboard");
+      } else if (data.role === "local") {
+        
+      } else {
+        
+      }
+    }
+ else {
+    alert("Erreur : " + result.detail);
+  }
+};
+
 
   return (
     <section

@@ -4,8 +4,10 @@ import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, ArrowRight, CheckCircle } from "lucide-react";
 import background from "@/app/assets/background.png";
+import { useRouter } from "next/navigation";
 
 const RegisterPage = () => {
+    
   const [step, setStep] = useState(1);
   const [form, setForm] = useState({
     firstName: "",
@@ -15,7 +17,7 @@ const RegisterPage = () => {
     city: "",
     paymentMethod: "",
   });
-
+  const router = useRouter();
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
@@ -25,10 +27,37 @@ const RegisterPage = () => {
   const nextStep = () => setStep(step + 1);
   const prevStep = () => setStep(step - 1);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit =async (e: React.FormEvent) => {
     e.preventDefault();
-    alert("Inscription et paiement envoyés ! L’administrateur local validera votre compte.");
-  };
+   try {
+    const res = await fetch("http://127.0.0.1:8000/auth/Etudiantregister", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        nom: form.lastName,
+        prenom: form.firstName,
+        email: form.email,
+        mot_de_passe: form.password,
+        province: form.city,
+        role: "etudiante",
+      }),
+    });
+
+    const data = await res.json();
+
+    if (res.ok) {
+      alert("Inscription réussie ! Attendez la validation de l’administrateur.");
+      
+    } else {
+      alert(data.detail || "Erreur lors de l'inscription");
+    }
+  } catch (error) {
+    console.error("Erreur:", error);
+    alert("Impossible de contacter le serveur.");
+  }
+};
+  
+  
 
   return (
     <section
