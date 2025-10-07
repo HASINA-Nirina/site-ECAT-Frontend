@@ -1,33 +1,52 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import background from "@/app/assets/background.png";
 
 const OtpVerificationPage = () => {
-  // Génère des clés stables (évite l’utilisation directe de l’index)
   const otpKeys = ["otp-1", "otp-2", "otp-3", "otp-4", "otp-5", "otp-6"];
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
+  const inputRefs = useRef<HTMLInputElement[]>([]);
 
-  // Vérifie si l'OTP complet est rempli
+  // ✅ Redirige automatiquement quand le code est complet
   useEffect(() => {
     if (otp.every((digit) => digit !== "")) {
-      // Simule la validation réussie du code OTP
       setTimeout(() => {
         alert("✅ Code OTP validé avec succès !");
         window.location.href = "/forgot-password/new-password";
-      }, 1000);
+      }, 800);
     }
   }, [otp]);
 
+  // ✅ Gère la saisie
   const handleChange = (value: string, index: number) => {
-    if (!/^\d?$/.test(value)) return; // ✅ corrigé : \d
+    if (!/^\d?$/.test(value)) return;
     const newOtp = [...otp];
     newOtp[index] = value;
     setOtp(newOtp);
 
-    // Passage automatique au champ suivant
-    const nextInput = document.getElementById(`otp-${index + 1}`);
-    if (value && nextInput) (nextInput as HTMLInputElement).focus();
+    if (value && index < 5) inputRefs.current[index + 1]?.focus();
+  };
+
+  // ✅ Gestion du collage automatique du code OTP
+  const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    const pasteData = e.clipboardData.getData("text").trim();
+    if (/^\d{6}$/.test(pasteData)) {
+      const newOtp = pasteData.split("");
+      setOtp(newOtp);
+      inputRefs.current[5]?.focus(); // focus sur le dernier champ
+    }
+  };
+
+  // ✅ Navigation clavier gauche/droite
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, index: number) => {
+    if (e.key === "ArrowLeft" && index > 0) {
+      inputRefs.current[index - 1]?.focus();
+    } else if (e.key === "ArrowRight" && index < 5) {
+      inputRefs.current[index + 1]?.focus();
+    } else if (e.key === "Backspace" && otp[index] === "" && index > 0) {
+      inputRefs.current[index - 1]?.focus();
+    }
   };
 
   return (
@@ -45,17 +64,22 @@ const OtpVerificationPage = () => {
           Entrez le code à 6 chiffres envoyé à votre e-mail.
         </p>
 
-        {/* Champs OTP */}
-        <div className="flex justify-between mb-6">
+        {/* ✅ Champs OTP plus rapprochés */}
+        <div className="flex justify-center gap-2 mb-6">
           {otp.map((digit, index) => (
             <input
-              key={otpKeys[index]} // ✅ clé stable, plus d’alerte SonarLint
+              key={otpKeys[index]}
               id={`otp-${index}`}
               type="text"
               maxLength={1}
               value={digit}
+              ref={(el) => {
+                if (el) inputRefs.current[index] = el;
+              }}
               onChange={(e) => handleChange(e.target.value, index)}
-              className="w-10 h-12 text-center border border-gray-300 rounded-lg text-black text-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+              onPaste={handlePaste}
+              onKeyDown={(e) => handleKeyDown(e, index)}
+              className="w-10 h-12 text-center border border-gray-300 rounded-lg text-black text-lg focus:outline-none focus:ring-2 focus:ring-purple-500 sm:w-12 sm:h-14"
             />
           ))}
         </div>
