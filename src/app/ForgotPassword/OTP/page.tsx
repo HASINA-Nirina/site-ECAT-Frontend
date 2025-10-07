@@ -13,7 +13,7 @@ const OtpVerificationPage = () => {
     if (otp.every((digit) => digit !== "")) {
       setTimeout(() => {
         alert("✅ Code OTP validé avec succès !");
-        window.location.href = "/forgot-password/new-password";
+        window.location.href = "/ForgotPassword/NewPassword";
       }, 800);
     }
   }, [otp]);
