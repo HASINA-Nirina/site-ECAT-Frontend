@@ -79,7 +79,7 @@ const LoginPage = () => {
 
             <div className="flex flex-col space-y-3">
               <a
-                href="/register"
+                href="/EtudiantRegister"
                 className="bg-purple-600 text-white py-2 rounded-lg hover:bg-purple-700 transition"
               >
                 Étudiant
