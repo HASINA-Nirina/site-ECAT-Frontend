@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useState, KeyboardEvent } from "react";
+import { useState } from "react";
 import logo from "@/app/assets/logo.jpeg";
 import { Bell, Settings, LogOut, Menu } from "lucide-react";
 import Modal from "react-modal";
@@ -10,8 +10,6 @@ interface HeaderProps {
   readonly setShowSettings: (show: boolean) => void;
   readonly darkMode: boolean;
 }
-
-Modal.setAppElement("#__next"); // requis par react-modal pour accessibilité
 
 export default function Header({ setShowSettings, darkMode }: HeaderProps) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -43,11 +41,6 @@ export default function Header({ setShowSettings, darkMode }: HeaderProps) {
     }
   };
 
-  // Clavier pour cercle interactif
-  const handleKeyPress = (e: KeyboardEvent<HTMLDivElement>) => {
-    if (e.key === "Enter" || e.key === " ") setModalOpen(true);
-  };
-
   return (
     <header className="flex flex-wrap justify-between items-center px-4 py-3 shadow-md bg-opacity-90 backdrop-blur-md relative">
       {/* Logo + Nom université */}
@@ -63,19 +56,16 @@ export default function Header({ setShowSettings, darkMode }: HeaderProps) {
         <input
           type="text"
           placeholder="Rechercher..."
-          className={`w-full max-w-xs p-1.5 border-2 border-purple-600 rounded-xl`}
+          className="w-full max-w-xs p-1.5 border-2 border-purple-600 rounded-xl"
         />
       </div>
 
       {/* Super admin + icônes */}
       <div className="flex items-center gap-3">
         {/* Cercle profil + nom */}
-        <div
-          role="button"
-          tabIndex={0}
+        <button
           onClick={() => setModalOpen(true)}
-          onKeyDown={handleKeyPress}
-          className="flex items-center gap-2 cursor-pointer"
+          className="flex items-center gap-2 cursor-pointer bg-transparent border-none p-0"
         >
           {profilePic ? (
             <Image
@@ -91,7 +81,7 @@ export default function Header({ setShowSettings, darkMode }: HeaderProps) {
             </div>
           )}
           <span>{name}</span>
-        </div>
+        </button>
 
         {/* Hamburger menu */}
         <button className="md:hidden" onClick={() => setMenuOpen(!menuOpen)}>
@@ -119,6 +109,7 @@ export default function Header({ setShowSettings, darkMode }: HeaderProps) {
       <Modal
         isOpen={modalOpen}
         onRequestClose={() => setModalOpen(false)}
+        appElement={typeof document !== "undefined" ? document.body : undefined}
         className={`p-6 rounded-lg shadow-lg w-80 mx-auto my-24 ${
           darkMode ? "bg-gray-800 text-white" : "bg-white text-gray-800"
         }`}
