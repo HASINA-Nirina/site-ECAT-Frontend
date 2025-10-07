@@ -11,7 +11,7 @@ const HeaderContenu = () => {
         backgroundImage: `url(${background.src})`,
         backgroundSize: "cover",
         backgroundPosition: "center",
-      }}
+      }} 
     >
       {/* Texte descriptif */}
       <div className="flex-1 text-center md:text-left text-black space-y-6 md:space-y-12">

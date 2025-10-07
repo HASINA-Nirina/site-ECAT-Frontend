@@ -32,7 +32,7 @@ const InscriptionAdminLocal = () => {
       style={{ backgroundImage: `url(${background.src})` }}
     >
       {/* Overlay blanc pour effet flou */}
-      <div className="absolute inset-0 bg-white/70 backdrop-blur-sm"></div>
+      <div className="absolute inset-0 bg-white/10 backdrop-blur-sm"></div>
 
       {/* Contenu du formulaire */}
       <div className="relative z-10 w-full max-w-lg bg-white/90 p-8 rounded-2xl shadow-lg mx-4">

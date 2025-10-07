@@ -18,7 +18,7 @@ const LoginPage = () => {
       style={{ backgroundImage: `url(${background.src})` }}
     >
       {/* Overlay blanc pour lisibilité */}
-      <div className="absolute inset-0 bg-white/70"></div>
+      <div className="absolute inset-0 bg-white/10 backdrop-blur-sm"></div>
 
       {/* Formulaire */}
       <div className="relative z-10 w-full max-w-md bg-white/90 p-8 rounded-2xl shadow-lg mx-4">
