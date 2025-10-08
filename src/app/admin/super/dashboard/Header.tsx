@@ -1,9 +1,9 @@
 "use client";
 
 import Image from "next/image";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import logo from "@/app/assets/logo.jpeg";
-import { LogOut, Menu, Sun, Moon, Bell } from "lucide-react";
+import { LogOut, Menu, Sun, Moon, Bell, User } from "lucide-react";
 import Modal from "react-modal";
 
 interface HeaderProps {
@@ -17,6 +17,7 @@ export default function Header({ darkMode, setDarkMode, toggleSidebar }: HeaderP
   const [profilePic, setProfilePic] = useState<string | null>(null);
   const [name, setName] = useState("Super Admin");
   const [successMsg, setSuccessMsg] = useState("");
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const iconColor = darkMode ? "white" : "#7c3aed";
 
@@ -26,7 +27,7 @@ export default function Header({ darkMode, setDarkMode, toggleSidebar }: HeaderP
       const reader = new FileReader();
       reader.onloadend = () => {
         setProfilePic(reader.result as string);
-        setSuccessMsg("Photo de profil mise à jour avec succès !");
+        setSuccessMsg("Photo mise à jour avec succès !");
         setTimeout(() => setSuccessMsg(""), 3000);
       };
       reader.readAsDataURL(file);
@@ -65,8 +66,8 @@ export default function Header({ darkMode, setDarkMode, toggleSidebar }: HeaderP
                 className="rounded-full border-2 border-purple-600 object-cover"
               />
             ) : (
-              <div className="w-10 h-10 rounded-full border-2 border-purple-600 bg-[#17f] flex items-center justify-center text-white font-bold">
-                {getInitials(name)}
+              <div className="w-10 h-10 rounded-full border-2 border-purple-600 bg-gray-300 flex items-center justify-center text-white">
+                <User size={20} color="gray" />
               </div>
             )}
             <span className="font-semibold hidden md:inline">{name}</span>
@@ -115,8 +116,8 @@ export default function Header({ darkMode, setDarkMode, toggleSidebar }: HeaderP
                   className="rounded-full border-2 border-purple-600 object-cover"
                 />
               ) : (
-                <div className="w-9 h-9 rounded-full border-2 border-purple-600 bg-[#17f] flex items-center justify-center text-white font-bold text-sm">
-                  {getInitials(name)}
+                <div className="w-9 h-9 rounded-full border-2 border-purple-600 bg-gray-300 flex items-center justify-center text-white">
+                  <User size={18} color="gray" />
                 </div>
               )}
             </button>
@@ -140,58 +141,43 @@ export default function Header({ darkMode, setDarkMode, toggleSidebar }: HeaderP
         </div>
       </div>
 
-      {/* Modal modification profil avec fond flou */}
+      {/* Modal modification profil */}
       <Modal
         isOpen={modalOpen}
         onRequestClose={() => setModalOpen(false)}
-        className={`p-6 rounded-2xl shadow-2xl w-80 mx-auto ${
+        className={`relative p-6 rounded-2xl shadow-2xl w-80 mx-auto ${
           darkMode ? "bg-gray-800 text-white" : "bg-white text-gray-800"
         }`}
         overlayClassName="fixed inset-0 flex items-center justify-center z-50 backdrop-blur-sm"
       >
-        <h2 className="text-xl font-bold mb-4 text-center">Modifier le profil</h2>
+        {/* Bouton X */}
+        <button
+          onClick={() => setModalOpen(false)}
+          className="absolute top-3 right-3 text-gray-500 hover:text-gray-700 dark:hover:text-white transition"
+        >
+          ✕
+        </button>
 
-        <div className="flex flex-col items-center gap-3">
-          <Image
-            src={profilePic || "/default-profile.png"}
-            alt="Profil"
-            width={100}
-            height={100}
-            className="rounded-full object-cover border-2 border-purple-500"
-          />
-
-          <label className="w-full">
-            <span className="block mb-1 font-medium">Choisir une image</span>
-            <input type="file" accept="image/*" onChange={handleProfileChange} className="block w-full" />
-          </label>
-
+        {/* Cercle clicable */}
+        <div
+          className="w-28 h-28 rounded-full border-2 border-purple-500 overflow-hidden cursor-pointer flex items-center justify-center"
+          onClick={() => fileInputRef.current?.click()}
+        >
+          {profilePic ? (
+            <Image src={profilePic} alt="Profil" width={112} height={112} className="object-cover" />
+          ) : (
+            <User size={40} color="gray" />
+          )}
           <input
-            type="text"
-            value={name}
-            onChange={e => setName(e.target.value)}
-            className="p-2 border rounded-lg w-full text-black dark:text-white dark:bg-gray-700"
-            placeholder="Nom"
+            type="file"
+            accept="image/*"
+            ref={fileInputRef}
+            onChange={handleProfileChange}
+            className="hidden"
           />
-
-          <button
-            onClick={() => {
-              setSuccessMsg("Profil mis à jour avec succès !");
-              setTimeout(() => setSuccessMsg(""), 3000);
-            }}
-            className="px-4 py-2 bg-purple-600 text-white rounded-lg mt-2 w-full hover:bg-purple-700 transition"
-          >
-            Mettre à jour
-          </button>
-
-          {successMsg && <span className="text-green-500 text-sm">{successMsg}</span>}
-
-          <button
-            onClick={() => setModalOpen(false)}
-            className="px-4 py-2 bg-red-500 text-white rounded-lg mt-2 w-full hover:bg-red-600 transition"
-          >
-            Fermer
-          </button>
         </div>
+
+        {successMsg && <span className="text-green-500 text-sm mt-3 block text-center">{successMsg}</span>}
       </Modal>
     </header>
   );
