@@ -80,6 +80,7 @@ export default function Header({ darkMode, setDarkMode }: HeaderProps) {
           <button className="p-2 rounded-full border border-purple-500 hover:bg-purple-100 dark:hover:bg-gray-700 transition">
             <LogOut size={20} color={iconColor} />
           </button>
+          <span className="font-semibold text-[#17f]">Se deconnecter</span>
         </div>
       </div>
 
