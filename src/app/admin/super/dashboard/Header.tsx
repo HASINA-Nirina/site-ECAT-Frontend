@@ -48,7 +48,7 @@ export default function Header({ darkMode, setDarkMode, toggleSidebar }: HeaderP
       {/* Ligne principale (desktop) */}
       <div className="hidden md:flex items-center justify-between">
         {/* Logo + nom université */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 pl-4">
           <Image src={logo} alt="Logo" width={40} height={40} className="rounded-full" />
           <span className="text-[#17f] font-bold text-lg">
             Université ECAT TARATRA FIANARANTSOA
@@ -56,7 +56,8 @@ export default function Header({ darkMode, setDarkMode, toggleSidebar }: HeaderP
         </div>
 
         {/* Icônes desktop */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 pr-4">
+          {/* Dark Mode */}
           <button
             onClick={() => setDarkMode(!darkMode)}
             className="p-2 rounded-full border border-purple-500 hover:bg-purple-100 dark:hover:bg-gray-700 transition"
@@ -64,11 +65,13 @@ export default function Header({ darkMode, setDarkMode, toggleSidebar }: HeaderP
             {darkMode ? <Sun size={20} color={iconColor} /> : <Moon size={20} color={iconColor} />}
           </button>
 
+          {/* Déconnexion */}
           <button className="p-2 rounded-full border border-purple-500 hover:bg-purple-100 dark:hover:bg-gray-700 transition">
             <LogOut size={20} color={iconColor} />
           </button>
 
-          <button onClick={() => setModalOpen(true)}>
+          {/* Photo + Nom Admin */}
+          <button onClick={() => setModalOpen(true)} className="flex items-center gap-2">
             {profilePic ? (
               <Image
                 src={profilePic}
@@ -82,6 +85,8 @@ export default function Header({ darkMode, setDarkMode, toggleSidebar }: HeaderP
                 {getInitials(name)}
               </div>
             )}
+            {/* Nom visible seulement en grand écran */}
+            <span className="font-semibold hidden md:inline">{name}</span>
           </button>
         </div>
       </div>
@@ -117,7 +122,7 @@ export default function Header({ darkMode, setDarkMode, toggleSidebar }: HeaderP
               <LogOut size={20} color={iconColor} />
             </button>
 
-            {/* Profil */}
+            {/* Profil (nom masqué sur mobile) */}
             <button onClick={() => setModalOpen(true)}>
               {profilePic ? (
                 <Image
