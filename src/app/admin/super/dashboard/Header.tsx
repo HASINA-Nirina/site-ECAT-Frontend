@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useState } from "react";
 import logo from "@/app/assets/logo.jpeg";
-import { LogOut, Menu, Sun, Moon } from "lucide-react";
+import { LogOut, Menu, Sun, Moon, Bell } from "lucide-react";
 import Modal from "react-modal";
 
 interface HeaderProps {
@@ -45,9 +45,9 @@ export default function Header({ darkMode, setDarkMode, toggleSidebar }: HeaderP
         darkMode ? "bg-gray-900 text-white" : "bg-white text-gray-800"
       }`}
     >
-      {/* Ligne principale (desktop) */}
+      {/* Grand écran */}
       <div className="hidden md:flex items-center justify-between">
-        {/* Logo + nom université */}
+        {/* Logo + université */}
         <div className="flex items-center gap-3 pl-4">
           <Image src={logo} alt="Logo" width={40} height={40} className="rounded-full" />
           <span className="text-[#17f] font-bold text-lg">
@@ -55,22 +55,9 @@ export default function Header({ darkMode, setDarkMode, toggleSidebar }: HeaderP
           </span>
         </div>
 
-        {/* Icônes desktop */}
-        <div className="flex items-center gap-4 pr-4">
-          {/* Dark Mode */}
-          <button
-            onClick={() => setDarkMode(!darkMode)}
-            className="p-2 rounded-full border border-purple-500 hover:bg-purple-100 dark:hover:bg-gray-700 transition"
-          >
-            {darkMode ? <Sun size={20} color={iconColor} /> : <Moon size={20} color={iconColor} />}
-          </button>
-
-          {/* Déconnexion */}
-          <button className="p-2 rounded-full border border-purple-500 hover:bg-purple-100 dark:hover:bg-gray-700 transition">
-            <LogOut size={20} color={iconColor} />
-          </button>
-
-          {/* Photo + Nom Admin */}
+        {/* Icônes alignées à droite */}
+        <div className="flex items-center gap-5 pr-4">
+          {/* Profil + nom */}
           <button onClick={() => setModalOpen(true)} className="flex items-center gap-2">
             {profilePic ? (
               <Image
@@ -85,15 +72,33 @@ export default function Header({ darkMode, setDarkMode, toggleSidebar }: HeaderP
                 {getInitials(name)}
               </div>
             )}
-            {/* Nom visible seulement en grand écran */}
             <span className="font-semibold hidden md:inline">{name}</span>
+          </button>
+
+          {/* Notification */}
+          <button className="p-2 rounded-full border border-purple-500 hover:bg-purple-100 dark:hover:bg-gray-700 transition relative">
+            <Bell size={20} color={iconColor} />
+            <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
+          </button>
+
+          {/* Dark mode */}
+          <button
+            onClick={() => setDarkMode(!darkMode)}
+            className="p-2 rounded-full border border-purple-500 hover:bg-purple-100 dark:hover:bg-gray-700 transition"
+          >
+            {darkMode ? <Sun size={20} color={iconColor} /> : <Moon size={20} color={iconColor} />}
+          </button>
+
+          {/* Déconnexion */}
+          <button className="p-2 rounded-full border border-purple-500 hover:bg-purple-100 dark:hover:bg-gray-700 transition">
+            <LogOut size={20} color={iconColor} />
           </button>
         </div>
       </div>
 
-      {/* Version responsive */}
+      {/* Responsive */}
       <div className="flex flex-col md:hidden items-center w-full">
-        {/* 1ère ligne : logo + nom université */}
+        {/* 1ère ligne : logo + université */}
         <div className="flex flex-col items-center justify-center w-full">
           <Image src={logo} alt="Logo" width={35} height={35} className="rounded-full mb-1" />
           <span className="text-[#17f] font-bold text-base text-center">
@@ -101,27 +106,14 @@ export default function Header({ darkMode, setDarkMode, toggleSidebar }: HeaderP
           </span>
         </div>
 
-        {/* 2e ligne : menu hamburger + icônes */}
+        {/* 2e ligne : menu + icônes */}
         <div className="flex items-center justify-between w-full mt-3 px-3">
-          {/* Menu */}
+          {/* Menu hamburger */}
           <button onClick={toggleSidebar}>
             <Menu color={iconColor} size={26} />
           </button>
 
           <div className="flex items-center gap-3">
-            {/* Dark mode */}
-            <button
-              onClick={() => setDarkMode(!darkMode)}
-              className="p-2 rounded-full border border-purple-500 hover:bg-purple-100 dark:hover:bg-gray-700 transition"
-            >
-              {darkMode ? <Sun size={20} color={iconColor} /> : <Moon size={20} color={iconColor} />}
-            </button>
-
-            {/* Logout */}
-            <button className="p-2 rounded-full border border-purple-500 hover:bg-purple-100 dark:hover:bg-gray-700 transition">
-              <LogOut size={20} color={iconColor} />
-            </button>
-
             {/* Profil (nom masqué sur mobile) */}
             <button onClick={() => setModalOpen(true)}>
               {profilePic ? (
@@ -137,6 +129,25 @@ export default function Header({ darkMode, setDarkMode, toggleSidebar }: HeaderP
                   {getInitials(name)}
                 </div>
               )}
+            </button>
+
+            {/* Notification */}
+            <button className="p-2 rounded-full border border-purple-500 hover:bg-purple-100 dark:hover:bg-gray-700 transition relative">
+              <Bell size={20} color={iconColor} />
+              <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
+            </button>
+
+            {/* Mode sombre */}
+            <button
+              onClick={() => setDarkMode(!darkMode)}
+              className="p-2 rounded-full border border-purple-500 hover:bg-purple-100 dark:hover:bg-gray-700 transition"
+            >
+              {darkMode ? <Sun size={20} color={iconColor} /> : <Moon size={20} color={iconColor} />}
+            </button>
+
+            {/* Déconnexion */}
+            <button className="p-2 rounded-full border border-purple-500 hover:bg-purple-100 dark:hover:bg-gray-700 transition">
+              <LogOut size={20} color={iconColor} />
             </button>
           </div>
         </div>
