@@ -35,10 +35,12 @@ export default function Header({ darkMode, setDarkMode }: HeaderProps) {
 
   return (
     <header className={`px-4 py-3 shadow-md bg-opacity-90 backdrop-blur-md ${darkMode ? "bg-gray-900 text-white" : "bg-white text-gray-800"}`}>
-      {/* Ligne 1 mobile */}
-      <div className="flex md:hidden justify-center items-center mb-2">
+     {/* Ligne 1 mobile : logo + nom université */}
+      <div className="flex md:hidden justify-start items-start mb-2 px-4">
         <Image src={logo} alt="Logo" width={40} height={40} className="rounded-full" />
-        <span className="text-[#17f] font-bold text-lg ml-2 text-center">Université ECAT TARATRA FIANARANTSOA</span>
+        <span className="text-[#17f] font-bold text-lg ml-2">
+          Université ECAT TARATRA FIANARANTSOA
+        </span>
       </div>
 
       {/* Grand écran */}
