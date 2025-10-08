@@ -47,7 +47,6 @@ export default function Header({ darkMode, setDarkMode, toggleSidebar }: HeaderP
     >
       {/* Grand écran */}
       <div className="hidden md:flex items-center justify-between">
-        {/* Logo + université */}
         <div className="flex items-center gap-3 pl-4">
           <Image src={logo} alt="Logo" width={40} height={40} className="rounded-full" />
           <span className="text-[#17f] font-bold text-lg">
@@ -55,9 +54,7 @@ export default function Header({ darkMode, setDarkMode, toggleSidebar }: HeaderP
           </span>
         </div>
 
-        {/* Icônes alignées à droite */}
         <div className="flex items-center gap-5 pr-4">
-          {/* Profil + nom */}
           <button onClick={() => setModalOpen(true)} className="flex items-center gap-2">
             {profilePic ? (
               <Image
@@ -75,13 +72,11 @@ export default function Header({ darkMode, setDarkMode, toggleSidebar }: HeaderP
             <span className="font-semibold hidden md:inline">{name}</span>
           </button>
 
-          {/* Notification */}
           <button className="p-2 rounded-full border border-purple-500 hover:bg-purple-100 dark:hover:bg-gray-700 transition relative">
             <Bell size={20} color={iconColor} />
             <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
           </button>
 
-          {/* Dark mode */}
           <button
             onClick={() => setDarkMode(!darkMode)}
             className="p-2 rounded-full border border-purple-500 hover:bg-purple-100 dark:hover:bg-gray-700 transition"
@@ -89,7 +84,6 @@ export default function Header({ darkMode, setDarkMode, toggleSidebar }: HeaderP
             {darkMode ? <Sun size={20} color={iconColor} /> : <Moon size={20} color={iconColor} />}
           </button>
 
-          {/* Déconnexion */}
           <button className="p-2 rounded-full border border-purple-500 hover:bg-purple-100 dark:hover:bg-gray-700 transition">
             <LogOut size={20} color={iconColor} />
           </button>
@@ -98,7 +92,6 @@ export default function Header({ darkMode, setDarkMode, toggleSidebar }: HeaderP
 
       {/* Responsive */}
       <div className="flex flex-col md:hidden items-center w-full">
-        {/* 1ère ligne : logo + université */}
         <div className="flex flex-col items-center justify-center w-full">
           <Image src={logo} alt="Logo" width={35} height={35} className="rounded-full mb-1" />
           <span className="text-[#17f] font-bold text-base text-center">
@@ -106,15 +99,12 @@ export default function Header({ darkMode, setDarkMode, toggleSidebar }: HeaderP
           </span>
         </div>
 
-        {/* 2e ligne : menu + icônes */}
         <div className="flex items-center justify-between w-full mt-3 px-3">
-          {/* Menu hamburger */}
           <button onClick={toggleSidebar}>
             <Menu color={iconColor} size={26} />
           </button>
 
           <div className="flex items-center gap-3">
-            {/* Profil (nom masqué sur mobile) */}
             <button onClick={() => setModalOpen(true)}>
               {profilePic ? (
                 <Image
@@ -131,13 +121,11 @@ export default function Header({ darkMode, setDarkMode, toggleSidebar }: HeaderP
               )}
             </button>
 
-            {/* Notification */}
             <button className="p-2 rounded-full border border-purple-500 hover:bg-purple-100 dark:hover:bg-gray-700 transition relative">
               <Bell size={20} color={iconColor} />
               <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
             </button>
 
-            {/* Mode sombre */}
             <button
               onClick={() => setDarkMode(!darkMode)}
               className="p-2 rounded-full border border-purple-500 hover:bg-purple-100 dark:hover:bg-gray-700 transition"
@@ -145,7 +133,6 @@ export default function Header({ darkMode, setDarkMode, toggleSidebar }: HeaderP
               {darkMode ? <Sun size={20} color={iconColor} /> : <Moon size={20} color={iconColor} />}
             </button>
 
-            {/* Déconnexion */}
             <button className="p-2 rounded-full border border-purple-500 hover:bg-purple-100 dark:hover:bg-gray-700 transition">
               <LogOut size={20} color={iconColor} />
             </button>
@@ -153,14 +140,14 @@ export default function Header({ darkMode, setDarkMode, toggleSidebar }: HeaderP
         </div>
       </div>
 
-      {/* Modal modification profil */}
+      {/* Modal modification profil avec fond flou */}
       <Modal
         isOpen={modalOpen}
         onRequestClose={() => setModalOpen(false)}
         className={`p-6 rounded-2xl shadow-2xl w-80 mx-auto ${
           darkMode ? "bg-gray-800 text-white" : "bg-white text-gray-800"
         }`}
-        overlayClassName="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50"
+        overlayClassName="fixed inset-0 flex items-center justify-center z-50 backdrop-blur-sm"
       >
         <h2 className="text-xl font-bold mb-4 text-center">Modifier le profil</h2>
 
