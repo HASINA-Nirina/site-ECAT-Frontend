@@ -10,16 +10,13 @@ export default function AdminLocalDashboard() {
   const [lang] = useState("fr");
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
-  // Fonction pour ouvrir/fermer la sidebar en mode mobile
-  const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
-
   return (
     <div className={darkMode ? "bg-gray-900 text-white min-h-screen" : "bg-white text-gray-800 min-h-screen"}>
       {/* Header */}
-      <Header darkMode={darkMode} setDarkMode={setDarkMode} toggleSidebar={toggleSidebar} />
+      <Header darkMode={darkMode} setDarkMode={setDarkMode} />
 
       <div className="flex flex-col md:flex-row">
-        {/* Sidebar visible uniquement si sidebarOpen est true */}
+        {/* Sidebar */}
         {sidebarOpen && <Sidebar darkMode={darkMode} />}
 
         {/* MainContent */}

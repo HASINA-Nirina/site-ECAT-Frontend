@@ -34,40 +34,28 @@ export default function Header({ darkMode, setDarkMode }: HeaderProps) {
   };
 
   return (
-    <header
-      className={`px-4 py-3 shadow-md bg-opacity-90 backdrop-blur-md ${
-        darkMode ? "bg-gray-900 text-white" : "bg-white text-gray-800"
-      }`}
-    >
-      {/* Grand écran */}
-      <div className="hidden md:flex items-center justify-between">
-        <div className="flex items-center gap-3 pl-4">
+    <header className={`px-4 py-3 shadow-md bg-opacity-90 backdrop-blur-md ${darkMode ? "bg-gray-900 text-white" : "bg-white text-gray-800"}`}>
+      <div className="flex flex-wrap items-center justify-between">
+        {/* Logo + nom université */}
+        <div className="flex items-center gap-3 pl-4 w-full md:w-auto justify-center md:justify-start">
           <Image src={logo} alt="Logo" width={40} height={40} className="rounded-full" />
-          <span className="text-[#17f] font-bold text-lg">
+          <span className="text-[#17f] font-bold text-lg text-center md:text-left">
             Université ECAT TARATRA FIANARANTSOA
           </span>
         </div>
 
-        <div className="flex items-center gap-5 pr-4">
+        {/* Icônes admin */}
+        <div className="flex items-center gap-4 mt-3 md:mt-0 pr-4">
           {/* Photo + nom admin */}
-          <button
-            onClick={() => setModalOpen(true)}
-            className="flex items-center gap-2"
-          >
+          <button onClick={() => setModalOpen(true)} className="flex items-center gap-2">
             {profilePic ? (
-              <Image
-                src={profilePic}
-                alt="Profil"
-                width={40}
-                height={40}
-                className="rounded-full border-2 border-purple-600 object-cover"
-              />
+              <Image src={profilePic} alt="Profil" width={40} height={40} className="rounded-full border-2 border-purple-600 object-cover" />
             ) : (
               <div className="w-10 h-10 rounded-full border-2 border-purple-600 bg-gray-300 flex items-center justify-center">
                 <User size={20} color="gray" />
               </div>
             )}
-            <span className="font-semibold">{adminName}</span>
+            <span className="hidden md:block font-semibold">{adminName}</span>
           </button>
 
           {/* Notification */}
@@ -77,10 +65,7 @@ export default function Header({ darkMode, setDarkMode }: HeaderProps) {
           </button>
 
           {/* Toggle dark/light */}
-          <button
-            onClick={() => setDarkMode(!darkMode)}
-            className="p-2 rounded-full border border-purple-500 hover:bg-purple-100 dark:hover:bg-gray-700 transition"
-          >
+          <button onClick={() => setDarkMode(!darkMode)} className="p-2 rounded-full border border-purple-500 hover:bg-purple-100 dark:hover:bg-gray-700 transition">
             {darkMode ? <Sun size={20} color={iconColor} /> : <Moon size={20} color={iconColor} />}
           </button>
 
@@ -96,36 +81,22 @@ export default function Header({ darkMode, setDarkMode }: HeaderProps) {
         isOpen={modalOpen}
         onRequestClose={() => setModalOpen(false)}
         appElement={typeof document !== "undefined" ? document.body : undefined}
-        className={`relative p-6 rounded-2xl shadow-2xl w-80 mx-auto ${
-          darkMode ? "bg-gray-800 text-white" : "bg-white text-gray-800"
-        }`}
+        className={`relative p-6 rounded-2xl shadow-2xl w-80 mx-auto ${darkMode ? "bg-gray-800 text-white" : "bg-white text-gray-800"}`}
         overlayClassName="fixed inset-0 flex items-center justify-center z-50 backdrop-blur-sm"
       >
-        {/* Bouton X */}
-        <button
-          onClick={() => setModalOpen(false)}
-          className="absolute top-3 right-3 text-gray-500 hover:text-gray-700 dark:hover:text-white transition"
-        >
+        {/* X close */}
+        <button onClick={() => setModalOpen(false)} className="absolute top-3 right-3 text-gray-500 hover:text-gray-700 dark:hover:text-white transition">
           ✕
         </button>
 
         {/* Cercle cliquable */}
-        <button
-          onClick={() => fileInputRef.current?.click()}
-          className="w-28 h-28 rounded-full border-2 border-purple-500 overflow-hidden flex items-center justify-center mx-auto"
-        >
+        <button onClick={() => fileInputRef.current?.click()} className="w-28 h-28 rounded-full border-2 border-purple-500 overflow-hidden flex items-center justify-center mx-auto">
           {profilePic ? (
             <Image src={profilePic} alt="Profil" width={112} height={112} className="object-cover" />
           ) : (
             <User size={40} color="gray" />
           )}
-          <input
-            type="file"
-            accept="image/*"
-            ref={fileInputRef}
-            onChange={handleProfileChange}
-            className="hidden"
-          />
+          <input type="file" accept="image/*" ref={fileInputRef} onChange={handleProfileChange} className="hidden" />
         </button>
 
         {/* Nom admin */}
@@ -137,10 +108,7 @@ export default function Header({ darkMode, setDarkMode }: HeaderProps) {
           placeholder="Nom"
         />
 
-        <button
-          onClick={() => setSuccessMsg("Modifications enregistrées !")}
-          className="mt-3 px-4 py-2 bg-purple-600 text-white rounded-lg w-full hover:bg-purple-700 transition"
-        >
+        <button onClick={() => setSuccessMsg("Modifications enregistrées !")} className="mt-3 px-4 py-2 bg-purple-600 text-white rounded-lg w-full hover:bg-purple-700 transition">
           Modifier
         </button>
 
