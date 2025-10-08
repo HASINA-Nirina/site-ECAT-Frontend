@@ -26,7 +26,7 @@ export default function Sidebar({ darkMode }: SidebarProps) {
     >
       {/* Conteneur menu */}
       <div
-        className={`p-6 rounded-lg shadow-md ${darkMode ? "bg-gray-700" : "bg-white"} flex flex-col gap-3 w-full h-full`}
+        className={`p-6 rounded-lg shadow-md ${darkMode ? "bg-gray-900" : "bg-white"} flex flex-col gap-3 w-full h-full`}
       >
         {menuItems.map((item) => (
           <button
