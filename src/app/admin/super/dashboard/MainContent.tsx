@@ -1,15 +1,18 @@
 "use client";
 
-// Props immuables, readonly obligatoire
+import { useState } from "react";
+import { MessageCircle } from "lucide-react";
+import MessagePopup from "./MessagePopup"; // importer la popup
+
+// Props immuables
 interface MainContentProps {
   readonly darkMode: boolean;
   readonly lang: string;
 }
 
-import { MessageCircle } from "lucide-react";
-
 export default function MainContent(props: MainContentProps) {
   const { darkMode, lang } = props; // destructuration
+  const [showMessage, setShowMessage] = useState(false); // état pour afficher la popup
 
   return (
     <main className="flex-1 p-6 relative">
@@ -41,9 +44,19 @@ export default function MainContent(props: MainContentProps) {
       <button
         className="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-purple-600 hover:bg-purple-700 text-white flex items-center justify-center shadow-lg transition"
         title="Messages"
+        onClick={() => setShowMessage(true)}
       >
         <MessageCircle size={28} />
       </button>
+
+      {/* Popup message */}
+      {showMessage && (
+        <MessagePopup
+          darkMode={darkMode}
+          adminName="Super Admin"
+          onClose={() => setShowMessage(false)}
+        />
+      )}
     </main>
   );
 }
