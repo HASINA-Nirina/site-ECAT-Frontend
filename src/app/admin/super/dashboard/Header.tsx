@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useState, useRef } from "react";
 import logo from "@/app/assets/logo.jpeg";
-import { LogOut, Sun, Moon, Bell, User } from "lucide-react";
+import { LogOut, Sun, Moon, Bell, User, Menu } from "lucide-react";
 import Modal from "react-modal";
 
 interface HeaderProps {
@@ -35,18 +35,22 @@ export default function Header({ darkMode, setDarkMode }: HeaderProps) {
 
   return (
     <header className={`px-4 py-3 shadow-md bg-opacity-90 backdrop-blur-md ${darkMode ? "bg-gray-900 text-white" : "bg-white text-gray-800"}`}>
-      <div className="flex flex-wrap items-center justify-between">
-        {/* Logo + nom université */}
-        <div className="flex items-center gap-3 pl-4 w-full md:w-auto justify-center md:justify-start">
-          <Image src={logo} alt="Logo" width={40} height={40} className="rounded-full" />
-          <span className="text-[#17f] font-bold text-lg text-center md:text-left">
-            Université ECAT TARATRA FIANARANTSOA
-          </span>
-        </div>
+      {/* Ligne 1 mobile : logo + nom université */}
+      <div className="flex md:hidden justify-center items-center mb-2">
+        <Image src={logo} alt="Logo" width={40} height={40} className="rounded-full" />
+        <span className="text-[#17f] font-bold text-lg ml-2 text-center">Université ECAT TARATRA FIANARANTSOA</span>
+      </div>
+
+      {/* Ligne 2 mobile : menu hamburger à gauche, icônes à droite */}
+      <div className="flex justify-between items-center md:justify-start">
+        {/* Menu hamburger */}
+        <button className="md:hidden">
+          <Menu color={iconColor} size={26} />
+        </button>
 
         {/* Icônes admin */}
-        <div className="flex items-center gap-4 mt-3 md:mt-0 pr-4">
-          {/* Photo + nom admin */}
+        <div className="flex items-center gap-3">
+          {/* Photo + nom admin (nom caché en mobile) */}
           <button onClick={() => setModalOpen(true)} className="flex items-center gap-2">
             {profilePic ? (
               <Image src={profilePic} alt="Profil" width={40} height={40} className="rounded-full border-2 border-purple-600 object-cover" />
@@ -84,10 +88,7 @@ export default function Header({ darkMode, setDarkMode }: HeaderProps) {
         className={`relative p-6 rounded-2xl shadow-2xl w-80 mx-auto ${darkMode ? "bg-gray-800 text-white" : "bg-white text-gray-800"}`}
         overlayClassName="fixed inset-0 flex items-center justify-center z-50 backdrop-blur-sm"
       >
-        {/* X close */}
-        <button onClick={() => setModalOpen(false)} className="absolute top-3 right-3 text-gray-500 hover:text-gray-700 dark:hover:text-white transition">
-          ✕
-        </button>
+        <button onClick={() => setModalOpen(false)} className="absolute top-3 right-3 text-gray-500 hover:text-gray-700 dark:hover:text-white transition">✕</button>
 
         {/* Cercle cliquable */}
         <button onClick={() => fileInputRef.current?.click()} className="w-28 h-28 rounded-full border-2 border-purple-500 overflow-hidden flex items-center justify-center mx-auto">
