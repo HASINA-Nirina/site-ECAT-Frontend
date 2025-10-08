@@ -1,6 +1,6 @@
 "use client";
 
-import { LayoutDashboard, Users, User, CreditCard, FileText} from "lucide-react";
+import { LayoutDashboard, Users, User, CreditCard, FileText, LogOut } from "lucide-react";
 
 interface SidebarProps {
   readonly darkMode: boolean;
@@ -20,28 +20,30 @@ export default function Sidebar({ darkMode }: SidebarProps) {
 
   return (
     <aside
-  className={`w-64 p-6 min-h-screen ${
-    darkMode ? "bg-gray-800" : "bg-gray-100"
-  } hidden md:flex flex-col gap-4`}
->
-  {/* Conteneur menu avec hauteur réduite */}
-  <div
-    className={`p-6 rounded-lg shadow-md ${darkMode ? "bg-gray-700" : "bg-white"} flex flex-col gap-3 w-full`}
-    style={{ minHeight: "calc(100vh - 200px)" }} // réduit la hauteur du menu
-  >
-    {menuItems.map((item) => (
-      <button
-        key={item.name}
-        className={`flex items-center gap-3 px-3 py-2 rounded-lg hover:text-purple-600 hover:bg-opacity-20 transition-colors ${textColor} bg-transparent border-none cursor-pointer whitespace-nowrap`}
+      className={`w-64 p-6 h-screen fixed top-0 left-0 ${
+        darkMode ? "bg-gray-800" : "bg-gray-100"
+      } hidden md:flex flex-col gap-4`}
+    >
+      {/* Conteneur menu */}
+      <div
+        className={`p-6 rounded-lg shadow-md ${darkMode ? "bg-gray-700" : "bg-white"} flex flex-col gap-3 w-full h-full`}
       >
-        {item.icon}
-        <span className="font-medium">{item.name}</span>
-      </button>
-    ))}
-  </div>
+        {menuItems.map((item) => (
+          <button
+            key={item.name}
+            className={`flex items-center gap-3 px-3 py-2 rounded-lg hover:text-purple-600 hover:bg-opacity-20 transition-colors ${textColor} bg-transparent border-none cursor-pointer whitespace-nowrap`}
+          >
+            {item.icon}
+            <span className="font-medium">{item.name}</span>
+          </button>
+        ))}
 
-  {/* Bouton message supprimé */}
-</aside>
-
+        {/* Div séparée pour le bouton de déconnexion */}
+        <div className="mt-auto flex items-center px-3 py-2 rounded-lg cursor-pointer bg-[#17f] hover:bg-blue-600 transition-colors">
+          <LogOut size={20} color="white" />
+          <span className="text-white font-medium">Se déconnecter</span>
+        </div>
+      </div>
+    </aside>
   );
 }

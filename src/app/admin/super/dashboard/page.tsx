@@ -11,11 +11,15 @@ export default function AdminLocalDashboard() {
 
   return (
     <div className={darkMode ? "bg-gray-900 text-white min-h-screen" : "bg-white text-gray-800 min-h-screen"}>
-      {/* Header */}
-      <Header darkMode={darkMode} setDarkMode={setDarkMode} />
+      {/* Sidebar fixe */}
+      <Sidebar darkMode={darkMode} />
 
-      <div className="flex flex-col md:flex-row">
-        <Sidebar darkMode={darkMode} />
+      {/* Décalage du contenu principal pour ne pas être caché par le sidebar */}
+      <div className="md:ml-64 flex flex-col min-h-screen">
+        {/* Header */}
+        <Header darkMode={darkMode} setDarkMode={setDarkMode} />
+
+        {/* MainContent */}
         <MainContent darkMode={darkMode} lang={lang} />
       </div>
     </div>
