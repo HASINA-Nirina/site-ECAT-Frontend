@@ -35,22 +35,23 @@ export default function Header({ darkMode, setDarkMode }: HeaderProps) {
 
   return (
     <header className={`px-4 py-3 shadow-md bg-opacity-90 backdrop-blur-md ${darkMode ? "bg-gray-900 text-white" : "bg-white text-gray-800"}`}>
-      {/* Ligne 1 mobile : logo + nom université */}
+      {/* Ligne 1 mobile */}
       <div className="flex md:hidden justify-center items-center mb-2">
         <Image src={logo} alt="Logo" width={40} height={40} className="rounded-full" />
         <span className="text-[#17f] font-bold text-lg ml-2 text-center">Université ECAT TARATRA FIANARANTSOA</span>
       </div>
 
-      {/* Ligne 2 mobile : menu hamburger à gauche, icônes à droite */}
-      <div className="flex justify-between items-center md:justify-start">
-        {/* Menu hamburger */}
-        <button className="md:hidden">
-          <Menu color={iconColor} size={26} />
-        </button>
-
-        {/* Icônes admin */}
+      {/* Grand écran */}
+      <div className="hidden md:flex justify-between items-center">
+        {/* Logo + nom université à gauche */}
         <div className="flex items-center gap-3">
-          {/* Photo + nom admin (nom caché en mobile) */}
+          <Image src={logo} alt="Logo" width={40} height={40} className="rounded-full" />
+          <span className="text-[#17f] font-bold text-lg">Université ECAT TARATRA FIANARANTSOA</span>
+        </div>
+
+        {/* Icônes à droite */}
+        <div className="flex items-center gap-3">
+          {/* Photo + nom admin */}
           <button onClick={() => setModalOpen(true)} className="flex items-center gap-2">
             {profilePic ? (
               <Image src={profilePic} alt="Profil" width={40} height={40} className="rounded-full border-2 border-purple-600 object-cover" />
@@ -59,7 +60,7 @@ export default function Header({ darkMode, setDarkMode }: HeaderProps) {
                 <User size={20} color="gray" />
               </div>
             )}
-            <span className="hidden md:block font-semibold">{adminName}</span>
+            <span className="font-semibold">{adminName}</span>
           </button>
 
           {/* Notification */}
@@ -80,6 +81,40 @@ export default function Header({ darkMode, setDarkMode }: HeaderProps) {
         </div>
       </div>
 
+      {/* Ligne 2 mobile */}
+      <div className="flex md:hidden justify-between items-center">
+        {/* Menu hamburger */}
+        <button>
+          <Menu color={iconColor} size={26} />
+        </button>
+
+        {/* Icônes admin */}
+        <div className="flex items-center gap-3">
+          <button onClick={() => setModalOpen(true)} className="flex items-center gap-2">
+            {profilePic ? (
+              <Image src={profilePic} alt="Profil" width={40} height={40} className="rounded-full border-2 border-purple-600 object-cover" />
+            ) : (
+              <div className="w-10 h-10 rounded-full border-2 border-purple-600 bg-gray-300 flex items-center justify-center">
+                <User size={20} color="gray" />
+              </div>
+            )}
+          </button>
+
+          <button className="p-2 rounded-full border border-purple-500 hover:bg-purple-100 dark:hover:bg-gray-700 transition relative">
+            <Bell size={20} color={iconColor} />
+            <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
+          </button>
+
+          <button onClick={() => setDarkMode(!darkMode)} className="p-2 rounded-full border border-purple-500 hover:bg-purple-100 dark:hover:bg-gray-700 transition">
+            {darkMode ? <Sun size={20} color={iconColor} /> : <Moon size={20} color={iconColor} />}
+          </button>
+
+          <button className="p-2 rounded-full border border-purple-500 hover:bg-purple-100 dark:hover:bg-gray-700 transition">
+            <LogOut size={20} color={iconColor} />
+          </button>
+        </div>
+      </div>
+
       {/* Modal profil */}
       <Modal
         isOpen={modalOpen}
@@ -90,7 +125,6 @@ export default function Header({ darkMode, setDarkMode }: HeaderProps) {
       >
         <button onClick={() => setModalOpen(false)} className="absolute top-3 right-3 text-gray-500 hover:text-gray-700 dark:hover:text-white transition">✕</button>
 
-        {/* Cercle cliquable */}
         <button onClick={() => fileInputRef.current?.click()} className="w-28 h-28 rounded-full border-2 border-purple-500 overflow-hidden flex items-center justify-center mx-auto">
           {profilePic ? (
             <Image src={profilePic} alt="Profil" width={112} height={112} className="object-cover" />
@@ -100,7 +134,6 @@ export default function Header({ darkMode, setDarkMode }: HeaderProps) {
           <input type="file" accept="image/*" ref={fileInputRef} onChange={handleProfileChange} className="hidden" />
         </button>
 
-        {/* Nom admin */}
         <input
           type="text"
           value={adminName}
