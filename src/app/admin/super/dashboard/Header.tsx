@@ -20,7 +20,6 @@ export default function Header({ darkMode, setDarkMode, toggleSidebar }: HeaderP
 
   const iconColor = darkMode ? "white" : "#7c3aed";
 
-  // Gestion changement photo
   const handleProfileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -34,7 +33,6 @@ export default function Header({ darkMode, setDarkMode, toggleSidebar }: HeaderP
     }
   };
 
-  // Initiales si pas d’image
   const getInitials = (fullName: string) => {
     const parts = fullName.split(" ");
     if (parts.length === 1) return parts[0][0].toUpperCase();
@@ -43,18 +41,22 @@ export default function Header({ darkMode, setDarkMode, toggleSidebar }: HeaderP
 
   return (
     <header
-      className={`flex flex-col md:flex-row md:items-center md:justify-between px-4 py-3 shadow-md bg-opacity-90 backdrop-blur-md ${
+      className={`px-4 py-3 shadow-md bg-opacity-90 backdrop-blur-md ${
         darkMode ? "bg-gray-900 text-white" : "bg-white text-gray-800"
       }`}
     >
-      {/* Partie du haut en mode mobile : hamburger à gauche */}
-      <div className="flex w-full items-center justify-between md:hidden mb-2">
-        <button onClick={toggleSidebar}>
-          <Menu color={iconColor} size={26} />
-        </button>
-
-        {/* Icônes à droite en mobile */}
+      {/* Ligne principale (desktop) */}
+      <div className="hidden md:flex items-center justify-between">
+        {/* Logo + nom université */}
         <div className="flex items-center gap-3">
+          <Image src={logo} alt="Logo" width={40} height={40} className="rounded-full" />
+          <span className="text-[#17f] font-bold text-lg">
+            Université ECAT TARATRA FIANARANTSOA
+          </span>
+        </div>
+
+        {/* Icônes desktop */}
+        <div className="flex items-center gap-4">
           <button
             onClick={() => setDarkMode(!darkMode)}
             className="p-2 rounded-full border border-purple-500 hover:bg-purple-100 dark:hover:bg-gray-700 transition"
@@ -66,17 +68,17 @@ export default function Header({ darkMode, setDarkMode, toggleSidebar }: HeaderP
             <LogOut size={20} color={iconColor} />
           </button>
 
-          <button onClick={() => setModalOpen(true)} className="relative">
+          <button onClick={() => setModalOpen(true)}>
             {profilePic ? (
               <Image
                 src={profilePic}
                 alt="Profil"
-                width={36}
-                height={36}
+                width={40}
+                height={40}
                 className="rounded-full border-2 border-purple-600 object-cover"
               />
             ) : (
-              <div className="w-9 h-9 rounded-full border-2 border-purple-600 bg-[#17f] flex items-center justify-center text-white font-bold">
+              <div className="w-10 h-10 rounded-full border-2 border-purple-600 bg-[#17f] flex items-center justify-center text-white font-bold">
                 {getInitials(name)}
               </div>
             )}
@@ -84,51 +86,58 @@ export default function Header({ darkMode, setDarkMode, toggleSidebar }: HeaderP
         </div>
       </div>
 
-      {/* Logo et nom université */}
-      <div className="flex flex-col md:flex-row md:items-center md:gap-3 w-full md:w-auto pl-6">
-        <Image src={logo} alt="Logo" width={40} height={40} className="rounded-full" />
-        <span className="text-[#17f] font-bold text-lg text-center md:text-left">
-          Université ECAT TARATRA FIANARANTSOA
-        </span>
+      {/* Version responsive */}
+      <div className="flex flex-col md:hidden items-center w-full">
+        {/* 1ère ligne : logo + nom université */}
+        <div className="flex flex-col items-center justify-center w-full">
+          <Image src={logo} alt="Logo" width={35} height={35} className="rounded-full mb-1" />
+          <span className="text-[#17f] font-bold text-base text-center">
+            Université ECAT TARATRA FIANARANTSOA
+          </span>
+        </div>
+
+        {/* 2e ligne : menu hamburger + icônes */}
+        <div className="flex items-center justify-between w-full mt-3 px-3">
+          {/* Menu */}
+          <button onClick={toggleSidebar}>
+            <Menu color={iconColor} size={26} />
+          </button>
+
+          <div className="flex items-center gap-3">
+            {/* Dark mode */}
+            <button
+              onClick={() => setDarkMode(!darkMode)}
+              className="p-2 rounded-full border border-purple-500 hover:bg-purple-100 dark:hover:bg-gray-700 transition"
+            >
+              {darkMode ? <Sun size={20} color={iconColor} /> : <Moon size={20} color={iconColor} />}
+            </button>
+
+            {/* Logout */}
+            <button className="p-2 rounded-full border border-purple-500 hover:bg-purple-100 dark:hover:bg-gray-700 transition">
+              <LogOut size={20} color={iconColor} />
+            </button>
+
+            {/* Profil */}
+            <button onClick={() => setModalOpen(true)}>
+              {profilePic ? (
+                <Image
+                  src={profilePic}
+                  alt="Profil"
+                  width={35}
+                  height={35}
+                  className="rounded-full border-2 border-purple-600 object-cover"
+                />
+              ) : (
+                <div className="w-9 h-9 rounded-full border-2 border-purple-600 bg-[#17f] flex items-center justify-center text-white font-bold text-sm">
+                  {getInitials(name)}
+                </div>
+              )}
+            </button>
+          </div>
+        </div>
       </div>
 
-      {/* Partie droite (grands écrans uniquement) */}
-      <div className="hidden md:flex items-center gap-4 pl-6">
-        {/* Nom Super Admin (visible seulement en grand écran) */}
-        <span className="font-semibold">{name}</span>
-
-        {/* Toggle clair/sombre */}
-        <button
-          onClick={() => setDarkMode(!darkMode)}
-          className="p-2 rounded-full border border-purple-500 hover:bg-purple-100 dark:hover:bg-gray-700 transition"
-        >
-          {darkMode ? <Sun size={20} color={iconColor} /> : <Moon size={20} color={iconColor} />}
-        </button>
-
-        {/* Déconnexion */}
-        <button className="p-2 rounded-full border border-purple-500 hover:bg-purple-100 dark:hover:bg-gray-700 transition">
-          <LogOut size={20} color={iconColor} />
-        </button>
-
-        {/* Photo de profil */}
-        <button onClick={() => setModalOpen(true)} className="relative">
-          {profilePic ? (
-            <Image
-              src={profilePic}
-              alt="Profil"
-              width={40}
-              height={40}
-              className="rounded-full border-2 border-purple-600 object-cover"
-            />
-          ) : (
-            <div className="w-10 h-10 rounded-full border-2 border-purple-600 bg-[#17f] flex items-center justify-center text-white font-bold">
-              {getInitials(name)}
-            </div>
-          )}
-        </button>
-      </div>
-
-      {/* Modal de modification du profil */}
+      {/* Modal modification profil */}
       <Modal
         isOpen={modalOpen}
         onRequestClose={() => setModalOpen(false)}
