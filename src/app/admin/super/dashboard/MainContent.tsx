@@ -6,11 +6,14 @@ interface MainContentProps {
   readonly lang: string;
 }
 
+import { MessageCircle } from "lucide-react";
+
 export default function MainContent(props: MainContentProps) {
   const { darkMode, lang } = props; // destructuration
 
   return (
-    <main className="flex-1 p-6">
+    <main className="flex-1 p-6 relative">
+      {/* Header interne du MainContent */}
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">
           {lang === "fr" ? "Dashboard Admin Local" : "Local Admin Dashboard"}
@@ -22,6 +25,7 @@ export default function MainContent(props: MainContentProps) {
         />
       </div>
 
+      {/* Contenu principal */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className={`p-6 rounded-lg shadow-md ${darkMode ? "bg-gray-800" : "bg-white"}`}>
           <h2 className="text-lg font-semibold mb-4">Statistiques Étudiants</h2>
@@ -32,6 +36,14 @@ export default function MainContent(props: MainContentProps) {
           <div className="h-40 flex items-center justify-center">📈 Histogramme</div>
         </div>
       </div>
+
+      {/* Bouton message fixe en bas à droite */}
+      <button
+        className="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-purple-600 hover:bg-purple-700 text-white flex items-center justify-center shadow-lg transition"
+        title="Messages"
+      >
+        <MessageCircle size={28} />
+      </button>
     </main>
   );
 }
