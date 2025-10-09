@@ -19,7 +19,7 @@ export default function MainContent(props: MainContentProps) {
       {/* Header interne du MainContent */}
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">
-          {lang === "fr" ? "Dashboard Admin Local" : "Local Admin Dashboard"}
+          {lang === "fr" ? "Dashboard Super Admin" : "Super Admin Dashboard"}
         </h1>
         <input
           type="text"
