@@ -11,6 +11,7 @@ interface ChatWindowProps {
   readonly onClose: () => void;
   readonly darkMode: boolean;
   readonly toggleDarkMode: () => void;
+  readonly adminName: string;
 }
 
 export default function ChatWindow({
@@ -19,6 +20,7 @@ export default function ChatWindow({
   onClose,
   darkMode,
   toggleDarkMode,
+  adminName, // ✅ utilisé
 }: ChatWindowProps) {
   const [message, setMessage] = useState("");
 
@@ -27,7 +29,7 @@ export default function ChatWindow({
 
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) console.log("Fichier envoyé :", file.name);
+    if (file) console.log("📁 Fichier envoyé :", file.name);
   };
 
   if (!selectedUser) {
@@ -50,13 +52,16 @@ export default function ChatWindow({
             height={40}
             className="rounded-full"
           />
-          <span className="font-semibold">{selectedUser.name}</span>
+          <div>
+            <span className="font-semibold">{selectedUser.name}</span>
+            <p className="text-xs opacity-70">{adminName}</p> {/* ✅ affiche admin */}
+          </div>
         </div>
         <div className="flex items-center gap-3">
-          <button onClick={toggleDarkMode}>
+          <button onClick={toggleDarkMode} title="Changer le thème">
             {darkMode ? <Sun size={20} /> : <Moon size={20} />}
           </button>
-          <button onClick={onClose}>
+          <button onClick={onClose} title="Fermer le chat">
             <X size={20} />
           </button>
         </div>
@@ -65,21 +70,21 @@ export default function ChatWindow({
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
         {messages.map((msg) => {
-            let messageClass = "self-start bg-gray-200";
-            if (msg.senderId === "admin-super") {
-                messageClass = "self-end bg-purple-600 text-white";
-            } else if (darkMode) {
-                messageClass = "self-start bg-gray-700";
-            }
+          let messageClass = "self-start bg-gray-200";
+          if (msg.senderId === "admin-super") {
+            messageClass = "self-end bg-purple-600 text-white";
+          } else if (darkMode) {
+            messageClass = "self-start bg-gray-700 text-white";
+          }
 
-            return (
-                <div
-                key={msg.id}
-                className={`max-w-[70%] p-3 rounded-lg ${messageClass}`}
-                >
-                {msg.content}
-                </div>
-            );
+          return (
+            <div
+              key={msg.id}
+              className={`max-w-[70%] p-3 rounded-lg ${messageClass}`}
+            >
+              {msg.content}
+            </div>
+          );
         })}
       </div>
 
