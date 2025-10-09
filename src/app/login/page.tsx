@@ -21,31 +21,37 @@ const LoginPage = () => {
 
   const data = {
     email: email,
-    role: string,
     mot_de_passe: password,
   };
-
-  const res = await fetch("http://127.0.0.1:8000/auth/login", {
+  try{
+  const res = await fetch("http://127.0.0.1:3001/auth/login", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
   });
 
+
+   
   const result = await res.json();
-  console.log(data.role); 
+  console.log(result.role);
 
   if (res.ok) {
-    if (data.role === "admin") {
-        router.push("/admin/super/dashboard");
-      } else if (data.role === "local") {
-        
+    if (result.role.toLowerCase() === "admin") {
+      
+        router.push("/EtudiantRegister");
+      } else if (result.role.toLowerCase() === "etudiant") {
+        alert("etudiant")
       } else {
-        
+        alert("Adminlocal")
       }
     }
  else {
     alert("Erreur : " + result.detail);
   }
+}
+  catch (err) {
+  console.error("Fetch failed:", err);
+}
 };
 
 
@@ -87,13 +93,14 @@ const LoginPage = () => {
               onClick={() => setShowPassword(!showPassword)}
               className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
             >
-              {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              {showPassword ? <EyeOff size={20} className="text-purple-600 hover:text-purple-700 transition"/> :
+                              <Eye size={20} className="text-purple-600 hover:text-purple-700 transition"/>}
             </button>
           </div>
 
           {/* Mot de passe oublié */}
-          <div className="flex justify-end mb-4">
-            <a href="/forgot-password" className="text-sm text-purple-700 hover:underline">
+          <div className="flex justify-end mb-8">
+            <a href="/ForgotPassword" className="text-purple-700 font-semibold hover:underline">
               Mot de passe oublié ?
             </a>
           </div>
