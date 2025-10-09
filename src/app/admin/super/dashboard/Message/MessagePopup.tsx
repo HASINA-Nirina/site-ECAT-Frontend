@@ -27,7 +27,9 @@ export default function MessagePopup({ darkMode, adminName, onClose }: MessagePo
     { id: "m2", senderId: "admin-super", content: "Bonjour, comment avance la formation ?", time: "08:31" },
   ];
 
-  const popupThemeClass = localDarkMode ? "bg-gray-900 text-white" : "bg-white text-black";
+  const popupThemeClass = localDarkMode
+  ? "bg-gray-900 text-white"
+  : "bg-white text-black";
 
   return (
     <div
