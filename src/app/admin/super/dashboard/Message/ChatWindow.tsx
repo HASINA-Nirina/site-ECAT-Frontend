@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useState } from "react";
-import { ChatMessage, ChatUser } from "./types";
+import { ChatMessage, ChatUser } from "@/app/admin/super/dashboard/Message/type";
 import { Sun, Moon, Paperclip, ImageIcon, Send, X } from "lucide-react";
 
 interface ChatWindowProps {
@@ -64,20 +64,23 @@ export default function ChatWindow({
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
-        {messages.map((msg) => (
-          <div
-            key={msg.id}
-            className={`max-w-[70%] p-3 rounded-lg ${
-              msg.senderId === "admin-super"
-                ? "self-end bg-purple-600 text-white"
-                : darkMode
-                ? "self-start bg-gray-700"
-                : "self-start bg-gray-200"
-            }`}
-          >
-            {msg.content}
-          </div>
-        ))}
+        {messages.map((msg) => {
+            let messageClass = "self-start bg-gray-200";
+            if (msg.senderId === "admin-super") {
+                messageClass = "self-end bg-purple-600 text-white";
+            } else if (darkMode) {
+                messageClass = "self-start bg-gray-700";
+            }
+
+            return (
+                <div
+                key={msg.id}
+                className={`max-w-[70%] p-3 rounded-lg ${messageClass}`}
+                >
+                {msg.content}
+                </div>
+            );
+        })}
       </div>
 
       {/* Footer */}
