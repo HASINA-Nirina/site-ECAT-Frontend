@@ -14,7 +14,7 @@ interface HeaderProps {
 export default function Header({ darkMode, setDarkMode }: HeaderProps) {
   const [modalOpen, setModalOpen] = useState(false);
   const [profilePic, setProfilePic] = useState<string | null>(null);
-  const [adminName, setAdminName] = useState("Super Admin");
+  const [adminName, setAdminName] = useState("Admin Local"); // modifié
   const [successMsg, setSuccessMsg] = useState("");
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -35,7 +35,7 @@ export default function Header({ darkMode, setDarkMode }: HeaderProps) {
 
   return (
     <header className={`px-4 py-3 shadow-md bg-opacity-90 backdrop-blur-md ${darkMode ? "bg-gray-900 text-white" : "bg-white text-gray-800"}`}>
-     {/* Ligne 1 mobile : logo + nom université */}
+      {/* Ligne 1 mobile : logo + nom université */}
       <div className="flex md:hidden justify-start items-start mb-2 px-4">
         <Image src={logo} alt="Logo" width={40} height={40} className="rounded-full" />
         <span className="text-[#17f] font-bold text-lg ml-2">
@@ -45,15 +45,12 @@ export default function Header({ darkMode, setDarkMode }: HeaderProps) {
 
       {/* Grand écran */}
       <div className="hidden md:flex justify-between items-center">
-        {/* Logo + nom université à gauche */}
         <div className="flex items-center gap-3">
           <Image src={logo} alt="Logo" width={40} height={40} className="rounded-full" />
           <span className="text-[#17f] font-bold text-lg">Université ECAT TARATRA FIANARANTSOA</span>
         </div>
 
-        {/* Icônes à droite */}
         <div className="flex items-center gap-3">
-          {/* Photo + nom admin */}
           <button onClick={() => setModalOpen(true)} className="flex items-center gap-2">
             {profilePic ? (
               <Image src={profilePic} alt="Profil" width={40} height={40} className="rounded-full border-2 border-purple-600 object-cover" />
@@ -65,18 +62,15 @@ export default function Header({ darkMode, setDarkMode }: HeaderProps) {
             <span className="font-semibold">{adminName}</span>
           </button>
 
-          {/* Notification */}
           <button className="p-2 rounded-full border border-purple-500 hover:bg-purple-100 dark:hover:bg-gray-700 transition relative">
             <Bell size={20} color={iconColor} />
             <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
           </button>
 
-          {/* Toggle dark/light */}
           <button onClick={() => setDarkMode(!darkMode)} className="p-2 rounded-full border border-purple-500 hover:bg-purple-100 dark:hover:bg-gray-700 transition">
             {darkMode ? <Sun size={20} color={iconColor} /> : <Moon size={20} color={iconColor} />}
           </button>
 
-          {/* Déconnexion */}
           <button className="p-2 rounded-full border border-purple-500 hover:bg-purple-100 dark:hover:bg-gray-700 transition">
             <LogOut size={20} color={iconColor} />
           </button>
@@ -86,12 +80,10 @@ export default function Header({ darkMode, setDarkMode }: HeaderProps) {
 
       {/* Ligne 2 mobile */}
       <div className="flex md:hidden justify-between items-center">
-        {/* Menu hamburger */}
         <button>
           <Menu color={iconColor} size={26} />
         </button>
 
-        {/* Icônes admin */}
         <div className="flex items-center gap-3">
           <button onClick={() => setModalOpen(true)} className="flex items-center gap-2">
             {profilePic ? (
@@ -118,7 +110,6 @@ export default function Header({ darkMode, setDarkMode }: HeaderProps) {
         </div>
       </div>
 
-      {/* Modal profil */}
       <Modal
         isOpen={modalOpen}
         onRequestClose={() => setModalOpen(false)}
@@ -146,7 +137,7 @@ export default function Header({ darkMode, setDarkMode }: HeaderProps) {
         />
 
         <button onClick={() => setSuccessMsg("Modifications enregistrées !")} className="mt-3 px-4 py-2 bg-purple-600 text-white rounded-lg w-full hover:bg-purple-700 transition">
-          Modifier
+          Modification
         </button>
 
         {successMsg && <span className="text-green-500 text-sm mt-2 block text-center">{successMsg}</span>}
