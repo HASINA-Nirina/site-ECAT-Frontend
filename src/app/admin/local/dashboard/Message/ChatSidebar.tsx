@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { ChatUser } from "@/app/admin/local/dashboard/Message/type";
+import { ChatUser } from "@/app/admin/local/dashboard/Message/types";
 
 interface ChatSidebarProps {
   readonly users: ChatUser[];

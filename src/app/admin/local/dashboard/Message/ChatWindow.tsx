@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useState } from "react";
-import { ChatMessage, ChatUser } from "@/app/admin/local/dashboard/Message/type";
+import { ChatMessage, ChatUser } from "@/app/admin/local/dashboard/Message/types";
 import { Sun, Moon, Paperclip, ImageIcon, Send, X } from "lucide-react";
 
 interface ChatWindowProps {

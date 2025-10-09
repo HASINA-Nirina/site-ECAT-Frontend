@@ -3,7 +3,7 @@
 import { useState } from "react";
 import ChatSidebar from "@/app/admin/local/dashboard/Message/ChatSidebar";
 import ChatWindow from "@/app/admin/local/dashboard/Message/ChatWindow";
-import { ChatMessage, ChatUser } from "@/app/admin/local/dashboard/Message/type";
+import { ChatMessage, ChatUser } from "@/app/admin/local/dashboard/Message/types";
 
 interface MessagePopupProps {
   readonly darkMode: boolean;
