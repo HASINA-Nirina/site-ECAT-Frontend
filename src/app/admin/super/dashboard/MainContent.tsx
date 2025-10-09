@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { MessageCircle } from "lucide-react";
-import MessagePopup from "./MessagePopup"; // importer la popup
+import MessagePopup from "@/app/admin/super/dashboard/Message/MessagePopup"; // importer la popup
 
 // Props immuables
 interface MainContentProps {
