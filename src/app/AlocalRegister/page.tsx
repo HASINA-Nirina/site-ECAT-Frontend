@@ -1,11 +1,14 @@
-"use client"; // obligatoire pour React côté client
+"use client"; 
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import background from "@/app/assets/background.png";
 
+
+
 const InscriptionAdminLocal = () => {
   const [nom, setNom] = useState("");
+  const [prenom, setPrenom] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -13,7 +16,7 @@ const InscriptionAdminLocal = () => {
   const [message, setMessage] = useState("");
   const router = useRouter();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit =async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (password !== confirmPassword) {
@@ -21,9 +24,38 @@ const InscriptionAdminLocal = () => {
       return;
     }
 
-    console.log("Demande d'inscription :", { nom, email, password, antenne });
-    setMessage("✅ Votre demande d’inscription a été envoyée. En attente de validation.");
-    setTimeout(() => router.push("/login"), 3000);
+        //setTimeout(() => router.push("/login"), 3000);
+
+    try{
+      const res =await fetch("http://127.0.0.1:3001/auth/Etudiantregister", {
+          method:"POST",
+          headers:{"Content-Type":"application/json"},
+          body:JSON.stringify({
+              nom: nom,
+              prenom:prenom,
+          email: email,
+          mot_de_passe:password,
+          province:antenne,
+          role:"Admin Local",
+          })
+          
+     });
+     const data = await res.json();
+
+      if (data.message) {
+      console.log("Demande d'inscription :", data);
+      setMessage("✅ Votre demande d’inscription a été envoyée. En attente de validation.");
+    }
+     else if (data.error) {
+      setMessage("❌ " + data.error);
+    } else {
+      setMessage("Erreur inconnue.");
+    }
+  } catch (error) {
+    console.error("Erreur:", error);
+    alert("Impossible de contacter le serveur.");
+  }
+
   };
 
   return (
@@ -50,6 +82,16 @@ const InscriptionAdminLocal = () => {
             required
           />
 
+          <input
+            type="text"
+            placeholder="Prenom"
+            value={prenom}
+            onChange={(e) => setPrenom(e.target.value)}
+            className="w-full p-3 mb-4 border border-gray-300 rounded-lg text-black focus:outline-none focus:ring-2 focus:ring-purple-500"
+            required
+          />
+
+         
           <input
             type="email"
             placeholder="Adresse email"

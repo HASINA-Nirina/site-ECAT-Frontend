@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation";
 const RegisterPage = () => {
     
   const [step, setStep] = useState(1);
+  const [message, setMessage] = useState("");
   const [form, setForm] = useState({
     firstName: "",
     lastName: "",
@@ -46,7 +47,7 @@ const RegisterPage = () => {
     const data = await res.json();
 
     if (res.ok) {
-      alert("Inscription réussie ! Attendez la validation de l’administrateur.");
+       setMessage("✅ Demande d'inscription envoyer !");
       
     } else {
       alert(data.detail || "Erreur lors de l'inscription");
@@ -195,7 +196,10 @@ const RegisterPage = () => {
                 <p className="text-gray-700 text-sm mt-4">
                   💡 Après paiement, votre inscription sera validée par l’administrateur local.
                 </p>
-
+                
+               {message && (
+            <p className="text-center mt-4 text-purple-700 font-medium">{message}</p>
+          )}
                 <div className="flex justify-between mt-8">
                   <button
                     type="button"

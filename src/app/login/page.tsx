@@ -14,6 +14,7 @@ const LoginPage = () => {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showRegisterChoice, setShowRegisterChoice] = useState(false);
+  const [message, setMessage] = useState("");
   const router = useRouter();
 
  const handleSubmit = async (e: React.FormEvent) => {
@@ -35,20 +36,23 @@ const LoginPage = () => {
   const result = await res.json();
   console.log(result.role);
 
-  if (res.ok) {
-    if (result.role.toLowerCase() === "admin") {
-      
-        router.push("/EtudiantRegister");
-      } else if (result.role.toLowerCase() === "etudiant") {
-        alert("etudiant")
-      } else {
-        alert("Adminlocal")
-      }
-    }
- else {
-    alert("Erreur : " + result.detail);
+  if (result.error){
+     { setMessage(result.error);
   }
 }
+  else{
+    if (result === "Admin") {
+      
+        router.push("/admin/super/dashboard");
+      } else if (result === "etudiant") {
+        alert("etudiant")
+      } else if (result === "Admin Local"){
+       // router.push("/admin/local/dashboard");
+           alert("admin local")
+      }
+    }
+  }
+  
   catch (err) {
   console.error("Fetch failed:", err);
 }
@@ -112,6 +116,13 @@ const LoginPage = () => {
             Se connecter
           </button>
         </form>
+
+      {message && (
+            <p className="text-center mt-4 text-purple-700 font-medium">{message}</p>
+          )}
+
+
+
 
         {/* Lien inscription */}
         <p className="text-center text-black mt-4">
