@@ -1,0 +1,55 @@
+"use client";
+
+import { useState } from "react";
+import ChatSidebar from "@/app/admin/local/dashboard/Message/ChatSidebar";
+import ChatWindow from "@/app/admin/local/dashboard/Message/ChatWindow";
+import { ChatMessage, ChatUser } from "@/app/admin/local/dashboard/Message/types";
+
+interface MessagePopupProps {
+  readonly darkMode: boolean;
+  readonly adminName: string;
+  readonly onClose: () => void;
+}
+
+export default function MessagePopup({ darkMode, adminName, onClose }: MessagePopupProps) {
+  const [localDarkMode, setLocalDarkMode] = useState(darkMode);
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+
+  const users: ChatUser[] = [
+    { id: "1", name: "Étudiant Antenne Nord", avatar: "/default-profile.png", unread: 1 },
+    { id: "2", name: "Super Admin", avatar: "/default-profile.png", unread: 0 },
+  ];
+
+  const selectedUser = users.find((u) => u.id === selectedUserId) || null;
+
+  const messages: ChatMessage[] = [
+    { id: "m1", senderId: "admin-local", content: "Bonjour, bienvenue sur votre espace !", time: "08:30" },
+    { id: "m2", senderId: "student", content: "Merci, je viens de m'inscrire.", time: "08:32" },
+  ];
+
+  const popupThemeClass = localDarkMode
+    ? "bg-gray-900 text-white"
+    : "bg-white text-black";
+
+  return (
+    <div
+      className={`fixed bottom-10 right-10 w-[800px] h-[500px] rounded-xl shadow-2xl flex overflow-hidden z-50 ${popupThemeClass}`}
+    >
+      <ChatSidebar
+        users={users}
+        activeId={selectedUserId}
+        onSelect={setSelectedUserId}
+        darkMode={localDarkMode}
+      />
+
+      <ChatWindow
+        selectedUser={selectedUser}
+        messages={messages}
+        darkMode={localDarkMode}
+        toggleDarkMode={() => setLocalDarkMode(!localDarkMode)}
+        onClose={onClose}
+        adminName={adminName}
+      />
+    </div>
+  );
+}
