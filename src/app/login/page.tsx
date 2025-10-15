@@ -31,27 +31,29 @@ const LoginPage = () => {
       if (result.error) {
         setMessage(result.error);
         setSuccessLogin(false);
-      } else {
-        if (result.role === "admin_super") {
-          // Connexion réussie pour admin super
-          setMessage("");
-          setSuccessLogin(true);
+        return;
+      }
 
-          // Redirection après 5 secondes avec barre de progression
-          setTimeout(() => {
-            router.push("/admin/super/dashboard");
-          }, 5000);
-        } else if (result.role === "etudiant") {
-          router.push("/etudiant/dashboard");
-        } else if (result.role === "admin_local") {
-          router.push("/admin/local/dashboard");
-        } else {
-          setMessage("Rôle non autorisé pour accéder à cette page");
-        }
+      // Vérification des rôles
+      if (result.role === "admin_super") {
+        setMessage("");
+        setSuccessLogin(true);
+        // Redirection après 5 secondes
+        setTimeout(() => {
+          router.push("/admin/super/dashboard");
+        }, 5000);
+      } else if (result.role === "etudiant") {
+        router.push("/etudiant/dashboard");
+      } else if (result.role === "admin_local") {
+        router.push("/admin/local/dashboard");
+      } else {
+        setMessage("Rôle non autorisé pour accéder à cette page");
+        setSuccessLogin(false);
       }
     } catch (err) {
       console.error("Fetch failed:", err);
       setMessage("Erreur serveur, veuillez réessayer plus tard.");
+      setSuccessLogin(false);
     }
   };
 
@@ -60,10 +62,8 @@ const LoginPage = () => {
       className="relative min-h-screen flex items-center justify-center bg-cover bg-center"
       style={{ backgroundImage: `url(${background.src})` }}
     >
-      {/* Overlay */}
       <div className="absolute inset-0 bg-white/10 backdrop-blur-sm"></div>
 
-      {/* Formulaire */}
       <div className="relative z-10 w-full max-w-md bg-white/90 p-8 rounded-2xl shadow-lg mx-4">
         <h1 className="text-3xl font-bold mb-6 text-center text-black">
           Connexion
@@ -101,7 +101,6 @@ const LoginPage = () => {
             </button>
           </div>
 
-          {/* Mot de passe oublié */}
           <div className="flex justify-end mb-8">
             <a href="/ForgotPassword" className="text-purple-700 font-semibold hover:underline">
               Mot de passe oublié ?
@@ -120,13 +119,12 @@ const LoginPage = () => {
           <p className="text-center mt-4 text-purple-700 font-medium">{message}</p>
         )}
 
-        {/* Barre de progression succès */}
         {successLogin && (
           <div className="flex items-center space-x-2 mt-4">
             <CheckCircle className="text-green-600" size={24} />
             <div className="relative w-full h-3 bg-gray-200 rounded-full overflow-hidden">
               <div
-                className="absolute top-0 left-0 h-3 bg-green-500 animate-[progress_5s_linear]"
+                className="absolute top-0 left-0 h-3 bg-green-500 animate-progress"
                 style={{ width: "100%" }}
               ></div>
             </div>
@@ -134,7 +132,6 @@ const LoginPage = () => {
           </div>
         )}
 
-        {/* Lien inscription */}
         <p className="text-center text-black mt-4">
           Pas encore de compte ?{" "}
           <button
@@ -146,7 +143,6 @@ const LoginPage = () => {
         </p>
       </div>
 
-      {/* Popup modal */}
       {showRegisterChoice && (
         <div
           className="fixed inset-0 flex justify-center items-center z-[100] backdrop-blur-md bg-black/40 transition"
@@ -182,12 +178,12 @@ const LoginPage = () => {
         </div>
       )}
 
-      <style jsx>{`
+      <style jsx global>{`
         @keyframes progress {
           0% { width: 0%; }
           100% { width: 100%; }
         }
-        .animate-[progress_5s_linear] {
+        .animate-progress {
           animation: progress 5s linear forwards;
         }
       `}</style>
