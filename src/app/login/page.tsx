@@ -12,16 +12,17 @@ const LoginPage = () => {
   const [showRegisterChoice, setShowRegisterChoice] = useState(false);
   const [message, setMessage] = useState("");
   const [successLogin, setSuccessLogin] = useState(false);
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoading(true);
+    setMessage("");
 
-    // ⚡️ Important : le backend attend "email" et "password" (pas mot_de_passe)
     const data = { email, password };
 
     try {
-      // ⚡️ URL backend corrigée
       const res = await fetch("http://127.0.0.1:8000/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -31,24 +32,20 @@ const LoginPage = () => {
       const result = await res.json();
 
       if (res.status !== 200) {
-        // Afficher l'erreur retournée par le backend
         setMessage(result.detail || "Erreur serveur, veuillez réessayer plus tard.");
         setSuccessLogin(false);
+        setLoading(false);
         return;
       }
 
-      // Vérification des rôles
       if (result.access_token) {
-        // ⚡️ Décoder le token pour récupérer le rôle
+        // Décoder le JWT pour récupérer le rôle
         const payload = JSON.parse(atob(result.access_token.split(".")[1]));
         const role = payload.role;
 
         if (role === "admin_super") {
-          setMessage("");
           setSuccessLogin(true);
-          setTimeout(() => {
-            router.push("/admin/super/dashboard");
-          }, 5000);
+          setTimeout(() => router.push("/admin/super/dashboard"), 1000);
         } else if (role === "etudiant") {
           router.push("/etudiant/dashboard");
         } else if (role === "admin_local") {
@@ -65,6 +62,8 @@ const LoginPage = () => {
       console.error("Fetch failed:", err);
       setMessage("Erreur serveur, veuillez réessayer plus tard.");
       setSuccessLogin(false);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -104,11 +103,8 @@ const LoginPage = () => {
               onClick={() => setShowPassword(!showPassword)}
               className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
             >
-              {showPassword ? (
-                <EyeOff size={20} className="text-purple-600 hover:text-purple-700 transition" />
-              ) : (
-                <Eye size={20} className="text-purple-600 hover:text-purple-700 transition" />
-              )}
+              {showPassword ? <EyeOff size={20} className="text-purple-600 hover:text-purple-700 transition" /> :
+                                <Eye size={20} className="text-purple-600 hover:text-purple-700 transition" />}
             </button>
           </div>
 
@@ -120,9 +116,12 @@ const LoginPage = () => {
 
           <button
             type="submit"
-            className="w-full bg-purple-600 text-white py-3 rounded-lg font-semibold hover:bg-purple-700 transition duration-300"
+            disabled={loading}
+            className={`w-full py-3 rounded-lg font-semibold transition duration-300 ${
+              loading ? "bg-gray-400 cursor-not-allowed" : "bg-purple-600 text-white hover:bg-purple-700"
+            }`}
           >
-            Se connecter
+            {loading ? "Connexion..." : "Se connecter"}
           </button>
         </form>
 
