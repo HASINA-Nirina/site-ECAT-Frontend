@@ -2,12 +2,8 @@
 
 import React, { useState } from "react";
 import background from "@/app/assets/background.png";
-import { Eye, EyeOff } from "lucide-react";
-import { useRouter } from "next/navigation"; 
-
-
-
-
+import { Eye, EyeOff, CheckCircle } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 const LoginPage = () => {
   const [email, setEmail] = useState("");
@@ -15,49 +11,49 @@ const LoginPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showRegisterChoice, setShowRegisterChoice] = useState(false);
   const [message, setMessage] = useState("");
+  const [successLogin, setSuccessLogin] = useState(false);
   const router = useRouter();
 
- const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
 
-  const data = {
-    email: email,
-    mot_de_passe: password,
-  };
-  try{
-  const res = await fetch("http://127.0.0.1:3001/auth/login", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
-  });
+    const data = { email, mot_de_passe: password };
 
+    try {
+      const res = await fetch("http://127.0.0.1:3001/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
 
-   
-  const result = await res.json();
-  console.log(result.role);
+      const result = await res.json();
 
-  if (result.error){
-     { setMessage(result.error);
-  }
-}
-  else{
-    if (result === "Admin") {
-      
-        router.push("/admin/super/dashboard");
-      } else if (result === "etudiant") {
-        alert("etudiant")
-      } else if (result === "Admin Local"){
-       // router.push("/admin/local/dashboard");
-           alert("admin local")
+      if (result.error) {
+        setMessage(result.error);
+        setSuccessLogin(false);
+      } else {
+        if (result.role === "admin_super") {
+          // Connexion réussie pour admin super
+          setMessage("");
+          setSuccessLogin(true);
+
+          // Redirection après 5 secondes avec barre de progression
+          setTimeout(() => {
+            router.push("/admin/super/dashboard");
+          }, 5000);
+        } else if (result.role === "etudiant") {
+          router.push("/etudiant/dashboard");
+        } else if (result.role === "admin_local") {
+          router.push("/admin/local/dashboard");
+        } else {
+          setMessage("Rôle non autorisé pour accéder à cette page");
+        }
       }
+    } catch (err) {
+      console.error("Fetch failed:", err);
+      setMessage("Erreur serveur, veuillez réessayer plus tard.");
     }
-  }
-  
-  catch (err) {
-  console.error("Fetch failed:", err);
-}
-};
-
+  };
 
   return (
     <section
@@ -97,8 +93,11 @@ const LoginPage = () => {
               onClick={() => setShowPassword(!showPassword)}
               className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
             >
-              {showPassword ? <EyeOff size={20} className="text-purple-600 hover:text-purple-700 transition"/> :
-                              <Eye size={20} className="text-purple-600 hover:text-purple-700 transition"/>}
+              {showPassword ? (
+                <EyeOff size={20} className="text-purple-600 hover:text-purple-700 transition" />
+              ) : (
+                <Eye size={20} className="text-purple-600 hover:text-purple-700 transition" />
+              )}
             </button>
           </div>
 
@@ -117,12 +116,23 @@ const LoginPage = () => {
           </button>
         </form>
 
-      {message && (
-            <p className="text-center mt-4 text-purple-700 font-medium">{message}</p>
-          )}
+        {message && (
+          <p className="text-center mt-4 text-purple-700 font-medium">{message}</p>
+        )}
 
-
-
+        {/* Barre de progression succès */}
+        {successLogin && (
+          <div className="flex items-center space-x-2 mt-4">
+            <CheckCircle className="text-green-600" size={24} />
+            <div className="relative w-full h-3 bg-gray-200 rounded-full overflow-hidden">
+              <div
+                className="absolute top-0 left-0 h-3 bg-green-500 animate-[progress_5s_linear]"
+                style={{ width: "100%" }}
+              ></div>
+            </div>
+            <span className="text-green-600 font-medium">Connexion réussie</span>
+          </div>
+        )}
 
         {/* Lien inscription */}
         <p className="text-center text-black mt-4">
@@ -171,6 +181,16 @@ const LoginPage = () => {
           </div>
         </div>
       )}
+
+      <style jsx>{`
+        @keyframes progress {
+          0% { width: 0%; }
+          100% { width: 100%; }
+        }
+        .animate-[progress_5s_linear] {
+          animation: progress 5s linear forwards;
+        }
+      `}</style>
     </section>
   );
 };
