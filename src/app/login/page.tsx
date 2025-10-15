@@ -17,10 +17,12 @@ const LoginPage = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const data = { email, mot_de_passe: password };
+    // ⚡️ Important : le backend attend "email" et "password" (pas mot_de_passe)
+    const data = { email, password };
 
     try {
-      const res = await fetch("http://127.0.0.1:3001/auth/login", {
+      // ⚡️ URL backend corrigée
+      const res = await fetch("http://127.0.0.1:8000/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
@@ -28,26 +30,35 @@ const LoginPage = () => {
 
       const result = await res.json();
 
-      if (result.error) {
-        setMessage(result.error);
+      if (res.status !== 200) {
+        // Afficher l'erreur retournée par le backend
+        setMessage(result.detail || "Erreur serveur, veuillez réessayer plus tard.");
         setSuccessLogin(false);
         return;
       }
 
       // Vérification des rôles
-      if (result.role === "admin_super") {
-        setMessage("");
-        setSuccessLogin(true);
-        // Redirection après 5 secondes
-        setTimeout(() => {
-          router.push("/admin/super/dashboard");
-        }, 5000);
-      } else if (result.role === "etudiant") {
-        router.push("/etudiant/dashboard");
-      } else if (result.role === "admin_local") {
-        router.push("/admin/local/dashboard");
+      if (result.access_token) {
+        // ⚡️ Décoder le token pour récupérer le rôle
+        const payload = JSON.parse(atob(result.access_token.split(".")[1]));
+        const role = payload.role;
+
+        if (role === "admin_super") {
+          setMessage("");
+          setSuccessLogin(true);
+          setTimeout(() => {
+            router.push("/admin/super/dashboard");
+          }, 5000);
+        } else if (role === "etudiant") {
+          router.push("/etudiant/dashboard");
+        } else if (role === "admin_local") {
+          router.push("/admin/local/dashboard");
+        } else {
+          setMessage("Rôle non autorisé pour accéder à cette page");
+          setSuccessLogin(false);
+        }
       } else {
-        setMessage("Rôle non autorisé pour accéder à cette page");
+        setMessage("Erreur serveur, veuillez réessayer plus tard.");
         setSuccessLogin(false);
       }
     } catch (err) {
