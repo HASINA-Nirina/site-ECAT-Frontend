@@ -27,7 +27,7 @@ const InscriptionAdminLocal = () => {
         //setTimeout(() => router.push("/login"), 3000);
 
     try{
-      const res =await fetch("http://127.0.0.1:3001/auth/Etudiantregister", {
+      const res =await fetch("http://127.0.0.1:8000/auth/Etudiantregister", {
           method:"POST",
           headers:{"Content-Type":"application/json"},
           body:JSON.stringify({
