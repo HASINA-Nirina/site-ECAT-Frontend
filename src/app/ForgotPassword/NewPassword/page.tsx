@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import background from "@/app/assets/background.png";
 import { Eye, EyeOff } from "lucide-react";
+import {useSearchParams} from "next/navigation";
 
 const NewPasswordPage = () => {
   const [password, setPassword] = useState("");
@@ -10,21 +11,43 @@ const NewPasswordPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState("");
+  const searchParams = useSearchParams(); 
+  const email = searchParams.get("email");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async(e: React.FormEvent) => {
     e.preventDefault();
     if (password !== confirmPassword) {
       setError("❌ Les mots de passe ne correspondent pas.");
       return;
-    }
+    } 
+    
     if (password.length < 6) {
       setError("⚠️ Le mot de passe doit contenir au moins 6 caractères.");
       return;
     }
+    try {
+          const res = await fetch("http://127.0.0.1:8000/auth/modifPassword",{ 
+            method : "POST",
+            headers : {"Content-type": "application/json"},
+            body :JSON.stringify({
+              email: email,
+              mot_de_passe: password,
 
-    setError("");
-    alert("✅ Mot de passe modifié avec succès !");
-    window.location.href = "/login";
+            })
+     })
+     const data = await res.json();
+     if (data.success){
+            alert("✅ Mot de passe modifié avec succès !");
+             window.location.href = "/login";
+     }
+     else {
+      alert("Erreur")
+      alert(`❌ ${data.message}`);
+     }
+    }
+    catch (err){
+         alert("Erreu d'envoi ");
+    } 
   };
 
   return (

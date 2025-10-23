@@ -2,24 +2,44 @@
 
 import React, { useState } from "react";
 import background from "@/app/assets/background.png";
+//import { useRouter } from "next/router";
+import { useRouter } from "next/navigation"; 
 
 const ForgotPasswordPage = () => {
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
+  const router = useRouter();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async(e: React.FormEvent) => {
     e.preventDefault();
+    try{
+    const res = await fetch("http://127.0.0.1:8000/auth/sendOtp",{
+        method : "POST",
+        headers : {"Content-type": "application/json"},
+        body :JSON.stringify({
+          email: email,
+        })
+    })
+     
+  
+    const data = await res.json();
+    if (data.message) {
+      alert("✅ Un code OTP a été envoyé à votre adresse e-mail.");
+     // localStorage.setItem("email", email);
+     // router.push("/ForgotPassword/OTP?email=${encodeURIComponent(email)}");
+      window.location.href = `/ForgotPassword/OTP?email=${encodeURIComponent(email)}`;
 
-    // ⚠️ Simule la vérification (dans le vrai cas, tu appellerais une API)
-    if (email === "test@example.com") {
-      setMessage("✅ Un code OTP a été envoyé à votre adresse e-mail.");
-      // Redirection simulée (dans le vrai cas, tu utiliseras router.push("/forgot-password/otp"))
-      setTimeout(() => {
-        window.location.href = "/forgot-password/otp";
-      }, 2000);
-    } else {
+    } else if (data.error){
       setMessage("❌ Cette adresse e-mail n’existe pas dans notre base.");
     }
+    else{
+      setMessage("erreur inconue")
+    }
+  }catch (err){
+    setMessage("Erreu d'envoi ")
+  }
+    // ⚠️ Simule la vérification (dans le vrai cas, tu appellerais une API)
+    
   };
 
   return (

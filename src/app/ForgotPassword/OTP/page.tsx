@@ -2,21 +2,52 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import background from "@/app/assets/background.png";
+import {useSearchParams} from "next/navigation";
+
 
 const OtpVerificationPage = () => {
   const otpKeys = ["otp-1", "otp-2", "otp-3", "otp-4", "otp-5", "otp-6"];
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const inputRefs = useRef<HTMLInputElement[]>([]);
-
+ // const codeOtp =otp.join("");
+  const searchParams = useSearchParams(); 
+  const email = searchParams.get("email");
+  
   // ✅ Redirige automatiquement quand le code est complet
   useEffect(() => {
     if (otp.every((digit) => digit !== "")) {
-      setTimeout(() => {
-        alert("✅ Code OTP validé avec succès !");
-        window.location.href = "/ForgotPassword/NewPassword";
-      }, 800);
-    }
-  }, [otp]);
+      setTimeout( async() => {
+        // const email = localStorage.getItem("email"); 
+          if (!email) {
+    alert("Aucun email trouvé. Retour à la page précédente.");
+    window.location.href = "/ForgotPassword";}
+        
+    try {
+      const res = await fetch("http://127.0.0.1:8000/auth/verify",{
+        method:"POST",
+        headers : {"Content-type":"application/json"},
+        body :JSON.stringify({
+          email: email,
+          code :  otp.join(""), })
+      })
+      
+      const data = await res.json();
+        console.log("Réponse backend :", data);
+
+        if (data.success) {
+          alert("✅ Code OTP validé avec succès !");
+          window.location.href = "/ForgotPassword/NewPassword";
+        } else {
+          alert(`❌ ${data.message}`);
+        }
+        
+    } catch (error) {
+      console.error("Erreur lors de la vérification OTP :", error);
+        alert("Erreur serveur. Réessaie plus tard.");
+   }
+    }, 800); 
+  }
+}, [otp]);
 
   // ✅ Gère la saisie
   const handleChange = (value: string, index: number) => {

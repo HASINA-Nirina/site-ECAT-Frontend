@@ -1,10 +1,8 @@
-"use client"; 
+"use client";
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import background from "@/app/assets/background.png";
-
-
 
 const InscriptionAdminLocal = () => {
   const [nom, setNom] = useState("");
@@ -16,46 +14,46 @@ const InscriptionAdminLocal = () => {
   const [message, setMessage] = useState("");
   const router = useRouter();
 
-  const handleSubmit =async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Vérification basique
     if (password !== confirmPassword) {
       setMessage("❌ Les mots de passe ne correspondent pas.");
       return;
     }
 
-        //setTimeout(() => router.push("/login"), 3000);
-
-    try{
-      const res =await fetch("http://127.0.0.1:3001/auth/Etudiantregister", {
-          method:"POST",
-          headers:{"Content-Type":"application/json"},
-          body:JSON.stringify({
-              nom: nom,
-              prenom:prenom,
+    try {
+      const res = await fetch("http://127.0.0.1:8000/auth/AdminLocalRegister", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          nom: nom,
+          prenom: prenom,
           email: email,
-          mot_de_passe:password,
-          province:antenne,
-          role:"Admin Local",
-          })
-          
-     });
-     const data = await res.json();
+          mot_de_passe: password,
+          province: antenne,
+          role: "Admin Local",
+        }),
+      });
 
-      if (data.message) {
-      console.log("Demande d'inscription :", data);
-      setMessage("✅ Votre demande d’inscription a été envoyée. En attente de validation.");
-    }
-     else if (data.error) {
-      setMessage("❌ " + data.error);
-    } else {
-      setMessage("Erreur inconnue.");
-    }
-  } catch (error) {
-    console.error("Erreur:", error);
-    alert("Impossible de contacter le serveur.");
-  }
+      const data = await res.json();
 
+      if (res.ok && data.message) {
+        setMessage("✅ Votre demande d’inscription a été envoyée. En attente de validation.");
+        console.log("Demande d'inscription :", data);
+
+        // (Optionnel) rediriger vers /login après 3s
+        // setTimeout(() => router.push("/login"), 3000);
+      } else if (data.error) {
+        setMessage("❌ " + data.error);
+      } else {
+        setMessage("❌ Une erreur inconnue est survenue.");
+      }
+    } catch (error) {
+      console.error("Erreur:", error);
+      setMessage("❌ Impossible de contacter le serveur. Vérifiez votre connexion.");
+    }
   };
 
   return (
@@ -84,14 +82,13 @@ const InscriptionAdminLocal = () => {
 
           <input
             type="text"
-            placeholder="Prenom"
+            placeholder="Prénom"
             value={prenom}
             onChange={(e) => setPrenom(e.target.value)}
             className="w-full p-3 mb-4 border border-gray-300 rounded-lg text-black focus:outline-none focus:ring-2 focus:ring-purple-500"
             required
           />
 
-         
           <input
             type="email"
             placeholder="Adresse email"
@@ -142,7 +139,9 @@ const InscriptionAdminLocal = () => {
           </button>
 
           {message && (
-            <p className="text-center mt-4 text-purple-700 font-medium">{message}</p>
+            <p className="text-center mt-4 text-purple-700 font-medium">
+              {message}
+            </p>
           )}
 
           <p className="text-center text-black mt-6">
