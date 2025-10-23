@@ -34,6 +34,10 @@ const InscriptionAdminLocal = () => {
           mot_de_passe: password,
           province: antenne,
           role: "Admin Local",
+<<<<<<< HEAD
+=======
+          statut: "en attente",
+>>>>>>> 8217812dde0ddd241756a4e93fdead2a051a2003
         }),
       });
 
