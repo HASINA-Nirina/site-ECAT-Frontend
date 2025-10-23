@@ -41,6 +41,7 @@ const RegisterPage = () => {
         mot_de_passe: form.password,
         province: form.city,
         role: "etudiante",
+        statuts: "Actif",
       }),
     });
 

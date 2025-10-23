@@ -33,6 +33,28 @@ const LoginPage = () => {
       const result = await res.json();
       console.log("Résultat du backend:", result);
 
+      // côté frontend, dans handleSubmit après `const result = await res.json();`
+      if (!res.ok) {
+        // backend a renvoyé HTTPException avec `detail`
+        setIsLoading(false);
+        setSuccess(false);
+
+        // FastAPI renvoie { "detail": "Votre compte est en attente..." } si on a utilisé HTTPException
+        const backendMessage = result.detail || result.message || "Email ou mot de passe invalide !";
+
+        // Si message d'attente détecté → jaune
+        if (backendMessage && backendMessage.toLowerCase().includes("en attente")) {
+          setMessage("Votre compte est en attente de validation. Veuillez contacter l'administrateur.");
+          setSuccess(null); // ni succès ni erreur rouge ; on utilisera style jaune
+          setIsLoading(false);
+          return;
+        }
+
+        // Sinon erreur normale
+        setMessage(backendMessage);
+        return;
+      }
+
       // Vérifie si la requête HTTP a échoué
       if (!res.ok || result.error) {
         setIsLoading(false);
@@ -177,6 +199,8 @@ const LoginPage = () => {
                 ? "text-green-600"
                 : success === false
                 ? "text-red-600"
+                : message.toLowerCase().includes("en attente")
+                ? "text-yellow-600"
                 : "text-purple-700"
             }`}
           >
