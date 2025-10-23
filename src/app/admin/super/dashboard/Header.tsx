@@ -1,9 +1,8 @@
 "use client";
-
 import Image from "next/image";
 import { useState, useEffect } from "react";
 import logo from "@/app/assets/logo.jpeg";
-import { LogOut, Sun, Moon, Bell, Menu, Settings, Pencil } from "lucide-react";
+import { LogOut, Sun, Moon, Bell, Menu, Settings, Pencil, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
 
@@ -19,11 +18,25 @@ export default function Header({ darkMode, setDarkMode }: HeaderProps) {
   const [initials, setInitials] = useState<string>("?");
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [profileImageFile, setProfileImageFile] = useState<File | null>(null);
 
   const router = useRouter();
   const iconColor = darkMode ? "white" : "#7c3aed";
+
+  const [isVisible, setIsVisible] = useState(false); // contrôle animation
+
+  useEffect(() => {
+    if (showNotifications) setIsVisible(true); // quand showNotifications = true, le popup devient visible
+  }, [showNotifications]);
+
+  const handleCloseNotifications = () => {
+    setIsVisible(false); // déclenche animation de sortie
+    setTimeout(() => setShowNotifications(false), 500); // attend la transition avant de démonter le composant
+  };
+
+
 
   // Charger les données utilisateur
   useEffect(() => {
@@ -153,7 +166,10 @@ export default function Header({ darkMode, setDarkMode }: HeaderProps) {
             <Settings size={20} color={iconColor} />
           </button>
 
-          <button className="p-2 rounded-full border border-purple-500 hover:bg-purple-100 dark:hover:bg-gray-700 transition relative">
+          <button
+            onClick={() => setShowNotifications(true)}
+            className="p-2 rounded-full border border-purple-500 hover:bg-purple-100 dark:hover:bg-gray-700 transition relative"
+          >
             <Bell size={20} color={iconColor} />
             <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
           </button>
@@ -206,7 +222,10 @@ export default function Header({ darkMode, setDarkMode }: HeaderProps) {
             <Settings size={20} color={iconColor} />
           </button>
 
-          <button className="p-2 rounded-full border border-purple-500 hover:bg-purple-100 dark:hover:bg-gray-700 transition relative">
+          <button
+            onClick={() => setShowNotifications(true)}
+            className="p-2 rounded-full border border-purple-500 hover:bg-purple-100 dark:hover:bg-gray-700 transition relative"
+          >
             <Bell size={20} color={iconColor} />
             <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
           </button>
@@ -227,7 +246,80 @@ export default function Header({ darkMode, setDarkMode }: HeaderProps) {
         </div>
       </div>
 
-      {/* ============== Popups ============== */}
+       {/* ====== POPUP NOTIFICATIONS ====== */}
+{(showNotifications || isVisible) &&
+ typeof window !== "undefined" &&
+ createPortal(
+   <div className="fixed inset-0 flex justify-end z-[9999]">
+     {/* Fond semi-transparent pour fermer au clic */}
+     <div
+       className={`absolute inset-0 bg-black/30 dark:bg-black/50 transition-opacity duration-500 ${
+         isVisible ? "opacity-100" : "opacity-0"
+       }`}
+       onClick={handleCloseNotifications}
+     ></div>
+
+     {/* Conteneur popup avec animation slide + fade et effet glass */}
+     <div
+       className={`relative w-full sm:w-96 h-full shadow-2xl rounded-l-2xl transform transition-all duration-500 ease-in-out
+         backdrop-blur-md
+         ${darkMode ? "bg-gray-900/80 text-white" : "bg-gray-100/80 text-gray-900"}
+         ${isVisible ? "translate-x-0 opacity-100" : "translate-x-full opacity-0"}
+       `}
+     >
+            {/* Header notification */}
+      <div className="flex flex-col px-5 py-4 border-b border-transparent relative">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold">Notifications</h2>
+      <button
+        onClick={handleCloseNotifications}
+        className="p-2 rounded-full border-2 border-purple-500 flex items-center justify-center transition"
+      >
+        <X className="w-5 h-5 text-red-500" />
+      </button>
+        </div>
+
+        {/* Progress bar violette sous le titre */}
+        <div className="mt-8 h-1 w-full rounded-full overflow-hidden">
+          <div
+            className={`h-full w-full rounded-full ${
+              darkMode ? "bg-purple-400" : "bg-purple-600"
+            }`}
+          />
+        </div>
+      </div>
+
+       {/* Contenu notifications avec couleur dynamique selon mode */}
+       <div className="p-5 overflow-y-auto max-h-[calc(100%-4rem)]">
+         <div
+           className={`border rounded-xl p-4 mb-4 shadow-md transition-colors duration-500
+             ${darkMode ? "bg-gray-800 border-gray-700 text-white" : "bg-gray-50 border-gray-200 text-gray-900"}
+           `}
+         >
+           <p>
+             <span className={`font-semibold ${darkMode ? "text-blue-400" : "text-blue-600"}`}>
+               Admin Local - Jean Dupont
+             </span>{" "}
+             vous a envoyé une invitation.
+           </p>
+           <div className="flex justify-end gap-3 mt-3">
+             <button className="px-3 py-1.5 text-sm rounded-lg bg-red-500 hover:bg-red-600 text-white transition">
+               Refuser
+             </button>
+             <button className="px-3 py-1.5 text-sm rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition">
+               Accepter
+             </button>
+           </div>
+         </div>
+       </div>
+     </div>
+   </div>,
+   document.getElementById("portal-root") as HTMLElement
+ )}
+
+
+
+      {/* ====== POPUP LOGOUT ====== */}
       {showLogoutConfirm &&
         typeof window !== "undefined" &&
         createPortal(
@@ -237,12 +329,16 @@ export default function Header({ darkMode, setDarkMode }: HeaderProps) {
                 darkMode ? "bg-gray-800 text-white" : "bg-white text-gray-800"
               }`}
             >
-              <h2 className="text-lg font-semibold mb-4">Voulez-vous vraiment vous déconnecter ?</h2>
+              <h2 className="text-lg font-semibold mb-4">
+                Voulez-vous vraiment vous déconnecter ?
+              </h2>
               <div className="flex justify-center gap-4 mt-4">
                 <button
                   onClick={() => setShowLogoutConfirm(false)}
                   className={`px-4 py-2 rounded-lg font-semibold ${
-                    darkMode ? "bg-gray-700 hover:bg-gray-600" : "bg-gray-300 hover:bg-gray-400"
+                    darkMode
+                      ? "bg-gray-700 hover:bg-gray-600"
+                      : "bg-gray-300 hover:bg-gray-400"
                   } transition`}
                 >
                   Non
@@ -259,6 +355,7 @@ export default function Header({ darkMode, setDarkMode }: HeaderProps) {
           document.getElementById("portal-root") as HTMLElement
         )}
 
+      {/* ====== POPUP PARAMÈTRES ====== */}
       {showSettings &&
         typeof window !== "undefined" &&
         createPortal(
@@ -269,8 +366,6 @@ export default function Header({ darkMode, setDarkMode }: HeaderProps) {
               }`}
             >
               <h2 className="text-lg font-semibold mb-4">Paramètres du profil</h2>
-
-              {/* ✅ Cercle profil + crayon ajusté */}
               <div className="relative flex flex-col items-center mb-4">
                 <div className="relative w-24 h-24 rounded-full overflow-hidden border-2 border-purple-500">
                   {profileImage ? (
@@ -281,8 +376,6 @@ export default function Header({ darkMode, setDarkMode }: HeaderProps) {
                     </div>
                   )}
                 </div>
-
-                {/* Crayon bien au-dessus du bord */}
                 <label
                   htmlFor="profile-upload"
                   className="absolute -top-2 right-[38%] bg-purple-600 p-2 rounded-full cursor-pointer shadow-md hover:bg-purple-700 transition"
@@ -298,7 +391,6 @@ export default function Header({ darkMode, setDarkMode }: HeaderProps) {
                 </label>
               </div>
 
-              {/* ✅ Champs à légende flottante propre */}
               <div className="space-y-5 text-left">
                 <div className="relative">
                   <input
