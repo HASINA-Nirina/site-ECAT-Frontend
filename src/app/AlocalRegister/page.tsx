@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import background from "@/app/assets/background.png";
+import { Eye, EyeOff } from "lucide-react";
 
 const InscriptionAdminLocal = () => {
   const [nom, setNom] = useState("");
@@ -12,96 +13,95 @@ const InscriptionAdminLocal = () => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [antenne, setAntenne] = useState("");
   const [message, setMessage] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    // Vérification basique
     if (password !== confirmPassword) {
       setMessage("❌ Les mots de passe ne correspondent pas.");
       return;
     }
-
     try {
       const res = await fetch("http://127.0.0.1:8000/auth/AdminLocalRegister", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          nom: nom,
-          prenom: prenom,
-          email: email,
+          nom,
+          prenom,
+          email,
           mot_de_passe: password,
           province: antenne,
           role: "Admin Local",
-<<<<<<< HEAD
-=======
           statut: "en attente",
->>>>>>> 8217812dde0ddd241756a4e93fdead2a051a2003
         }),
       });
-
       const data = await res.json();
-
       if (res.ok && data.message) {
-        setMessage("✅ Votre demande d’inscription a été envoyée. En attente de validation.");
-        console.log("Demande d'inscription :", data);
-
-        // (Optionnel) rediriger vers /login après 3s
-        // setTimeout(() => router.push("/login"), 3000);
+        setMessage(" Votre demande d’inscription a été envoyée. En attente de validation.");
       } else if (data.error) {
         setMessage("❌ " + data.error);
       } else {
-        setMessage("❌ Une erreur inconnue est survenue.");
+        setMessage(" Une erreur inconnue est survenue.");
       }
     } catch (error) {
       console.error("Erreur:", error);
-      setMessage("❌ Impossible de contacter le serveur. Vérifiez votre connexion.");
+      setMessage(" Impossible de contacter le serveur. Vérifiez votre connexion.");
     }
   };
+
+  // Formater le texte pour Nom et Prénom
+  const formatName = (text: string) =>
+    text
+      .split(" ")
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(" ");
 
   return (
     <section
       className="relative min-h-screen flex items-center justify-center bg-cover bg-center"
       style={{ backgroundImage: `url(${background.src})` }}
     >
-      {/* Overlay blanc pour effet flou */}
       <div className="absolute inset-0 bg-white/10 backdrop-blur-sm"></div>
 
-      {/* Contenu du formulaire */}
       <div className="relative z-10 w-full max-w-lg bg-white/90 p-8 rounded-2xl shadow-lg mx-4">
         <h1 className="text-3xl font-bold mb-6 text-center text-black">
           Inscription - Admin Local
         </h1>
 
         <form onSubmit={handleSubmit} className="flex flex-col">
+          {/* Nom */}
           <input
             type="text"
             placeholder="Nom complet"
             value={nom}
-            onChange={(e) => setNom(e.target.value)}
+            onChange={(e) => setNom(formatName(e.target.value))}
             className="w-full p-3 mb-4 border border-gray-300 rounded-lg text-black focus:outline-none focus:ring-2 focus:ring-purple-500"
             required
           />
 
+          {/* Prénom */}
           <input
             type="text"
             placeholder="Prénom"
             value={prenom}
-            onChange={(e) => setPrenom(e.target.value)}
+            onChange={(e) => setPrenom(formatName(e.target.value))}
             className="w-full p-3 mb-4 border border-gray-300 rounded-lg text-black focus:outline-none focus:ring-2 focus:ring-purple-500"
             required
           />
 
+          {/* Email */}
           <input
             type="email"
             placeholder="Adresse email"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => setEmail(e.target.value.toLowerCase())}
             className="w-full p-3 mb-4 border border-gray-300 rounded-lg text-black focus:outline-none focus:ring-2 focus:ring-purple-500"
             required
           />
 
+          {/* Antenne */}
           <select
             value={antenne}
             onChange={(e) => setAntenne(e.target.value)}
@@ -117,27 +117,44 @@ const InscriptionAdminLocal = () => {
             <option value="Antsiranana">Antsiranana</option>
           </select>
 
-          <input
-            type="password"
-            placeholder="Mot de passe"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full p-3 mb-4 border border-gray-300 rounded-lg text-black focus:outline-none focus:ring-2 focus:ring-purple-500"
-            required
-          />
+          {/* Mot de passe */}
+          <div className="relative mb-4">
+            <input
+              type={showPassword ? "text" : "password"}
+              placeholder="Mot de passe"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full p-3 border border-gray-300 rounded-lg text-black focus:outline-none focus:ring-2 focus:ring-purple-500"
+              required
+            />
+            <Eye
+              size={20}
+              className="absolute right-3 top-3 text-purple-600 cursor-pointer"
+              onClick={() => setShowPassword(!showPassword)}
+            />
+          </div>
 
-          <input
-            type="password"
-            placeholder="Confirmer le mot de passe"
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-            className="w-full p-3 mb-6 border border-gray-300 rounded-lg text-black focus:outline-none focus:ring-2 focus:ring-purple-500"
-            required
-          />
+          {/* Confirmer mot de passe */}
+          <div className="relative mb-6">
+            <input
+              type={showConfirmPassword ? "text" : "password"}
+              placeholder="Confirmer le mot de passe"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              className="w-full p-3 border border-gray-300 rounded-lg text-black focus:outline-none focus:ring-2 focus:ring-purple-500"
+              required
+            />
+            <Eye
+              size={20}
+              className="absolute right-3 top-3 text-purple-600 cursor-pointer"
+              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+            />
+          </div>
 
+          {/* Bouton */}
           <button
             type="submit"
-            className="w-full bg-purple-600 text-white py-3 rounded-lg font-semibold hover:bg-purple-700 transition duration-300"
+            className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition duration-300"
           >
             Créer mon compte
           </button>
