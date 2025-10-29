@@ -2,16 +2,20 @@
 import Image from "next/image";
 import { useState, useEffect } from "react";
 import logo from "@/app/assets/logo.jpeg";
-import { LogOut, Sun, Moon, Bell, Menu, Settings, Pencil, X } from "lucide-react";
+import { LogOut, Sun, Moon, Bell, Menu, Settings, Pencil, X, UserRoundPenIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
+import Link from "next/link";
+
 
 interface HeaderProps {
   readonly darkMode: boolean;
   readonly setDarkMode: (mode: boolean) => void;
+  readonly sidebarOpen: boolean;
+  readonly setSidebarOpen: (open: boolean) => void;
 }
 
-export default function Header({ darkMode, setDarkMode }: HeaderProps) {
+export default function Header({ darkMode, setDarkMode,sidebarOpen, setSidebarOpen }: HeaderProps) {
   const [adminName, setAdminName] = useState<string>("Chargement...");
   const [prenom, setPrenom] = useState<string>("");
   const [nom, setNom] = useState<string>("");
@@ -121,19 +125,30 @@ export default function Header({ darkMode, setDarkMode }: HeaderProps) {
     >
       {/* ============== Ligne 1 mobile ============== */}
       <div className="flex md:hidden justify-start items-start mb-2 px-4">
-        <Image src={logo} alt="Logo" width={40} height={40} className="rounded-full" />
-        <span className="text-[#17f] font-bold text-lg ml-2">
-          Université ECAT TARATRA FIANARANTSOA
-        </span>
+        <Link
+            href="/Etudiant/dashboard"
+            className="flex items-center gap-2 no-underline cursor-pointer"
+            style={{ color: 'inherit', textDecoration: 'none' }}
+          >
+            <Image src={logo} alt="Logo" width={40} height={40} className="rounded-full" />
+            <span className="text-[#17f] font-bold text-lg">
+              Université ECAT TARATRA
+            </span>
+        </Link>
       </div>
 
       {/* ============== Grand écran ============== */}
       <div className="hidden md:flex justify-between items-center">
         <div className="flex items-center gap-3">
-          <Image src={logo} alt="Logo" width={40} height={40} className="rounded-full" />
-          <span className="text-[#17f] font-bold text-lg">
-            Université ECAT TARATRA FIANARANTSOA
-          </span>
+          <Link
+              href="/Etudiant/dashboard"
+              className="flex items-center gap-3 no-underline cursor-pointer"
+              style={{ color: 'inherit', textDecoration: 'none' }}
+            >
+              <Image src={logo} alt="Logo Université ECAT" width={40} height={40} className="rounded-full" />
+              <span className="text-[#17f] font-bold text-lg">Université ECAT TARATRA</span>
+          </Link>
+
         </div>
 
         <div className="flex items-center gap-3">
@@ -163,7 +178,7 @@ export default function Header({ darkMode, setDarkMode }: HeaderProps) {
             onClick={() => setShowSettings(true)}
             className="p-2 rounded-full border border-purple-500 hover:bg-purple-100 dark:hover:bg-gray-700 transition"
           >
-            <Settings size={20} color={iconColor} />
+            <UserRoundPenIcon size={20} color={iconColor} />
           </button>
 
           <button
@@ -192,10 +207,9 @@ export default function Header({ darkMode, setDarkMode }: HeaderProps) {
 
       {/* ============== Ligne 2 mobile ============== */}
       <div className="flex md:hidden justify-between items-center">
-        <button>
+        <button onClick={() => setSidebarOpen(!sidebarOpen)}>
           <Menu color={iconColor} size={26} />
         </button>
-
         <div className="flex items-center gap-3">
           <div
             className={`w-10 h-10 rounded-full flex items-center justify-center text-lg font-extrabold border-2 border-purple-600 shadow-sm overflow-hidden ${
@@ -219,7 +233,7 @@ export default function Header({ darkMode, setDarkMode }: HeaderProps) {
             onClick={() => setShowSettings(true)}
             className="p-2 rounded-full border border-purple-500 hover:bg-purple-100 dark:hover:bg-gray-700 transition"
           >
-            <Settings size={20} color={iconColor} />
+            <UserRoundPenIcon size={20} color={iconColor} />
           </button>
 
           <button
@@ -337,15 +351,15 @@ export default function Header({ darkMode, setDarkMode }: HeaderProps) {
                   onClick={() => setShowLogoutConfirm(false)}
                   className={`px-4 py-2 rounded-lg font-semibold ${
                     darkMode
-                      ? "bg-gray-700 hover:bg-gray-600"
-                      : "bg-gray-300 hover:bg-gray-400"
+                      ? "bg-red-700 hover:bg-red-600"
+                      : "bg-red-500 hover:bg-red-600"
                   } transition`}
                 >
                   Non
                 </button>
                 <button
                   onClick={handleLogout}
-                  className="px-4 py-2 rounded-lg font-semibold bg-purple-600 text-white hover:bg-purple-700 transition"
+                  className="px-4 py-2 rounded-lg font-semibold bg-blue-600 text-white hover:bg-blue-700 transition"
                 >
                   Oui
                 </button>
@@ -437,14 +451,14 @@ export default function Header({ darkMode, setDarkMode }: HeaderProps) {
                 <button
                   onClick={() => setShowSettings(false)}
                   className={`px-4 py-2 rounded-lg font-semibold ${
-                    darkMode ? "bg-gray-700 hover:bg-gray-600" : "bg-gray-300 hover:bg-gray-400"
+                    darkMode ? "bg-red-700 hover:bg-red-600" : "bg-red-500 hover:bg-red-700"
                   } transition`}
                 >
                   Annuler
                 </button>
                 <button
                   onClick={handleProfileUpdate}
-                  className="px-4 py-2 rounded-lg font-semibold bg-purple-600 text-white hover:bg-purple-700 transition"
+                  className="px-4 py-2 rounded-lg font-semibold bg-blue-600 text-white hover:bg-blue-700 transition"
                 >
                   Enregistrer
                 </button>

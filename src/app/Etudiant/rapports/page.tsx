@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Header from "@/app/Etudiant/dashboard/Header";
 import Sidebar from "@/app/Etudiant/dashboard/Sidebar";
-import MainContent from "@/app/Etudiant/dashboard/MainContent";
+import MainContentRapports from "@/app/Etudiant/rapports/MainContentRapports";
 
 export default function StudentDashboardPage() {
   const [darkMode, setDarkMode] = useState(false);
@@ -35,7 +35,7 @@ export default function StudentDashboardPage() {
         />
 
         {/* Contenu principal */}
-        <MainContent darkMode={darkMode} lang={lang} />
+        <MainContentRapports darkMode={darkMode} lang={lang} />
       </div>
     </div>
   );
