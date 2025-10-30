@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Header from "@/app/admin/local/dashboard/Header";
 import Sidebar from "@/app/admin/local/dashboard/Sidebar";
-import MainContent from "@/app/admin/local/dashboard/MainContent";
+import MainContent from "@/app/admin/local/SettingCompte/MainContentSetting";
 
 export default function AdminLocalDashboard() {
   const [darkMode, setDarkMode] = useState(false);
