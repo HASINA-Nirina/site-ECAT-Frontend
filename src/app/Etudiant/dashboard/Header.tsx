@@ -148,9 +148,7 @@ export default function Header({ darkMode, setDarkMode,sidebarOpen, setSidebarOp
               <Image src={logo} alt="Logo Université ECAT" width={40} height={40} className="rounded-full" />
               <span className="text-[#17f] font-bold text-lg">Université ECAT TARATRA</span>
           </Link>
-
         </div>
-
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
             <div

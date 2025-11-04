@@ -78,7 +78,7 @@ const RegisterPage = () => {
                   placeholder="Prénom"
                   value={form.firstName}
                   onChange={handleChange}
-                  className="w-full p-3 mb-4 border border-gray-300 rounded-lg text-black focus:ring-2 focus:ring-purple-400"
+                  className="w-full p-3 mb-4 border border-gray-300 rounded-lg text-black focus:outline-none focus:ring-2 focus:ring-purple-500"
                   required
                 />
                 <input
@@ -87,7 +87,7 @@ const RegisterPage = () => {
                   placeholder="Nom"
                   value={form.lastName}
                   onChange={handleChange}
-                  className="w-full p-3 mb-4 border border-gray-300 rounded-lg text-black focus:ring-2 focus:ring-purple-400"
+                  className="w-full p-3 mb-4 border border-gray-300 rounded-lg text-black focus:outline-none focus:ring-2 focus:ring-purple-500"
                   required
                 />
                 <input
@@ -96,7 +96,7 @@ const RegisterPage = () => {
                   placeholder="Email"
                   value={form.email}
                   onChange={handleChange}
-                  className="w-full p-3 mb-4 border border-gray-300 rounded-lg text-black focus:ring-2 focus:ring-purple-400"
+                  className="w-full p-3 mb-4 border border-gray-300 rounded-lg text-black focus:outline-none focus:ring-2 focus:ring-purple-500"
                   required
                 />
                 <input
@@ -105,14 +105,14 @@ const RegisterPage = () => {
                   placeholder="Mot de passe"
                   value={form.password}
                   onChange={handleChange}
-                  className="w-full p-3 mb-4 border border-gray-300 rounded-lg text-black focus:ring-2 focus:ring-purple-400"
+                  className="w-full p-3 mb-4 border border-gray-300 rounded-lg text-black focus:outline-none focus:ring-2 focus:ring-purple-500"
                   required
                 />
                 <select
                   name="city"
                   value={form.city}
                   onChange={handleChange}
-                  className="w-full p-3 mb-6 border border-gray-300 rounded-lg text-black focus:ring-2 focus:ring-purple-400"
+                  className="w-full p-3 mb-6 border border-gray-300 rounded-lg text-black focus:outline-none focus:ring-2 focus:ring-purple-500"
                   required
                 >
                   <option value="">Sélectionnez votre ville</option>

@@ -25,7 +25,7 @@ const Header = () => {
             className="rounded-full border border-white"
           />
           <span className="text-[#17f] md:text-sky-400 text-lg md:text-xl font-bold">
-            Université ECAT TARATRA FIANARANTSOA
+            Université ECAT TARATRA
           </span>
         </div>
 

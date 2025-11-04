@@ -16,13 +16,12 @@ const HeaderContenu = () => {
       {/* Texte descriptif */}
       <div className="flex-1 text-center md:text-left text-black space-y-6 md:space-y-12">
         <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold leading-tight max-w-full md:max-w-5xl mx-auto md:mx-0">
-          Bienvenue à l&apos;Université ECAT TARATRA Fianarantsoa
+          Bienvenue à l&apos;Université ECAT TARATRA
         </h1>
 
         <p className="text-base sm:text-lg md:text-xl max-w-md mx-auto md:mx-0">
-          L’Université ECAT Taratra est une institution moderne dédiée à la formation
-          en ligne et en présentiel. Elle offre des programmes complets et adaptés aux
-          besoins actuels du marché du travail à Madagascar et à l’international.
+          Ecole de Comptabilité et d&apos;Administration Taratra ou nommée ECAT sise à Fianarantsoa est une Université privée, agréée et habilitée par 
+          la Ministère de l&apos;Enseignement Supérieur et de la Recherche Scientifique
         </p>
         <p className="text-base sm:text-lg md:text-xl max-w-md mx-auto md:mx-0">
           Elle aussi vise à former des professionnels compétents,

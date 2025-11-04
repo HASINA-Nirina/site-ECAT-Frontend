@@ -50,6 +50,13 @@ const LoginPage = () => {
           return;
         }
 
+        if (backendMessage && backendMessage.toLowerCase().includes("refus")) {
+          setMessage("Votre compte a été refusé par l’administrateur. Vous ne pouvez pas vous connecter.");
+          setSuccess(false); // rouge
+          setIsLoading(false);
+          return;
+        }
+
         // Sinon erreur normale
         setMessage(backendMessage);
         return;

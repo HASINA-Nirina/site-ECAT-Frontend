@@ -15,12 +15,15 @@ const InscriptionAdminLocal = () => {
   const [message, setMessage] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const router = useRouter();
+  const [success, setSuccess] = useState<boolean | null>(null);
+  
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+       setSuccess(null);
     if (password !== confirmPassword) {
       setMessage("❌ Les mots de passe ne correspondent pas.");
+      setSuccess(false); // rouge
       return;
     }
     try {
@@ -40,14 +43,17 @@ const InscriptionAdminLocal = () => {
       const data = await res.json();
       if (res.ok && data.message) {
         setMessage(" Votre demande d’inscription a été envoyée. En attente de validation.");
+        setSuccess(true); // vert
       } else if (data.error) {
         setMessage("❌ " + data.error);
       } else {
         setMessage(" Une erreur inconnue est survenue.");
+        setSuccess(false); // rouge
       }
     } catch (error) {
       console.error("Erreur:", error);
       setMessage(" Impossible de contacter le serveur. Vérifiez votre connexion.");
+      setSuccess(false); // rouge
     }
   };
 
@@ -159,11 +165,22 @@ const InscriptionAdminLocal = () => {
             Créer mon compte
           </button>
 
-          {message && (
-            <p className="text-center mt-4 text-purple-700 font-medium">
-              {message}
-            </p>
-          )}
+           {/* ✅ Message de succès / erreur */}
+        {message && (
+          <div
+            className={`flex justify-center items-center mt-4 font-medium text-center ${
+              success === true
+                ? "text-green-600"
+                : success === false
+                ? "text-red-600"
+                : message.toLowerCase().includes("en attente")
+                ? "text-yellow-600"
+                : "text-red-700"
+            }`}
+          >
+            {message}
+          </div>
+        )}
 
           <p className="text-center text-black mt-6">
             Déjà un compte ?{" "}
