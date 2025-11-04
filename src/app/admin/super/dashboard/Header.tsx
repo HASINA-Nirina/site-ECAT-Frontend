@@ -2,16 +2,19 @@
 import Image from "next/image";
 import { useState, useEffect } from "react";
 import logo from "@/app/assets/logo.jpeg";
-import { LogOut, Sun, Moon, Bell, Menu, Settings, Pencil, X } from "lucide-react";
+import { LogOut, Sun, Moon, Bell, Menu, Settings, Pencil, X, UserRoundPenIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
+import Link from "next/link";
 
 interface HeaderProps {
   readonly darkMode: boolean;
   readonly setDarkMode: (mode: boolean) => void;
+  readonly sidebarOpen: boolean;
+  readonly setSidebarOpen: (open: boolean) => void;
 }
 
-export default function Header({ darkMode, setDarkMode }: HeaderProps) {
+export default function Header({ darkMode, setDarkMode,sidebarOpen, setSidebarOpen }: HeaderProps) {
   const [adminName, setAdminName] = useState<string>("Chargement...");
   const [prenom, setPrenom] = useState<string>("");
   const [nom, setNom] = useState<string>("");
@@ -36,8 +39,6 @@ export default function Header({ darkMode, setDarkMode }: HeaderProps) {
     setTimeout(() => setShowNotifications(false), 500); // attend la transition avant de démonter le composant
   };
 
-
-
   // Charger les données utilisateur
   useEffect(() => {
     async function fetchUser() {
@@ -52,6 +53,13 @@ export default function Header({ darkMode, setDarkMode }: HeaderProps) {
         setNom(data.nom || "");
         setAdminName(`${data.prenom} ${data.nom}`);
         setProfileImage(data.image || null);
+
+      //Appliquer le thème sauvegardé
+      if (data.theme === "dark") {
+        setDarkMode(true);
+      } else {
+        setDarkMode(false);
+      }
 
         const initials =
           (data.prenom?.[0] || "").toUpperCase() +
@@ -113,6 +121,172 @@ export default function Header({ darkMode, setDarkMode }: HeaderProps) {
     }
   };
 
+      // Ajoute ces états en haut de ton composant Header
+     interface Notification {
+      id: number;
+      message: string;
+      action_status: "non_lu" | "lu" | "accepte" | "refuse" | string;
+      date: string;
+      type?: string;
+    }
+
+    const [notifications, setNotifications] = useState<Notification[]>([]);
+    const [unreadCount, setUnreadCount] = useState<number>(0);
+
+    useEffect(() => {
+      const count = notifications.filter((notif) => notif.action_status === "non_lu").length;
+      setUnreadCount(count);
+    }, [notifications]);
+
+  // Fonction pour récupérer les notifications
+    const fetchNotifications = async () => {
+      try {
+        const res = await fetch("http://localhost:8000/auth/notifications", {
+          credentials: "include",
+        });
+
+        if (!res.ok) {
+          const errorData = await res.json().catch(() => null);
+          const errorMsg = errorData?.detail || "Erreur récupération notifications";
+          console.error("Notifications fetch error:", errorMsg);
+          return;
+        }
+
+        const data: Notification[] = await res.json();
+
+        if (!Array.isArray(data)) {
+          console.error("Format de données inattendu pour les notifications:", data);
+          return;
+        }
+
+        // Trie par date décroissante
+        const sorted = data.sort(
+          (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+        );
+        setNotifications(sorted);
+
+        // Met à jour le compteur
+        const unread = sorted.filter((notif) => notif.action_status === "non_lu").length;
+        setUnreadCount(unread);
+
+      } catch (error) {
+        console.error("Erreur réseau lors de la récupération des notifications:", error);
+      }
+    };
+
+    // Charger les notifications au montage
+    useEffect(() => {
+      fetchNotifications();
+    }, []);
+
+    // 🔁 Rafraîchissement automatique des notifications toutes les 5 secondes (polling)
+    useEffect(() => {
+      const interval = setInterval(() => {
+        fetchNotifications();
+      }, 5000); // toutes les 5 secondes
+
+      // Nettoyage automatique quand le composant se démonte
+      return () => clearInterval(interval);
+    }, []);
+
+  // Marquer comme lu quand le popup notifications s’ouvre
+  useEffect(() => {
+  if (showNotifications) {
+    // Marque les notifications comme lues
+    const updated = notifications.map((notif) =>
+      notif.action_status === "non_lu" ? { ...notif, action_status: "lu" } : notif
+    );
+    setNotifications(updated);
+
+    // recalculer compteur (non lus restants)
+    const unread = updated.filter((n) => n.action_status === "non_lu").length;
+    setUnreadCount(unread);
+
+    // Appel backend
+    fetch("http://localhost:8000/auth/notifications/mark_read", {
+      method: "PUT",
+      credentials: "include",
+    }).catch((err) => console.error("Erreur marque comme lu:", err));
+   }
+  }, [showNotifications]);
+
+
+  const handleAccept = async (notifId: number) => {
+      try {
+        const res = await fetch(`http://localhost:8000/auth/notifications/${notifId}/accepter`, {
+          method: "POST",
+          credentials: "include",
+        });
+        if (!res.ok) throw new Error("Erreur lors de l'acceptation");
+        setNotifications((prev) =>
+          prev.map((n) => (n.id === notifId ? { ...n, action_status: "accepte" } : n))
+        );
+      } catch (err) {
+        console.error(err);
+      }
+    };
+
+    const handleRefuse = async (notifId: number) => {
+      try {
+        const res = await fetch(`http://localhost:8000/auth/notifications/${notifId}/refuser`, {
+          method: "POST",
+          credentials: "include",
+        });
+        if (!res.ok) throw new Error("Erreur lors du refus");
+        setNotifications((prev) =>
+          prev.map((n) => (n.id === notifId ? { ...n, action_status: "refuse" } : n))
+        );
+      } catch (err) {
+        console.error(err);
+      }
+    };
+
+    // Accept + refresh
+    const handleAcceptAndRefresh = async (notifId: number) => {
+      try {
+        await handleAccept(notifId); // Appel backend pour accepter
+        fetchNotifications();        // Recharge les notifications pour mise à jour UI
+      } catch (err) {
+        console.error("Erreur lors de l'acceptation :", err);
+      }
+    };
+
+      // Refuse + refresh
+    const handleRefuseAndRefresh = async (notifId: number) => {
+      try {
+        await handleRefuse(notifId); // Appel backend pour refuser
+        fetchNotifications();         // Recharge les notifications pour mise à jour UI
+      } catch (err) {
+        console.error("Erreur lors du refus :", err);
+      }
+    };
+
+  const handleThemeToggle = async () => {
+    const newMode = !darkMode;
+    setDarkMode(newMode);
+
+    if (newMode) {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+    }
+
+    try {
+      const formData = new FormData();
+      formData.append("theme", newMode ? "dark" : "light");
+
+      await fetch("http://localhost:8000/auth/me/theme", {
+        method: "PUT",
+        body: formData,
+        credentials: "include",
+      });
+      } catch (error) {
+      console.error(error);
+      }
+  };
+
   return (
     <header
       className={`px-4 py-3 shadow-md bg-opacity-90 backdrop-blur-md ${
@@ -121,19 +295,29 @@ export default function Header({ darkMode, setDarkMode }: HeaderProps) {
     >
       {/* ============== Ligne 1 mobile ============== */}
       <div className="flex md:hidden justify-start items-start mb-2 px-4">
-        <Image src={logo} alt="Logo" width={40} height={40} className="rounded-full" />
-        <span className="text-[#17f] font-bold text-lg ml-2">
-          Université ECAT TARATRA FIANARANTSOA
-        </span>
+        <Link
+            href="/admin/super/dashboard"
+            className="flex items-center gap-2 no-underline cursor-pointer"
+            style={{ color: 'inherit', textDecoration: 'none' }}
+          >
+            <Image src={logo} alt="Logo" width={40} height={40} className="rounded-full" />
+            <span className="text-[#17f] font-bold text-lg">
+              Université ECAT TARATRA
+            </span>
+        </Link>
       </div>
 
       {/* ============== Grand écran ============== */}
       <div className="hidden md:flex justify-between items-center">
         <div className="flex items-center gap-3">
-          <Image src={logo} alt="Logo" width={40} height={40} className="rounded-full" />
-          <span className="text-[#17f] font-bold text-lg">
-            Université ECAT TARATRA FIANARANTSOA
-          </span>
+          <Link
+              href="/admin/super/dashboard"
+              className="flex items-center gap-3 no-underline cursor-pointer"
+              style={{ color: 'inherit', textDecoration: 'none' }}
+            >
+              <Image src={logo} alt="Logo Université ECAT" width={40} height={40} className="rounded-full" />
+              <span className="text-[#17f] font-bold text-lg">Université ECAT TARATRA</span>
+          </Link>
         </div>
 
         <div className="flex items-center gap-3">
@@ -163,7 +347,7 @@ export default function Header({ darkMode, setDarkMode }: HeaderProps) {
             onClick={() => setShowSettings(true)}
             className="p-2 rounded-full border border-purple-500 hover:bg-purple-100 dark:hover:bg-gray-700 transition"
           >
-            <Settings size={20} color={iconColor} />
+            <UserRoundPenIcon size={20} color={iconColor} />
           </button>
 
           <button
@@ -171,11 +355,15 @@ export default function Header({ darkMode, setDarkMode }: HeaderProps) {
             className="p-2 rounded-full border border-purple-500 hover:bg-purple-100 dark:hover:bg-gray-700 transition relative"
           >
             <Bell size={20} color={iconColor} />
-            <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 min-w-[18px] h-4 px-1 rounded-full bg-red-500 text-white text-xs flex items-center justify-center font-bold">
+                {unreadCount}
+              </span>
+            )}
           </button>
 
           <button
-            onClick={() => setDarkMode(!darkMode)}
+            onClick={handleThemeToggle}
             className="p-2 rounded-full border border-purple-500 hover:bg-purple-100 dark:hover:bg-gray-700 transition"
           >
             {darkMode ? <Sun size={20} color={iconColor} /> : <Moon size={20} color={iconColor} />}
@@ -192,7 +380,7 @@ export default function Header({ darkMode, setDarkMode }: HeaderProps) {
 
       {/* ============== Ligne 2 mobile ============== */}
       <div className="flex md:hidden justify-between items-center">
-        <button>
+        <button onClick={() => setSidebarOpen(!sidebarOpen)}>
           <Menu color={iconColor} size={26} />
         </button>
 
@@ -219,7 +407,7 @@ export default function Header({ darkMode, setDarkMode }: HeaderProps) {
             onClick={() => setShowSettings(true)}
             className="p-2 rounded-full border border-purple-500 hover:bg-purple-100 dark:hover:bg-gray-700 transition"
           >
-            <Settings size={20} color={iconColor} />
+            <UserRoundPenIcon size={20} color={iconColor} />
           </button>
 
           <button
@@ -227,11 +415,15 @@ export default function Header({ darkMode, setDarkMode }: HeaderProps) {
             className="p-2 rounded-full border border-purple-500 hover:bg-purple-100 dark:hover:bg-gray-700 transition relative"
           >
             <Bell size={20} color={iconColor} />
-            <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 min-w-[18px] h-4 px-1 rounded-full bg-red-500 text-white text-xs flex items-center justify-center font-bold">
+                {unreadCount}
+              </span>
+            )}
           </button>
 
           <button
-            onClick={() => setDarkMode(!darkMode)}
+            onClick={handleThemeToggle}
             className="p-2 rounded-full border border-purple-500 hover:bg-purple-100 dark:hover:bg-gray-700 transition"
           >
             {darkMode ? <Sun size={20} color={iconColor} /> : <Moon size={20} color={iconColor} />}
@@ -290,34 +482,48 @@ export default function Header({ darkMode, setDarkMode }: HeaderProps) {
       </div>
 
        {/* Contenu notifications avec couleur dynamique selon mode */}
-       <div className="p-5 overflow-y-auto max-h-[calc(100%-4rem)]">
-         <div
-           className={`border rounded-xl p-4 mb-4 shadow-md transition-colors duration-500
-             ${darkMode ? "bg-gray-800 border-gray-700 text-white" : "bg-gray-50 border-gray-200 text-gray-900"}
-           `}
-         >
-           <p>
-             <span className={`font-semibold ${darkMode ? "text-blue-400" : "text-blue-600"}`}>
-               Admin Local - Jean Dupont
-             </span>{" "}
-             vous a envoyé une invitation.
-           </p>
-           <div className="flex justify-end gap-3 mt-3">
-             <button className="px-3 py-1.5 text-sm rounded-lg bg-red-500 hover:bg-red-600 text-white transition">
-               Refuser
-             </button>
-             <button className="px-3 py-1.5 text-sm rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition">
-               Accepter
-             </button>
-           </div>
-         </div>
-       </div>
+        <div className="p-5 overflow-y-auto max-h-[calc(100%-4rem)]">
+          {notifications.map((notif) => (
+            <div
+              key={notif.id}
+              className={`border rounded-xl p-4 mb-4 shadow-md transition-colors duration-300
+                ${darkMode ? "bg-gray-800 border-gray-700 text-white hover:bg-gray-700" : "bg-gray-50 border-gray-200 text-gray-900 hover:bg-purple-50"}
+              `}
+            >
+              {/* Message */}
+              <p className="font-medium">{notif.message}</p>
+
+              {/* Date */}
+              <p className="text-xs text-gray-400 dark:text-gray-400 mt-5">
+                {new Date(notif.date).toLocaleString()}
+              </p>
+
+              {/* Boutons Accepter / Refuser */}
+              {notif.type === "demande_compte_admin_local" &&
+                !["accepte", "refuse"].includes(notif.action_status) && (
+                  <div className="flex justify-end gap-3 mt-3">
+                    <button
+                      onClick={() => handleRefuseAndRefresh(notif.id)}
+                      className="px-3 py-1.5 text-sm rounded-lg bg-red-600 hover:bg-red-700 text-white transition"
+                    >
+                      Refuser
+                    </button>
+                    <button
+                      onClick={() => handleAcceptAndRefresh(notif.id)}
+                      className="px-3 py-1.5 text-sm rounded-lg bg-green-600 hover:bg-green-700 text-white transition"
+                    >
+                      Accepter
+                    </button>
+                  </div>
+                )}
+            </div>
+          ))}
+        </div>
+
      </div>
    </div>,
    document.getElementById("portal-root") as HTMLElement
  )}
-
-
 
       {/* ====== POPUP LOGOUT ====== */}
       {showLogoutConfirm &&
@@ -337,15 +543,15 @@ export default function Header({ darkMode, setDarkMode }: HeaderProps) {
                   onClick={() => setShowLogoutConfirm(false)}
                   className={`px-4 py-2 rounded-lg font-semibold ${
                     darkMode
-                      ? "bg-gray-700 hover:bg-gray-600"
-                      : "bg-gray-300 hover:bg-gray-400"
+                      ? "bg-red-700 hover:bg-red-600"
+                      : "bg-red-500 hover:bg-red-700"
                   } transition`}
                 >
                   Non
                 </button>
                 <button
                   onClick={handleLogout}
-                  className="px-4 py-2 rounded-lg font-semibold bg-purple-600 text-white hover:bg-purple-700 transition"
+                  className="px-4 py-2 rounded-lg font-semibold bg-blue-600 text-white hover:bg-blue-700 transition"
                 >
                   Oui
                 </button>
@@ -437,14 +643,14 @@ export default function Header({ darkMode, setDarkMode }: HeaderProps) {
                 <button
                   onClick={() => setShowSettings(false)}
                   className={`px-4 py-2 rounded-lg font-semibold ${
-                    darkMode ? "bg-gray-700 hover:bg-gray-600" : "bg-gray-300 hover:bg-gray-400"
+                    darkMode ? "bg-red-700 hover:bg-red-600" : "bg-red-500 hover:bg-red-600"
                   } transition`}
                 >
                   Annuler
                 </button>
                 <button
                   onClick={handleProfileUpdate}
-                  className="px-4 py-2 rounded-lg font-semibold bg-purple-600 text-white hover:bg-purple-700 transition"
+                  className="px-4 py-2 rounded-lg font-semibold bg-blue-600 text-white hover:bg-blue-700 transition"
                 >
                   Enregistrer
                 </button>
