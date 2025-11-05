@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
+import MessagePopup from "@/app/admin/super/dashboard/Message/MessagePopup";
 import {
   LayoutDashboard,
   Users,
@@ -27,59 +28,6 @@ interface MainContentProps {
   readonly darkMode: boolean;
   readonly lang: string;
 }
-
-// =================================================================
-// COMPOSANT SIMULÉ: MessagePopup
-// =================================================================
-const MessagePopup = ({
-  darkMode,
-  adminName,
-  onClose,
-}: {
-  darkMode: boolean;
-  adminName: string;
-  onClose: () => void;
-}) => {
-  const modalClass = `fixed inset-0 z-50 flex items-center justify-center p-4 transition-opacity duration-300 ${
-    darkMode ? "bg-black/70" : "bg-black/50"
-  }`;
-  const cardClass = `rounded-2xl shadow-2xl p-6 w-full max-w-sm transition-all duration-300 transform scale-100 ${
-    darkMode ? "bg-gray-800 text-white" : "bg-white text-gray-900"
-  }`;
-
-  // Empêche la fermeture du modal si on clique sur le contenu du modal
-  const handleCardClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-  };
-
-  return (
-    <div className={modalClass} onClick={onClose}>
-      <div className={cardClass} onClick={handleCardClick}>
-        <h3 className="text-xl font-bold mb-4 flex justify-between items-center">
-          Messages
-          <button
-            onClick={onClose}
-            className="text-gray-500 hover:text-gray-800 dark:hover:text-gray-300 text-2xl"
-          >
-            &times;
-          </button>
-        </h3>
-        <p className="text-sm opacity-80 mb-4">
-          Bonjour {adminName}. Ceci est une fenêtre de message simulée.
-        </p>
-        <p className="text-xs opacity-60">
-          (Le contenu réel des messages du système Ecat irait ici.)
-        </p>
-        <button
-          onClick={onClose}
-          className="mt-4 w-full py-2 rounded-lg bg-purple-600 text-white font-semibold hover:bg-purple-700 transition-colors shadow-lg"
-        >
-          Fermer
-        </button>
-      </div>
-    </div>
-  );
-};
 
 /**
  * Assigne une couleur basée sur le rang des valeurs (plus élevé = vert).
@@ -268,6 +216,7 @@ export default function MainContent({ darkMode, lang }: MainContentProps) {
               {time.toLocaleTimeString("fr-FR", {
                 hour: "2-digit",
                 minute: "2-digit",
+                second:"2-digit",
               })}
             </span>
           </div>
@@ -368,7 +317,7 @@ export default function MainContent({ darkMode, lang }: MainContentProps) {
           {/* FIX: Le PieChart a maintenant des dimensions fixes et n'est plus dans ResponsiveContainer 
                 pour éviter le clignotement des labels de pourcentage. */}
           <div className="w-full flex flex-col items-center justify-center mt-26">
-            <PieChart width={300} height={300}>
+            <PieChart width={300} height={320}>
               <ReTooltip content={<CustomPieTooltip darkMode={darkMode} />} />
               <Pie
                 data={pieData}
@@ -405,7 +354,7 @@ export default function MainContent({ darkMode, lang }: MainContentProps) {
 
             <div className="text-center mt-4">
               <div className="text-sm opacity-80">
-                Répartition des indicateurs d'activité du système Ecat.
+                Répartition des indicateurs d&apos;activité du système Ecat.
               </div>
             </div>
           </div>
