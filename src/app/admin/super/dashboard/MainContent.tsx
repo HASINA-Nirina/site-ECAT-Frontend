@@ -142,12 +142,19 @@ const renderCustomLabel = ({
 
 export default function MainContent({ darkMode, lang }: MainContentProps) {
   const [showMessage, setShowMessage] = useState(false);
-  const [time, setTime] = useState(new Date());
+    // Afficher l'heure uniquement après montage pour éviter les erreurs d'hydration
+  const [time, setTime] = useState<Date | null>(null);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    // Ne pas exécuter côté serveur : on initialise seulement après montage
+    setMounted(true);
+    setTime(new Date()); // premier affichage correct côté client
+
     const timer = setInterval(() => setTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
+
 
   // NOUVELLE CLASSE POUR LES CARTES DE STATISTIQUES AVEC BORDURE GAUCHE EN #17f
   const statCardClass = `rounded-2xl shadow-xl transition-all p-6 border-l-4 border-[#17f] ${
@@ -212,23 +219,28 @@ export default function MainContent({ darkMode, lang }: MainContentProps) {
         <div className="flex flex-col items-end bg-gradient-to-r from-purple-600 to-blue-500 text-white rounded-xl px-4 py-3 shadow-lg">
           <div className="flex items-center gap-2">
             <Clock size={22} />
-            <span className="text-xl font-semibold">
-              {time.toLocaleTimeString("fr-FR", {
-                hour: "2-digit",
-                minute: "2-digit",
-                second:"2-digit",
-              })}
-            </span>
-          </div>
+           <span className="text-xl font-semibold">
+            {mounted && time
+              ? time.toLocaleTimeString("fr-FR", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  second: "2-digit",
+                })
+              : "--:--:--"}
+          </span>
+          
           <span className="text-sm opacity-90">
-            {time.toLocaleDateString("fr-FR", {
-              weekday: "long",
-              day: "2-digit",
-              month: "long",
-              year: "numeric",
-            })}
+            {mounted && time
+              ? time.toLocaleDateString("fr-FR", {
+                  weekday: "long",
+                  day: "2-digit",
+                  month: "long",
+                  year: "numeric",
+                })
+              : ""}
           </span>
         </div>
+      </div>
       </div>
 
       {/* Main grid */}
