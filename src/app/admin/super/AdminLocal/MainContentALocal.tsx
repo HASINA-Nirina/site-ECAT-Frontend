@@ -9,11 +9,8 @@ import {
   MapPin,
   Users,
   MoreHorizontal,
-  Download,
   Trash2,
   CheckCircle,
-  Eye,
-  X,
 } from "lucide-react";
 
 /**
@@ -41,6 +38,7 @@ interface Props {
 }
 
 export default function ListeAdminsLocaux({ darkMode }: Props) {
+  const [showMessage, setShowMessage] = useState(false);
   // données simulées (exemple)
   const initialAdmins: AdminLocal[] = [
     {

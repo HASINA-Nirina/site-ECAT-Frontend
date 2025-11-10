@@ -386,7 +386,6 @@ export default function MainContent({ darkMode, lang }: MainContentProps) {
       {showMessage && (
         <MessagePopup
           darkMode={darkMode}
-          adminName="Super Admin"
           onClose={() => setShowMessage(false)}
         />
       )}
