@@ -43,6 +43,8 @@ const RegisterPage = () => {
 
     if (res.ok) {
        setMessage(" Votre compte est creé avec succées !");
+
+       window.location.href = "/login";
       
     } else {
       alert(data.detail || "Erreur lors de l'inscription");

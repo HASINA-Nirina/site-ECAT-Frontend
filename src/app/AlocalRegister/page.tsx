@@ -31,16 +31,18 @@ const InscriptionAdminLocal = () => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          nom,
-          prenom,
-          email,
+          nom: nom,
+          prenom: prenom,
+          email: email,
           mot_de_passe: password,
           province: antenne,
           role: "Admin Local",
           statut: "en attente",
         }),
       });
+
       const data = await res.json();
+
       if (res.ok && data.message) {
         setMessage(" Votre demande d’inscription a été envoyée. En attente de validation.");
         setSuccess(true); // vert

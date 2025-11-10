@@ -1,6 +1,5 @@
 "use client";
-
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   Search,
   ArrowDownWideNarrow,
@@ -16,9 +15,17 @@ interface ListeEtudiantsProps {
 export default function ListeEtudiants({ darkMode }: ListeEtudiantsProps) {
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState<"recent" | "az">("recent");
+  interface Student {
+    id: number;
+    nom: string;
+    prenom: string;
+    antenne: string;
+    dateInscription?: string;
+    email?: string;
+  }
 
-  // Exemple temporaire d’étudiants
-  const etudiants = [
+  // sample fallback data used until backend responds or when offline
+  const sampleEtudiants: Student[] = [
     { id: 1, nom: "Rakoto", prenom: "Jean", antenne: "Fianarantsoa", dateInscription: "2025-10-15" },
     { id: 2, nom: "Rasoa", prenom: "Marie", antenne: "Toliara", dateInscription: "2025-10-25" },
     { id: 3, nom: "Randria", prenom: "Paul", antenne: "Antananarivo", dateInscription: "2025-09-20" },
@@ -27,27 +34,71 @@ export default function ListeEtudiants({ darkMode }: ListeEtudiantsProps) {
     { id: 6, nom: "Nomena", prenom: "Sara", antenne: "Toliara", dateInscription: "2025-09-22" },
   ];
 
+  const [students, setStudents] = useState<Student[]>(sampleEtudiants);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Fetch students from backend on mount (adjust endpoint if needed)
+  useEffect(() => {
+    const fetchStudents = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const token = localStorage.getItem("token");
+        // ADAPTER si l'API a un autre chemin
+  const url = `http://localhost:8000/auth/ReadEtudiantAll`;
+        const res = await fetch(url, { headers: token ? { Authorization: `Bearer ${token}` } : undefined });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+
+        // normalisation minimale
+        const normalized: Student[] = (data || []).map((s: any) => ({
+          id: Number(s.id),
+          prenom: s.prenom || s.firstName || "",
+          nom: s.nom || s.lastName || "",
+          antenne: s.antenne || s.province || "",
+          dateInscription: s.date_inscription || s.inscrit || s.dateInscription || "",
+          email: s.email || "",
+        }));
+
+        if (Array.isArray(normalized) && normalized.length > 0) {
+          setStudents(normalized);
+        } else {
+          // si backend renvoie vide, garder le fallback sample
+        }
+      } catch (err) {
+        console.error("fetch students failed:", err);
+        setError("Impossible de charger les étudiants depuis le serveur. Affichage des données locales.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchStudents();
+  }, []);
+
   // Filtrage et tri
   const filtered = useMemo(() => {
-    return etudiants
+    return students
       .filter((e) =>
         `${e.prenom} ${e.nom}`.toLowerCase().includes(search.toLowerCase()) ||
         e.antenne.toLowerCase().includes(search.toLowerCase())
       )
       .sort((a, b) => {
         if (sortBy === "az") return a.nom.localeCompare(b.nom);
-        return new Date(b.dateInscription).getTime() - new Date(a.dateInscription).getTime();
+        return new Date(b.dateInscription || 0).getTime() - new Date(a.dateInscription || 0).getTime();
       });
-  }, [etudiants, search, sortBy]);
+  }, [students, search, sortBy]);
 
   // Statistiques par antenne
   const statsAntenne = useMemo(() => {
     const counts: Record<string, number> = {};
-    etudiants.forEach((e) => {
-      counts[e.antenne] = (counts[e.antenne] || 0) + 1;
+    students.forEach((e) => {
+      const key = e.antenne || "Inconnue";
+      counts[key] = (counts[key] || 0) + 1;
     });
     return Object.entries(counts);
-  }, [etudiants]);
+  }, [students]);
 
   return (
     <div
@@ -62,8 +113,11 @@ export default function ListeEtudiants({ darkMode }: ListeEtudiantsProps) {
           <h2 className="text-2xl font-bold">Statistiques des étudiants par antenne</h2>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {statsAntenne.map(([antenne, count]) => (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {loading ? (
+            <div className="col-span-full p-4 text-center text-gray-400">Chargement des données...</div>
+          ) : (
+            statsAntenne.map(([antenne, count]) => (
             <div
               key={antenne}
               className={`relative p-6 rounded-xl shadow-md border-l-4 ${
@@ -87,7 +141,8 @@ export default function ListeEtudiants({ darkMode }: ListeEtudiantsProps) {
                 <Users size={36} />
               </div>
             </div>
-          ))}
+            ))
+          )}
         </div>
       </div>
 
@@ -142,7 +197,10 @@ export default function ListeEtudiants({ darkMode }: ListeEtudiantsProps) {
         </div>
 
         {/* Tableau */}
-        <div className="overflow-x-auto rounded-lg">
+            <div className="overflow-x-auto rounded-lg">
+              {error && (
+                <div className="mb-3 text-sm text-red-500">{error}</div>
+              )}
           <table className="w-full border-collapse overflow-hidden text-sm">
             <thead>
               <tr
@@ -159,17 +217,17 @@ export default function ListeEtudiants({ darkMode }: ListeEtudiantsProps) {
               </tr>
             </thead>
             <tbody>
-              {filtered.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={4}
-                    className="text-center py-6 text-gray-400"
-                  >
-                    Aucun étudiant trouvé.
-                  </td>
-                </tr>
-              ) : (
-                filtered.map((e) => (
+                {filtered.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={4}
+                      className="text-center py-6 text-gray-400"
+                    >
+                      {loading ? "Chargement..." : "Aucun étudiant trouvé."}
+                    </td>
+                  </tr>
+                ) : (
+                  filtered.map((e) => (
                   <tr
                     key={e.id}
                     className={`transition-colors ${
@@ -184,7 +242,7 @@ export default function ListeEtudiants({ darkMode }: ListeEtudiantsProps) {
                       {e.antenne}
                     </td>
                     <td className="p-3">
-                      {new Date(e.dateInscription).toLocaleDateString()}
+                        {e.dateInscription ? new Date(e.dateInscription).toLocaleDateString() : "-"}
                     </td>
                   </tr>
                 ))

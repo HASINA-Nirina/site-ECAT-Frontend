@@ -139,6 +139,7 @@ export default function Header({ darkMode, setDarkMode,sidebarOpen, setSidebarOp
     }, [notifications]);
 
   // Fonction pour récupérer les notifications
+
     const fetchNotifications = async () => {
       try {
         const res = await fetch("http://localhost:8000/auth/notifications", {

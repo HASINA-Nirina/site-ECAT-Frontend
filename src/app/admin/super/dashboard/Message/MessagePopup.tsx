@@ -173,6 +173,14 @@ export default function MessagePopup({ onClose, darkMode }: MessagePopupProps) {
                         <p className={`text-sm font-bold ${generalText} truncate`}>Jean L&apos;Utilisateur</p>
                         <p className="text-xs text-green-500 truncate">Connecté</p>
                     </div>
+
+                    <button
+                        onClick={onClose}
+                        title="Déconnexion"
+                        className={`ml-2 p-1.5 ${subtleText} hover:text-red-500 hover:bg-gray-100 rounded-full transition duration-150 shrink-0 ${darkMode && 'hover:bg-gray-700'}`}
+                    >
+                        <LogOut className="w-5 h-5" />
+                    </button>
                 </div>
             </div>
         </div>

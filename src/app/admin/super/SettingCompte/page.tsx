@@ -20,12 +20,13 @@ export default function AdminLocalDashboard() {
           : "bg-white text-gray-800 min-h-screen"
       }
     >
-      {/* Sidebar */}
+      {/* Sidebar fixe */}
       <Sidebar darkMode={darkMode} sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
 
-      {/* Décalage du contenu principal pour ne pas être caché par le sidebar */}
+      {/* Contenu principal décalé à droite */}
       <div className="md:ml-64 flex flex-col min-h-screen">
-        {/* Header */}
+        
+         {/* Header */}
         <Header
           darkMode={darkMode}
           setDarkMode={setDarkMode}
@@ -33,8 +34,10 @@ export default function AdminLocalDashboard() {
           setSidebarOpen={setSidebarOpen}
         />
 
+
         {/* MainContent */}
         <MainContent darkMode={darkMode} lang={lang} />
+
       </div>
     </div>
   );

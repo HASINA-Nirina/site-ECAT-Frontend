@@ -11,13 +11,12 @@ const OtpVerificationPage = () => {
   const inputRefs = useRef<HTMLInputElement[]>([]);
  // const codeOtp =otp.join("");
   const searchParams = useSearchParams(); 
-  const email = searchParams.get("email");
   
   // ✅ Redirige automatiquement quand le code est complet
   useEffect(() => {
     if (otp.every((digit) => digit !== "")) {
       setTimeout( async() => {
-        // const email = localStorage.getItem("email"); 
+        const email = searchParams.get("email");
           if (!email) {
     alert("Aucun email trouvé. Retour à la page précédente.");
     window.location.href = "/ForgotPassword";}
@@ -34,10 +33,19 @@ const OtpVerificationPage = () => {
       const data = await res.json();
         console.log("Réponse backend :", data);
 
-        if (data.success) {
-          alert("✅ Code OTP validé avec succès !");
-          window.location.href = "/ForgotPassword/NewPassword";
-        } else {
+       if (data.success) {
+            alert("✅ Code OTP validé avec succès !");
+
+            const email = searchParams.get("email");
+            if (!email) {
+              alert("Email introuvable. Retour à la page précédente.");
+              window.location.href = "/ForgotPassword";
+              return;
+            }
+
+          window.location.href = `/ForgotPassword/NewPassword?email=${encodeURIComponent(email)}`;
+        }
+        else {
           alert(`❌ ${data.message}`);
         }
         
@@ -80,6 +88,36 @@ const OtpVerificationPage = () => {
     }
   };
 
+  const handleResendOtp = async () => {
+  const email = searchParams.get("email"); 
+  if (!email) {
+    alert("Email introuvable. Retour à la page précédente.");
+    window.location.href = "/ForgotPassword";
+    return;
+  }
+
+  try {
+    const res = await fetch("http://127.0.0.1:8000/auth/sendOtp", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    });
+
+    const data = await res.json();
+    if (data.message) {
+      alert("📧 Nouveau code OTP envoyé !");
+      setOtp(["", "", "", "", "", ""]); 
+      inputRefs.current[0]?.focus(); 
+    } else {
+      alert(`❌ ${data.message}`);
+    }
+  } catch (error) {
+    console.error("Erreur lors de l'envoi OTP :", error);
+    alert("Erreur serveur. Réessaie plus tard.");
+  }
+};
+
+
   return (
     <section
       className="relative min-h-screen flex items-center justify-center bg-cover bg-center"
@@ -117,13 +155,14 @@ const OtpVerificationPage = () => {
 
         <p className="text-sm text-gray-600 mb-4">
           Vous n’avez pas reçu le code ?{" "}
-          <button
-            type="button"
-            onClick={() => alert("📧 Nouveau code OTP envoyé !")}
-            className="text-purple-700 font-semibold hover:underline"
+         <button
+              type="button"
+              onClick={handleResendOtp}
+              className="text-purple-700 font-semibold hover:underline"
           >
             Renvoyer
           </button>
+
         </p>
 
         <button

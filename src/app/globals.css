@@ -38,4 +38,5 @@ body {
 /* Pour l'animation entrée/sortie */
 .transition-transform {
   transition: transform 0.5s ease-in-out;
+
 }

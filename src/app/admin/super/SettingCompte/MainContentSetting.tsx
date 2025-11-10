@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState,useEffect } from "react";
 import { User, Lock, Save, Eye, EyeOff, X, XIcon } from "lucide-react";
 import Image from "next/image";
+import { image } from "framer-motion/client";
+
 
 
 interface MainContentProps {
@@ -10,13 +12,41 @@ interface MainContentProps {
   readonly lang: string;
 }
 
+
 export default function MainContent({ darkMode, lang }: MainContentProps) {
   const [profile, setProfile] = useState({
-    nom: "Rakoto",
-    prenom: "Hasina",
-    email: "hasina@example.com",
-    universite: "Université ECAT Taratra",
+    nom: "",
+    prenom: "",
+    email: "",
+    universite: "",
+    image:  "",
   });
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const res = await fetch("http://localhost:8000/auth/me", {
+          credentials: "include",
+        });
+        if (!res.ok) throw new Error("Non autorisé");
+  
+        const data = await res.json();
+        const province = data.province ;
+
+        setProfile({
+          nom: data.nom,
+          prenom: data.prenom,
+          email: data.email,
+          universite: `Université ECAT Taratra `,
+          image: data.image,
+        });
+      } catch  {
+        console.error("Utilisateur inconnu");  
+      }
+    };
+
+    fetchProfile();
+  }, []);
 
   const [passwordData, setPasswordData] = useState({
     current: "",
@@ -30,13 +60,65 @@ export default function MainContent({ darkMode, lang }: MainContentProps) {
     confirm: false,
   });
 
-  const handlePasswordChange = () => {
-    if (passwordData.new !== passwordData.confirm) {
-      alert("Les nouveaux mots de passe ne correspondent pas !");
-      return;
-    }
+  const verifyOldPassword = async () => {
+    const email = localStorage.getItem("email");
+  const res = await fetch("http://127.0.0.1:8000/auth/verifyPassword", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+   body: JSON.stringify({
+  mot_de_passe: passwordData.current
+}),
+ credentials: "include"
+
+  });
+
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.detail || "Erreur lors de la vérification du mot de passe");
+  }
+
+  return await res.json();
+};
+
+const updatePassword = async () => {
+  const email = localStorage.getItem("email");
+  const res = await fetch("http://127.0.0.1:8000/auth/modifPassword", {
+    method: "GET",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      email: email,
+      mot_de_passe: passwordData.new
+    }),
+  });
+
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.detail || "Erreur lors de la modification du mot de passe");
+  }
+
+  return await res.json();
+};
+const handlePasswordChange = async () => {
+  if (passwordData.new !== passwordData.confirm) {
+    alert("Les nouveaux mots de passe ne correspondent pas !");
+    return;
+  }
+
+  try {
+    // 1️ Vérifier l'ancien mot de passe
+    await verifyOldPassword();
+
+    // 2️ Modifier le mot de passe
+    const result = await updatePassword();
+    console.log("Résultat du backend:", result);
+
     alert("Mot de passe modifié avec succès !");
-  };
+    handleCancel(); // réinitialiser les champs
+  } catch  {
+    alert("err");
+  }
+};
+
 
   const handleCancel = () => {
     setPasswordData({ current: "", new: "", confirm: "" });
@@ -57,15 +139,22 @@ export default function MainContent({ darkMode, lang }: MainContentProps) {
   </h1>
 
   {/* Image de profil centrée avec espace responsive */}
-  <div className="flex justify-center">
-    <div className="w-20 h-20 sm:w-28 sm:h-28 rounded-full border-4 border-blue-400 shadow-md flex items-center justify-center mt-1 sm:-mt-10">
-      {/* Cercle vide avec icône utilisateur */}
-      <User size={36} className="text-blue-400" />
-    </div>
+<div className="flex justify-center">
+  <div className="w-10 h-10 sm:w-28 sm:h-28 rounded-full border-4 border-blue-400 shadow-md flex items-center justify-center mt-1 sm:-mt-10 bg-gray-100 sm:text-5xl font-bold">
+    {profile.image ? (
+      // Si image existe
+      <img src={profile.image}alt="Profil" className="w-full h-full rounded-full object-cover"/>
+    ) : (
+      // Sinon afficher le premièr lettres du prénom
+      <span className="text-blue-400 text-xl sm:text-2xl font-bold">
+        
+        {profile.prenom?.substring(0, 1).toUpperCase()}
+      </span>
+    )}
   </div>
 </div>
 
-
+</div>
 
       {/* Profil étudiant */}
       <div
@@ -79,7 +168,8 @@ export default function MainContent({ darkMode, lang }: MainContentProps) {
             <label className="block text-sm opacity-80 mb-1">Nom</label>
             <input
               type="text"
-              value={profile.nom}
+
+              value={profile.nom|| ""}
               readOnly
               className={`w-full p-2 rounded-lg border ${borderClass} ${
                 darkMode ? "bg-gray-700" : "bg-gray-100"
@@ -90,7 +180,7 @@ export default function MainContent({ darkMode, lang }: MainContentProps) {
             <label className="block text-sm opacity-80 mb-1">Prénom</label>
             <input
               type="text"
-              value={profile.prenom}
+              value={profile.prenom|| ""}
               readOnly
               className={`w-full p-2 rounded-lg border ${borderClass} ${
                 darkMode ? "bg-gray-700" : "bg-gray-100"
@@ -101,7 +191,7 @@ export default function MainContent({ darkMode, lang }: MainContentProps) {
             <label className="block text-sm opacity-80 mb-1">Email</label>
             <input
               type="email"
-              value={profile.email}
+              value={profile.email|| ""}
               readOnly
               className={`w-full p-2 rounded-lg border ${borderClass} ${
                 darkMode ? "bg-gray-700" : "bg-gray-100"
@@ -112,7 +202,7 @@ export default function MainContent({ darkMode, lang }: MainContentProps) {
             <label className="block text-sm opacity-80 mb-1">Université</label>
             <input
               type="text"
-              value={profile.universite}
+              value={profile.universite|| ""}
               readOnly
               className={`w-full p-2 rounded-lg border ${borderClass} ${
                 darkMode ? "bg-gray-700" : "bg-gray-100"

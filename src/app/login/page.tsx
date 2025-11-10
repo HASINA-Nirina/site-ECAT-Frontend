@@ -89,12 +89,14 @@ const LoginPage = () => {
       setIsLoading(false);
 
       // Redirection selon le rôle
+      
       setTimeout(() => {
         if (role === "admin") {
           router.push("/admin/super/dashboard");
         } else if (role === "Admin Local") {
           router.push("/admin/local/dashboard");
         } else if (role === "etudiante") {
+          
           router.push("/Etudiant/dashboard");
         } else {
           setMessage("Rôle inconnu !");

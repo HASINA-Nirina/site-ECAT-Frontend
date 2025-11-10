@@ -14,41 +14,49 @@ const NewPasswordPage = () => {
   const searchParams = useSearchParams(); 
   const email = searchParams.get("email");
 
-  const handleSubmit = async(e: React.FormEvent) => {
-    e.preventDefault();
-    if (password !== confirmPassword) {
-      setError("❌ Les mots de passe ne correspondent pas.");
-      return;
-    } 
-    
-    if (password.length < 6) {
-      setError("⚠️ Le mot de passe doit contenir au moins 6 caractères.");
-      return;
-    }
-    try {
-          const res = await fetch("http://127.0.0.1:8000/auth/modifPassword",{ 
-            method : "POST",
-            headers : {"Content-type": "application/json"},
-            body :JSON.stringify({
-              email: email,
-              mot_de_passe: password,
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
 
-            })
-     })
-     const data = await res.json();
-     if (data.success){
-            alert("✅ Mot de passe modifié avec succès !");
-             window.location.href = "/login";
-     }
-     else {
-      alert("Erreur")
-      alert(`❌ ${data.message}`);
-     }
+  // Vérification mot de passe
+  if (password !== confirmPassword) {
+    setError("❌ Les mots de passe ne correspondent pas.");
+    return;
+  }
+
+  if (password.length < 6) {
+    setError("⚠️ Le mot de passe doit contenir au moins 6 caractères.");
+    return;
+  }
+
+  if (!email) {
+    setError("❌ Email manquant !");
+    return;
+  }
+
+  try {
+    const res = await fetch("http://127.0.0.1:8000/auth/modifPassword", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: email,
+        mot_de_passe: password, // ✅ envoyer le vrai mot de passe
+      }),
+    });
+
+    const data = await res.json();
+
+    if (res.ok) {
+      alert(`✅ ${data.message}`);
+      window.location.href = "/login";
+    } else {
+      alert(`❌ ${data.detail || "Erreur inconnue"}`);
     }
-    catch (err){
-         alert("Erreu d'envoi ");
-    } 
-  };
+  } catch (err) {
+    console.error(err);
+    alert("Erreur d'envoi des données.");
+  }
+};
+
 
   return (
     <section
@@ -109,7 +117,7 @@ const NewPasswordPage = () => {
           {error && (
             <p className="text-red-600 text-sm text-center">{error}</p>
           )}
-
+s
           {/* Bouton Confirmer */}
           <button
             type="submit"

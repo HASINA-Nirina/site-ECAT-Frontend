@@ -51,10 +51,12 @@ export default function Header({ darkMode, setDarkMode,sidebarOpen, setSidebarOp
         });
         if (!res.ok) throw new Error("Non autorisé");
         const data = await res.json();
+        localStorage.setItem("iduser", data.id);
+        localStorage.setItem("email", data.email);
 
         setPrenom(data.prenom || "");
         setNom(data.nom || "");
-        setAdminName(`${data.prenom} ${data.nom}`);
+        setAdminName(`${data.prenom}  ${data.nom}`);
         setProfileImage(data.image || null);
 
         const initials =

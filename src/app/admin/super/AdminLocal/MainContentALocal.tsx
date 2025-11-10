@@ -1,6 +1,8 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+
+import React, { useMemo, useState, useEffect } from "react";
+
 import {
   Search,
   ArrowDownWideNarrow,
@@ -11,14 +13,18 @@ import {
   MoreHorizontal,
   Trash2,
   CheckCircle,
+  Eye,
+  X,
 } from "lucide-react";
 
-/**
- * ListeAdminsLocaux.tsx
- * Frontend-only. Données simulées. Popup pour voir la liste d'étudiants d'un admin local.
- *
- * Usage: <ListeAdminsLocaux darkMode={darkMode} />
- */
+interface Student {
+  id: number;
+  nom: string;
+  prenom: string;
+  email: string;
+  inscrit?: string; // date d'inscription (optionnel)
+}
+
 
 interface AdminLocal {
   id: number;
@@ -28,9 +34,10 @@ interface AdminLocal {
   email: string;
   etudiants: number;
   statut: "Actif" | "Suspendu" | "En attente";
-  dateCreation: string;
+
   avatar?: string;
-  students?: { id: number; nom: string; prenom: string; email: string; inscrit: string }[];
+  students?: Student[];
+
 }
 
 interface Props {
@@ -38,57 +45,63 @@ interface Props {
 }
 
 export default function ListeAdminsLocaux({ darkMode }: Props) {
-  const [showMessage, setShowMessage] = useState(false);
-  // données simulées (exemple)
-  const initialAdmins: AdminLocal[] = [
-    {
-      id: 1,
-      nom: "Rakoto",
-      prenom: "Jean",
-      antenne: "Antananarivo",
-      email: "jean.rakoto@ecat.mg",
-      etudiants: 124,
-      statut: "Actif",
-      dateCreation: "2025-09-10",
-      students: [
-        { id: 1, nom: "Rado", prenom: "Aina", email: "aina@example.com", inscrit: "2025-09-15" },
-        { id: 2, nom: "Solo", prenom: "Hery", email: "hery@example.com", inscrit: "2025-10-01" },
-      ],
-    },
-    {
-      id: 2,
-      nom: "Rasoa",
-      prenom: "Marie",
-      antenne: "Fianarantsoa",
-      email: "marie.rasoa@ecat.mg",
-      etudiants: 98,
-      statut: "Actif",
-      dateCreation: "2025-09-18",
-      students: [
-        { id: 3, nom: "Lala", prenom: "Tsiry", email: "tsiry@example.com", inscrit: "2025-08-19" },
-      ],
-    },
-    {
-      id: 3,
-      nom: "Randria",
-      prenom: "Paul",
-      antenne: "Toliara",
-      email: "paul.randria@ecat.mg",
-      etudiants: 76,
-      statut: "Suspendu",
-      dateCreation: "2025-10-05",
-      students: [],
-    },
-  ];
-
-  const [admins, setAdmins] = useState<AdminLocal[]>(initialAdmins);
+  const [admins, setAdmins] = useState<AdminLocal[]>([]);
   const [search, setSearch] = useState<string>("");
   const [sortBy, setSortBy] = useState<"recent" | "az">("recent");
-  const [selectedId, setSelectedId] = useState<number | null>(admins[0]?.id ?? null);
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (admins.length > 0 && selectedId === null) {
+      setSelectedId(admins[0].id);
+    }
+  }, [admins, selectedId]);
+
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setLoading(true);
+    fetch("http://localhost:8000/auth/GetAdminLocaux")
+      .then(async (res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        const normalized = data.map((a: any) => ({
+          id: a.id,
+          nom: a.nom,
+          prenom: a.prenom,
+          antenne: a.antenne || "",
+          email: a.email || "",
+          etudiants: a.etudiants ?? 0,
+          statut: a.statut || "En attente",
+          avatar: a.avatar || "",
+          students: a.students || [],
+        }));
+        setAdmins(normalized);
+        setLoading(false);
+        // une fois les admins chargés, on tente de récupérer les statistiques par antenne depuis le backend
+        // si l'endpoint n'existe pas, la fonction fera un fallback local
+        fetchAntenneStats();
+      })
+      .catch((err) => {
+        console.error(err);
+        setError("Impossible de charger la liste des admins");
+        setLoading(false);
+      });
+  }, []);
 
   // modal pour voir la liste des étudiants d'un admin
   const [openStudentsModal, setOpenStudentsModal] = useState(false);
-  const [modalAdmin, setModalAdmin] = useState<AdminLocal | null>(null);
+  const [modalAdmin, setModalAdmin] = useState<AdminLocal>({
+    id: 0,
+    nom: "",
+    prenom: "",
+    antenne: "",
+    email: "",
+    etudiants: 0,
+    statut: "En attente",
+    avatar: "",
+    students: [],
+  });
 
   const filtered = useMemo(() => {
     return admins
@@ -105,31 +118,120 @@ export default function ListeAdminsLocaux({ darkMode }: Props) {
 
   const totalAdmins = admins.length;
   const totalStudents = admins.reduce((s, a) => s + a.etudiants, 0);
+  // stats par antenne (récupérées depuis le backend si disponible, sinon calculées localement)
+  const [antenneStats, setAntenneStats] = useState<{ antenne: string; students: number; admins: number }[]>([]);
+  const [loadingAntenneStats, setLoadingAntenneStats] = useState(false);
 
   const selectedAdmin = admins.find((a) => a.id === selectedId) ?? admins[0] ?? null;
 
-  // basculer statut (frontend only) : Suspendre <-> Actif
-  const toggleStatus = (id: number) => {
-    setAdmins((prev) =>
-      prev.map((a) =>
-        a.id === id
-          ? { ...a, statut: a.statut === "Actif" ? "Suspendu" : "Actif" }
-          : a
-      )
-    );
+  const toggleStatus = async (id: number) => {
+    const adminToChange = admins.find(a => a.id === id);
+    if (!adminToChange) return;
+
+    const newStatus = adminToChange.statut === "Actif" ? "Suspendu" : "Actif";
+
+    try {
+      const res = await fetch(`http://localhost:8000/auth/ChangeStatus/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ statuts: newStatus }),
+      });
+
+      if (!res.ok) throw new Error("Erreur de mise à jour");
+
+      setAdmins((prev) => prev.map((admin) => (admin.id === id ? { ...admin, statut: newStatus } : admin)));
+
+      // si le modal affiche cet admin, le mettre à jour aussi
+      setModalAdmin((prev) => (prev.id === id ? { ...prev, statut: newStatus } : prev));
+    } catch (err) {
+      console.error(err);
+      alert("Erreur lors du changement de statut");
+    }
+  };
+
+  //  récupère la liste des étudiants pour une antenne / province donnée
+  const fetchStudents = async (province: string): Promise<Student[]> => {
+    try {
+      if (!province) return [];
+      const token = localStorage.getItem("token");
+  const url = `http://localhost:8000/auth/ReadEtudiantByprovince/${encodeURIComponent(province)}`;
+      const res = await fetch(url, {
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      });
+      if (!res.ok) throw new Error("Erreur lors du chargement des étudiants");
+
+      const data = await res.json();
+
+      // data peut être un tableau d'étudiants. Normalisons le format minimal.
+      const students: Student[] = (data || []).map((s: any) => ({
+        id: s.id,
+        prenom: s.prenom || s.firstName || "",
+        nom: s.nom || s.lastName || "",
+        email: s.email || "",
+        inscrit: s.inscrit || s.date_inscription || "",
+      }));
+
+      return students;
+    } catch (err) {
+      console.error(err);
+      alert("Impossible de charger les étudiants");
+      return [];
+    }
+  };
+
+  // récupère les statistiques agrégées par antenne depuis le backend (fallback sur agrégation locale)
+  const fetchAntenneStats = async () => {
+    setLoadingAntenneStats(true);
+    try {
+      const token = localStorage.getItem("token");
+      // NOTE: adapter l'URL ci-dessous si le backend utilise un autre chemin
+      const url = `http://localhost:8000/auth/GetStatsByAntenne`;
+      const res = await fetch(url, { headers: token ? { Authorization: `Bearer ${token}` } : undefined });
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          const normalized = data.map((d: any) => ({
+            antenne: d.antenne || d.province || "",
+            students: d.students ?? d.etudiants ?? 0,
+            admins: d.admins ?? 0,
+          }));
+          setAntenneStats(normalized);
+          setLoadingAntenneStats(false);
+          return;
+        }
+      }
+    } catch (err) {
+      // ignore and fallback to local aggregation
+      // console.warn(err);
+    }
+
+    // fallback local: agrégation depuis `admins`
+    const map = new Map<string, { students: number; admins: number }>();
+    admins.forEach(a => {
+      const key = a.antenne || "Inconnue";
+      const cur = map.get(key) ?? { students: 0, admins: 0 };
+      cur.students += a.etudiants ?? 0;
+      cur.admins += 1;
+      map.set(key, cur);
+    });
+    const local = Array.from(map.entries()).map(([antenne, v]) => ({ antenne, students: v.students, admins: v.admins }));
+    setAntenneStats(local);
+    setLoadingAntenneStats(false);
   };
 
   // Ouvre la popup d'étudiants pour un admin donné
-  const handleVoirEtudiants = (admin: AdminLocal) => {
-    setModalAdmin(admin);
+  const handleVoirEtudiants = async (admin: AdminLocal) => {
+
+    setModalAdmin({ ...admin, students: admin.students ?? [] });
     setOpenStudentsModal(true);
+    const students = await fetchStudents(admin.antenne);
+    setModalAdmin(prev => ({ ...prev, students }));
   };
 
-  // Télécharger la liste des étudiants affichés dans la popup via fenêtre d'impression (choisir "Sauvegarder en PDF")
   const downloadStudentsPdf = (admin: AdminLocal | null) => {
     if (!admin) return;
     const students = admin.students ?? [];
-    // Crée une nouvelle fenêtre et injecte HTML propre pour imprimer / sauver en PDF
+
     const w = window.open("", "_blank", "width=900,height=700");
     if (!w) return;
     const style = `
@@ -150,13 +252,14 @@ export default function ListeAdminsLocaux({ darkMode }: Props) {
         <table>
           <thead><tr><th>#</th><th>Prénom</th><th>Nom</th><th>Email</th><th>Date inscription</th></tr></thead>
           <tbody>
-            ${students.map((s, i) => `<tr><td>${i + 1}</td><td>${s.prenom}</td><td>${s.nom}</td><td>${s.email}</td><td>${s.inscrit}</td></tr>`).join("")}
+            ${students.map((s, i) => `<tr><td>${i + 1}</td><td>${s.prenom}</td><td>${s.nom}</td><td>${s.email}</td><td>${s.inscrit || ''}</td></tr>`).join("")}
           </tbody>
         </table>
       </body></html>
     `;
     w.document.write(html);
     w.document.close();
+
     // ouvre le dialogue d'impression (l'utilisateur peut sauver en PDF)
     w.focus();
     setTimeout(() => {
@@ -202,6 +305,7 @@ export default function ListeAdminsLocaux({ darkMode }: Props) {
 
       <div className="lg:flex gap-6">
         {/* LEFT: liste */}
+
         <div className="flex-1 lg:w-1/2 flex flex-col gap-3">
           <div className={`p-3 rounded-xl ${darkMode ? "bg-gray-800 border border-gray-700" : "bg-white border border-gray-200"} shadow-sm`}>
             <div className="flex flex-col gap-2">
@@ -212,8 +316,7 @@ export default function ListeAdminsLocaux({ darkMode }: Props) {
                 <div
                   key={a.id}
                   onClick={() => setSelectedId(a.id)}
-                  className={`cursor-pointer flex items-center gap-3 p-3 rounded-lg transition ${selectedId === a.id ? "ring-2 ring-[#17f]/50 shadow-lg" : "hover:shadow-md"} ${darkMode ? "bg-gray-800" : "bg-white"}`}
-                >
+                  className={`cursor-pointer flex items-center gap-3 p-3 rounded-lg transition ${selectedId === a.id ? "ring-2 ring-[#17f]/50 shadow-lg" : "hover:shadow-md"} ${darkMode ? "bg-gray-800" : "bg-white"}`}>
                   <div className="w-12 h-12 rounded-full bg-gray-300 flex items-center justify-center text-xl font-bold text-gray-800">
                     {(a.prenom?.[0] || "U") + (a.nom?.[0] || "")}
                   </div>
@@ -226,8 +329,7 @@ export default function ListeAdminsLocaux({ darkMode }: Props) {
                       </div>
 
                       <div className="text-right">
-                        <div className="text-sm font-bold">{a.etudiants} <span className="text-xs opacity-60">étude(s)</span></div>
-                        <div className="text-xs opacity-60">{new Date(a.dateCreation).toLocaleDateString()}</div>
+                        <div className="text-sm font-bold">{a.etudiants} <span className="text-xs opacity-60">étudiant(s)</span></div>
                       </div>
                     </div>
 
@@ -279,12 +381,6 @@ export default function ListeAdminsLocaux({ darkMode }: Props) {
                     <div className="text-xs opacity-70">Étudiants gérés</div>
                     <div className="text-2xl font-bold text-[#00db1d]">{selectedAdmin?.etudiants ?? "-"}</div>
                   </div>
-
-                  <div>
-                    <div className="text-xs opacity-70">Inscrit le</div>
-                    <div className="text-sm">{selectedAdmin ? new Date(selectedAdmin.dateCreation).toLocaleDateString() : "-"}</div>
-                  </div>
-
                   <div className="ml-auto">
                     <span className={`px-3 py-1 rounded-full text-sm font-semibold ${selectedAdmin?.statut === "Actif" ? "bg-green-100 text-green-800" : selectedAdmin?.statut === "Suspendu" ? "bg-red-100 text-red-700" : "bg-yellow-100 text-yellow-800"}`}>
                       {selectedAdmin?.statut}
@@ -308,15 +404,6 @@ export default function ListeAdminsLocaux({ darkMode }: Props) {
                     <User size={16} /> Voir étudiants
                   </button>
                 </div>
-
-                <div className="mt-6">
-                  <h3 className="text-sm font-semibold mb-2">Dernières actions</h3>
-                  <ul className="space-y-2 text-sm opacity-80">
-                    <li>• Compte créé le {selectedAdmin ? new Date(selectedAdmin.dateCreation).toLocaleDateString() : "-"}</li>
-                    <li>• {selectedAdmin ? `${selectedAdmin.etudiants} étudiants assignés` : "-"}</li>
-                    <li>• {selectedAdmin ? `Dernière activité : ${new Date().toLocaleDateString()}` : "-"}</li>
-                  </ul>
-                </div>
               </div>
             </div>
           </div>
@@ -331,18 +418,22 @@ export default function ListeAdminsLocaux({ darkMode }: Props) {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {/* petits cards */}
               {/** On calcule des stats simples depuis admins */}
-              {Array.from(new Set(admins.map(a => a.antenne))).map((antenne) => {
-                const count = admins.filter(a => a.antenne === antenne).reduce((s, a) => s + a.etudiants, 0);
-                return (
-                  <div key={antenne} className="p-3 rounded-lg border-1 flex items-center gap-3">
+              {loadingAntenneStats ? (
+                <div className="col-span-full p-4 text-center text-gray-400">Chargement des statistiques...</div>
+              ) : antenneStats.length === 0 ? (
+                <div className="col-span-full p-4 text-center text-gray-400">Aucune donnée pour les antennes.</div>
+              ) : (
+                antenneStats.map((s) => (
+                  <div key={s.antenne} className="p-3 rounded-lg border-1 flex items-center gap-3">
                     <MapPin size={20} className="text-orange-400" />
                     <div>
-                      <div className="text-sm opacity-70">{antenne}</div>
-                      <div className="font-bold text-xl text-[#17f]">{count} étudiants</div>
+                      <div className="text-sm opacity-70">{s.antenne}</div>
+                      <div className="font-bold text-xl text-[#17f]">{s.students} étudiants</div>
+                      <div className="text-xs opacity-70">{s.admins} admin(s)</div>
                     </div>
                   </div>
-                );
-              })}
+                ))
+              )}
             </div>
           </div>
         </aside>
@@ -351,20 +442,19 @@ export default function ListeAdminsLocaux({ darkMode }: Props) {
       {/* STUDENTS MODAL */}
       {openStudentsModal && modalAdmin && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setOpenStudentsModal(false)} />
-
+          <div className="absolute inset-0 bg-black/40" onClick={() => { setOpenStudentsModal(false); setModalAdmin(prev => ({ ...prev, students: [] })); }} />
           <div className={`relative w-[95%] max-w-3xl mx-auto p-4 rounded-xl ${darkMode ? "bg-gray-900 text-white" : "bg-white text-gray-900"} shadow-2xl z-50`}>
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-full bg-[#17f] flex items-center justify-center text-lg font-bold">{(modalAdmin.prenom?.[0]||"") + (modalAdmin.nom?.[0]||"")}</div>
+                <div className="w-12 h-12 rounded-full bg-[#17f] flex items-center justify-center text-lg font-bold">
+                  {(modalAdmin.prenom?.[0]||"") + (modalAdmin.nom?.[0]||"")}
+                </div>
                 <div>
                   <div className="font-semibold text-lg">{modalAdmin.prenom} {modalAdmin.nom}</div>
                   <div className="text-sm opacity-70">Antenne: <span className="text-orange-500 font-bold">{modalAdmin.antenne}</span></div>
                 </div>
-              </div>    
+              </div>
             </div>
-
-            {/* tableau des étudiants */}
             <div className="max-h-[50vh] overflow-auto rounded-xl">
               <table className="w-full text-left border-collapse">
                 <thead className={`${darkMode ? "bg-gray-800 text-purple-400" : "bg-gray-50 text-purple-700"}`}>
@@ -373,7 +463,6 @@ export default function ListeAdminsLocaux({ darkMode }: Props) {
                     <th className="p-3">Prénom</th>
                     <th className="p-3">Nom</th>
                     <th className="p-3">Email</th>
-                    <th className="p-3">Date inscription</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -383,11 +472,10 @@ export default function ListeAdminsLocaux({ darkMode }: Props) {
                       <td className="p-3">{s.prenom}</td>
                       <td className="p-3">{s.nom}</td>
                       <td className="p-3">{s.email}</td>
-                      <td className="p-3">{new Date(s.inscrit).toLocaleDateString()}</td>
                     </tr>
                   )) : (
                     <tr>
-                      <td colSpan={5} className="p-6 text-center text-gray-400">Aucun étudiant enregistré pour cet admin.</td>
+                      <td colSpan={4} className="p-6 text-center text-gray-400">Aucun étudiant enregistré pour cet admin.</td>
                     </tr>
                   )}
                 </tbody>
@@ -395,7 +483,7 @@ export default function ListeAdminsLocaux({ darkMode }: Props) {
             </div>
 
             <div className="mt-4 flex justify-end gap-12">
-              <button onClick={() => setOpenStudentsModal(false)} className="px-4 py-2 rounded-md  bg-red-600 text-white">
+              <button onClick={() => { setOpenStudentsModal(false); setModalAdmin(prev => ({ ...prev, students: [] })); }} className="px-4 py-2 rounded-md bg-red-600 text-white">
                 Annuler
               </button>
               <button onClick={() => downloadStudentsPdf(modalAdmin)} className="px-4 py-2 rounded-md bg-[#17f] text-white">
@@ -407,4 +495,4 @@ export default function ListeAdminsLocaux({ darkMode }: Props) {
       )}
     </div>
   );
-}
+};
