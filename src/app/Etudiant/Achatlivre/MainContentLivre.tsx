@@ -1,12 +1,13 @@
 /* eslint-disable @next/next/no-img-element */
 "use client";
 
-import { useState } from "react";
-import { BookOpen, ChevronLeft, ShoppingCart, Lock, Unlock } from "lucide-react";
+import { useState, useEffect } from "react";
+import { BookOpen, ChevronLeft, ShoppingCart, Lock, Unlock, Eye } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import PhoneInput, { CountryData } from "react-phone-input-2";
 import "react-phone-input-2/lib/style.css";
 import { parsePhoneNumberFromString } from "libphonenumber-js";
+import Image from "next/image";
 
 interface MainContentProps {
   readonly darkMode: boolean;
@@ -15,36 +16,30 @@ interface MainContentProps {
 
 interface Formation {
   id: number;
-  name: string;
-  image?: string;
+  titre: string;
+  description: string;
+  image: string;
 }
 
 interface Livre {
   id: number;
-  titre: string;
-  auteur: string;
+  title: string;
+  author: string;
   pdf: string;
   prix: string;
-  description: string;
-  locked: boolean;
+  image?: string;
+  access: boolean;
 }
 
 export default function MainContentAchat({ darkMode, lang }: MainContentProps) {
-  const formations: Formation[] = [
-    { id: 1, name: "Informatique", image: "https://source.unsplash.com/400x300/?computer" },
-    { id: 2, name: "Mathématiques", image: "https://source.unsplash.com/400x300/?math" },
-    { id: 3, name: "Physique", image: "https://source.unsplash.com/400x300/?physics" },
-  ];
-
-  const livres: Livre[] = [
-    { id: 1, titre: "Livre 1", auteur: "Auteur 1", pdf: "fiche1.pdf", prix: "10000", description: "Description 1", locked: true },
-    { id: 2, titre: "Livre 2", auteur: "Auteur 2", pdf: "fiche2.pdf", prix: "12000", description: "Description 2", locked: true },
-    { id: 3, titre: "Livre 3", auteur: "Auteur 3", pdf: "fiche3.pdf", prix: "15000", description: "Description 3", locked: true },
-  ];
-
+  const [formations, setFormations] = useState<Formation[]>([]);
+  const [livres, setLivres] = useState<Livre[]>([]);
   const [selectedFormation, setSelectedFormation] = useState<Formation | null>(null);
   const [selectedLivre, setSelectedLivre] = useState<Livre | null>(null);
   const [showConfirmation, setShowConfirmation] = useState(false);
+  const [loadingFormations, setLoadingFormations] = useState(true);
+  const [loadingLivres, setLoadingLivres] = useState(false);
+  const [userId, setUserId] = useState<number | null>(null);
 
   const bgClass = darkMode ? "bg-gray-900 text-white" : "bg-gray-50 text-black";
   const cardClass = darkMode ? "bg-gray-800 text-white" : "bg-white text-black";
@@ -58,6 +53,141 @@ export default function MainContentAchat({ darkMode, lang }: MainContentProps) {
   });
 
   const [phoneError, setPhoneError] = useState("");
+
+  // Helper pour normaliser les URLs d'images
+  const normalizeImage = (raw: any): string => {
+    try {
+      if (!raw) return "";
+      const s = String(raw);
+      if (s.startsWith("http://") || s.startsWith("https://")) return s;
+      if (s.startsWith("/")) return `http://localhost:8000${s}`;
+      return `http://localhost:8000/${s}`;
+    } catch {
+      return "";
+    }
+  };
+
+  // Récupérer l'ID utilisateur
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        // D'abord essayer depuis localStorage (peut être déjà stocké)
+        const storedId = localStorage.getItem("iduser") || localStorage.getItem("id");
+        if (storedId) {
+          const id = parseInt(storedId, 10);
+          if (!isNaN(id) && id > 0) {
+            console.log("✅ UserId depuis localStorage:", id);
+            setUserId(id);
+            return;
+          }
+        }
+
+        // Sinon, faire une requête API
+        const token = localStorage.getItem("token");
+        const res = await fetch("http://localhost:8000/auth/me", {
+          credentials: "include",
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        });
+        
+        if (res.ok) {
+          const data = await res.json();
+          console.log("👤 Données utilisateur:", data);
+          if (data.id) {
+            setUserId(data.id);
+            localStorage.setItem("iduser", String(data.id));
+            console.log("✅ UserId défini:", data.id);
+          } else {
+            console.error("❌ Pas d'ID dans les données");
+          }
+        } else {
+          console.error("❌ Erreur auth/me:", res.status);
+        }
+      } catch (error) {
+        console.error("❌ Erreur récupération utilisateur:", error);
+      }
+    };
+    fetchUser();
+  }, []);
+
+  // Récupérer les formations
+  useEffect(() => {
+    const fetchFormations = async () => {
+      try {
+        setLoadingFormations(true);
+        const res = await fetch("http://localhost:8000/formation/ReadFormation");
+        if (!res.ok) throw new Error("Erreur de chargement des formations");
+        const data = await res.json();
+        const arr = Array.isArray(data) ? data : data.formations || [];
+        const formatted = arr.map((f: any) => {
+          // Mapping robuste comme dans MainContentLivres
+          return {
+            id: f.idFormation ?? f.id ?? f.id_formation ?? 0,
+            titre: f.titre ?? f.name ?? "Formation",
+            description: f.description ?? "",
+            image: normalizeImage(f.image),
+          };
+        });
+        setFormations(formatted);
+      } catch (error) {
+        console.error("Erreur:", error);
+      } finally {
+        setLoadingFormations(false);
+      }
+    };
+    fetchFormations();
+  }, []);
+
+  // Récupérer les livres quand une formation est sélectionnée
+  useEffect(() => {
+    if (selectedFormation && userId) {
+      const fetchLivres = async () => {
+        try {
+          setLoadingLivres(true);
+          const url = `http://localhost:8000/livre/ReadLivres/${selectedFormation.id}/${userId}`;
+          console.log("🔍 Fetching livres from:", url);
+          
+          const res = await fetch(url);
+          console.log("📡 Response status:", res.status);
+          
+          if (!res.ok) {
+            const errorText = await res.text();
+            console.error("❌ Erreur HTTP:", res.status, errorText);
+            throw new Error(`Erreur de chargement des livres: ${res.status}`);
+          }
+          
+          const data = await res.json();
+          
+        
+          const arr = Array.isArray(data) ? data : data.livres || [];
+          console.log("📚 Array après traitement:", arr);
+          console.log("🔢 Nombre de livres:", arr.length);
+          
+          const formatted = arr.map((l: any, index: number) => {
+            const livre = {
+              id: l.id ?? l.idLivre ?? 0,
+              title: l.title ?? l.titre ?? "Livre",
+              author: l.author ?? l.auteur ?? "",
+              pdf: l.pdf ?? l.urlPdf ?? "",
+              prix: l.prix ?? l.price ?? "",
+              image: normalizeImage(l.image ?? l.cover ?? ""),
+              access: l.access ?? false,
+            };
+            console.log(`📖 Livre ${index}:`, livre);
+            return livre;
+          });
+          
+          console.log("Livres formatés:", formatted);
+          setLivres(formatted);
+        } catch (error) {
+          console.error("Erreur:", error);
+          setLivres([]);
+        } finally {
+          setLoadingLivres(false);
+        }
+      };
+      fetchLivres();
+    }
+  }, [selectedFormation, userId]);
 
   // ✅ Gestion téléphone internationale avec typage
   const handlePhoneChange = (value: string, data: CountryData) => {
@@ -87,6 +217,22 @@ export default function MainContentAchat({ darkMode, lang }: MainContentProps) {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
+  const handleFormationClick = (formation: Formation) => {
+    setSelectedFormation(formation);
+    setSelectedLivre(null);
+    setShowConfirmation(false);
+  };
+
+  const handleLivreClick = (livre: Livre) => {
+    if (livre.access) {
+      // Si le livre est débloqué, ouvrir directement le PDF
+      window.open(`http://localhost:8000${livre.pdf}`, "_blank");
+    } else {
+      // Sinon, afficher le formulaire de paiement
+      setSelectedLivre(livre);
+    }
+  };
+
   return (
     <main className={`flex-1 p-6 ${bgClass}`}>
       <AnimatePresence mode="wait">
@@ -101,32 +247,72 @@ export default function MainContentAchat({ darkMode, lang }: MainContentProps) {
           >
             <div className="mb-6 p-6 rounded-xl shadow-md border border-transparent bg-gradient-to-r from-blue-500 to-purple-600 text-white">
               <h2 className="text-xl sm:text-2xl font-bold mb-2">Bienvenue !</h2>
-              <p className="text-sm sm:text-base opacity-90">Découvrez les formations disponibles et commencez à apprendre dès maintenant !</p>
+              <p className="text-sm sm:text-base opacity-90">
+                Découvrez les formations disponibles et commencez à apprendre dès maintenant !
+              </p>
             </div>
 
             <h1 className="text-2xl font-bold mb-6 flex items-center gap-2">
               <BookOpen size={26} /> {lang === "fr" ? "Choisir une formation" : "Select a Formation"}
             </h1>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-              {formations.map((f, i) => (
-                <motion.div
-                  key={f.id}
-                  className={`p-6 rounded-xl shadow-md cursor-pointer transition transform hover:scale-105 ${cardClass} border ${borderClass} flex flex-col items-center justify-center`}
-                  onClick={() => setSelectedFormation(f)}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.4, delay: i * 0.08 }}
-                >
-                  {f.image && (
-                    <motion.div className="w-full h-36 mb-3 overflow-hidden rounded-lg">
-                      <img src={f.image} alt={f.name} className="w-full h-full object-cover rounded-lg" />
-                    </motion.div>
-                  )}
-                  <h2 className="font-bold text-xl text-center">{f.name}</h2>
-                </motion.div>
-              ))}
-            </div>
+            {loadingFormations ? (
+              <div className="text-center py-12">
+                <p className={darkMode ? "text-gray-400" : "text-gray-600"}>
+                  {lang === "fr" ? "Chargement des formations..." : "Loading formations..."}
+                </p>
+              </div>
+            ) : formations.length === 0 ? (
+              <p className={`text-center text-gray-500 italic ${darkMode ? "text-gray-400" : "text-gray-600"}`}>
+                {lang === "fr" ? "Aucune formation disponible pour le moment." : "No formations available at the moment."}
+              </p>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {formations.map((formation, i) => (
+                  <motion.div
+                    key={formation.id}
+                    className={`rounded-2xl overflow-hidden shadow-lg transform transition hover:scale-[1.02] hover:shadow-2xl relative cursor-pointer ${
+                      darkMode ? "bg-gray-800" : "bg-gray-50"
+                    }`}
+                    onClick={() => handleFormationClick(formation)}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.4, delay: i * 0.08 }}
+                  >
+                    <div className="relative w-full h-48 overflow-hidden">
+                      {formation.image ? (
+                        <Image
+                          src={formation.image}
+                          alt={formation.titre}
+                          width={400}
+                          height={250}
+                          className="object-cover w-full h-full"
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-blue-200 flex items-center justify-center text-white font-bold text-2xl">
+                          {formation.titre.charAt(0).toUpperCase()}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="p-4">
+                      <h2 className={`text-lg font-semibold mb-2 ${darkMode ? "text-[#17f]" : "text-[#17f]"}`}>
+                        {formation.titre}
+                      </h2>
+                      <p
+                        className={`text-sm leading-relaxed ${
+                          darkMode ? "text-gray-300" : "text-gray-700"
+                        }`}
+                      >
+                        {formation.description && formation.description.length > 120
+                          ? formation.description.substring(0, 120) + "..."
+                          : formation.description}
+                      </p>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            )}
           </motion.div>
         )}
 
@@ -139,45 +325,112 @@ export default function MainContentAchat({ darkMode, lang }: MainContentProps) {
             exit={{ opacity: 0, x: -50 }}
             transition={{ duration: 0.4 }}
           >
-            <button className="flex items-center gap-2 mb-4 text-purple-600 hover:text-purple-700" onClick={() => setSelectedFormation(null)}>
+            <button
+              className="flex items-center gap-2 mb-4 text-purple-600 hover:text-purple-700"
+              onClick={() => {
+                setSelectedFormation(null);
+                setLivres([]);
+              }}
+            >
               <ChevronLeft size={20} /> {lang === "fr" ? "Retour aux formations" : "Back to formations"}
             </button>
 
             <h1 className="text-2xl font-bold mb-6">
-              {lang === "fr" ? "Livres de la formation" : "Books in Formation"}: {selectedFormation?.name}
+              {lang === "fr" ? "Livres de la formation" : "Books in Formation"}: {selectedFormation?.titre}
             </h1>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {livres.map((l, i) => (
-                <motion.div
-                  key={l.id}
-                  className={`p-4 rounded-lg shadow-md relative ${cardClass} border ${borderClass} transition transform hover:scale-105`}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.4, delay: i * 0.08 }}
-                >
-                  <h2 className="font-semibold mb-2">{l.titre}</h2>
-                  <p className="text-sm mb-1">Auteur: {l.auteur}</p>
-                  <p className="text-sm mb-1">Prix: {l.prix}</p>
-                  <p className="text-sm mb-4">{l.description}</p>
-
+            {loadingLivres ? (
+              <div className="text-center py-12">
+                <p className={darkMode ? "text-gray-400" : "text-gray-600"}>
+                  {lang === "fr" ? "Chargement des livres..." : "Loading books..."}
+                </p>
+              </div>
+            ) : livres.length === 0 ? (
+              <p className={`text-center text-gray-500 italic ${darkMode ? "text-gray-400" : "text-gray-600"}`}>
+                {lang === "fr" ? "Aucun livre disponible pour cette formation." : "No books available for this formation."}
+              </p>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {livres.map((livre, i) => (
                   <motion.div
-                    className="absolute top-3 right-3 cursor-pointer"
-                    animate={l.locked ? { rotate: [0, 10, -10, 0] } : { scale: [1, 1.3, 1] }}
-                    transition={{ duration: 0.6, repeat: l.locked ? Infinity : 1 }}
+                    key={livre.id}
+                    className={`rounded-2xl overflow-hidden shadow-lg transform transition hover:scale-[1.02] hover:shadow-2xl relative ${
+                      darkMode ? "bg-gray-800" : "bg-gray-50"
+                    }`}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.4, delay: i * 0.08 }}
                   >
-                    {l.locked ? <Lock size={20} className="text-red-500" /> : <Unlock size={20} className="text-green-500" />}
-                  </motion.div>
+                    <div className="relative w-full h-48 overflow-hidden">
+                      {livre.image ? (
+                        <img
+                          src={livre.image}
+                          alt={livre.title}
+                          className="object-cover w-full h-full"
+                          onError={(e) => {
+                            console.error("Erreur chargement image:", livre.image);
+                            e.currentTarget.style.display = "none";
+                          }}
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-blue-200 flex items-center justify-center text-white font-bold text-2xl">
+                          {livre.title.charAt(0).toUpperCase()}
+                        </div>
+                      )}
 
-                  <button
-                    className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg transition"
-                    onClick={() => setSelectedLivre(l)}
-                  >
-                    <ShoppingCart size={18} /> Acheter
-                  </button>
-                </motion.div>
-              ))}
-            </div>
+                      {/* Cadenas avec animation */}
+                      <div className="absolute top-2 right-2">
+                        <motion.div
+                          animate={
+                            livre.access
+                              ? { scale: [1, 1.3, 1], rotate: [0, 10, -10, 0] }
+                              : { rotate: [0, 10, -10, 0] }
+                          }
+                          transition={{ duration: 0.6, repeat: livre.access ? 1 : Infinity }}
+                        >
+                          {livre.access ? (
+                            <Unlock size={20} className="text-green-500" />
+                          ) : (
+                            <Lock size={20} className="text-red-500" />
+                          )}
+                        </motion.div>
+                      </div>
+                    </div>
+
+                    <div className="p-4">
+                      <h2 className={`text-lg font-semibold mb-2 ${darkMode ? "text-[#17f]" : "text-[#17f]"}`}>
+                        {livre.title}
+                      </h2>
+                      <p className={`text-sm mb-2 ${darkMode ? "text-gray-300" : "text-gray-700"}`}>
+                        {lang === "fr" ? "Auteur" : "Author"}: {livre.author}
+                      </p>
+                      <p className={`text-sm mb-4 font-semibold ${darkMode ? "text-white" : "text-gray-900"}`}>
+                        {livre.prix} Ar
+                      </p>
+
+                      <button
+                        onClick={() => handleLivreClick(livre)}
+                        className={`w-full flex items-center justify-center gap-2 py-2 rounded-lg font-medium transition ${
+                          livre.access
+                            ? "bg-[#17f] hover:bg-[#0f0fcf] text-white"
+                            : "bg-blue-600 hover:bg-blue-700 text-white"
+                        }`}
+                      >
+                        {livre.access ? (
+                          <>
+                            <Eye size={18} /> {lang === "fr" ? "Lire maintenant" : "Read now"}
+                          </>
+                        ) : (
+                          <>
+                            <ShoppingCart size={18} /> {lang === "fr" ? "Acheter" : "Buy"}
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            )}
           </motion.div>
         )}
 
@@ -197,7 +450,9 @@ export default function MainContentAchat({ darkMode, lang }: MainContentProps) {
               <ChevronLeft size={20} /> {lang === "fr" ? "Retour aux livres" : "Back to books"}
             </button>
 
-            <div className={`flex flex-col lg:flex-row gap-6 max-w-4xl mx-auto ${cardClass} border ${borderClass} rounded-2xl shadow-lg p-6`}>
+            <div
+              className={`flex flex-col lg:flex-row gap-6 max-w-4xl mx-auto ${cardClass} border ${borderClass} rounded-2xl shadow-lg p-6`}
+            >
               {/* Formulaire */}
               <div className="flex-1 flex flex-col gap-4">
                 <h2 className="text-2xl font-bold mb-2">{lang === "fr" ? "Paiement" : "Payment"}</h2>
@@ -289,15 +544,17 @@ export default function MainContentAchat({ darkMode, lang }: MainContentProps) {
               {/* Aperçu livre */}
               <div className="flex-1 flex flex-col gap-4 items-center justify-center">
                 <h3 className={`text-xl font-semibold mb-1 ${darkMode ? "text-white" : "text-black"}`}>
-                  {selectedLivre.titre}
+                  {selectedLivre.title}
                 </h3>
                 <p className={`text-sm opacity-80 mb-1 ${darkMode ? "text-gray-300" : "text-gray-700"}`}>
-                  {lang === "fr" ? "Formation" : "Course"}: {selectedFormation.name}
+                  {lang === "fr" ? "Formation" : "Course"}: {selectedFormation.titre}
                 </p>
                 <p className={`text-sm opacity-80 mb-2 ${darkMode ? "text-gray-300" : "text-gray-700"}`}>
-                  {lang === "fr" ? "Auteur" : "Author"}: {selectedLivre.auteur}
+                  {lang === "fr" ? "Auteur" : "Author"}: {selectedLivre.author}
                 </p>
-                <p className={`text-lg font-bold mb-2 ${darkMode ? "text-white" : "text-black"}`}>{selectedLivre.prix} Ar</p>
+                <p className={`text-lg font-bold mb-2 ${darkMode ? "text-white" : "text-black"}`}>
+                  {selectedLivre.prix} Ar
+                </p>
 
                 <div className="w-full h-48 lg:h-64 overflow-hidden rounded-xl shadow-lg">
                   <img
@@ -335,11 +592,11 @@ export default function MainContentAchat({ darkMode, lang }: MainContentProps) {
               </h1>
               <p className="mb-4">
                 {lang === "fr"
-                  ? `Le livre ${selectedLivre?.titre} est maintenant débloqué.`
-                  : `Book ${selectedLivre?.titre} is now unlocked.`}
+                  ? `Le livre ${selectedLivre?.title} est maintenant débloqué.`
+                  : `Book ${selectedLivre?.title} is now unlocked.`}
               </p>
               <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
-                Télécharger le livre
+                {lang === "fr" ? "Télécharger le livre" : "Download the book"}
               </button>
             </div>
           </motion.div>

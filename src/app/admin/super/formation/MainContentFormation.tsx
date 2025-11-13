@@ -28,31 +28,47 @@ interface Props {
 
 export default function GererFormation({ darkMode }: Props) {
   const [formations, setFormations] = useState<Formation[]>([]);
+  const ListeFormation = async () => {
+    try {
+      const res = await fetch("http://localhost:8000/formation/ReadFormation");
+      const data = await res.json();
+      const arr = Array.isArray(data) ? data : data.formations || [];
+      const formatted = arr.map((f: any) => {
+        let imageUrl = "";
+        try {
+          if (f && f.image) {
+            const raw = String(f.image);
+            if (raw.startsWith("http://") || raw.startsWith("https://")) {
+              imageUrl = raw;
+            } else if (raw.startsWith("/")) {
+              imageUrl = `http://localhost:8000${raw}`;
+            } else {
+              // valeur inattendue, ignorer
+              imageUrl = "";
+            }
+          }
+        } catch {
+          imageUrl = "";
+        }
+
+        return {
+          id: f.idFormation,
+          titre: f.titre,
+          description: f.description,
+          image: imageUrl,
+          filename: f.filename || "",
+        };
+      });
+      setFormations(formatted);
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   // Recuperer les formations
   useEffect(() => {
     ListeFormation();
   }, []);
-
-  const ListeFormation = () => {
-    fetch("http://localhost:8000/formation/ReadFormation")
-      .then((res) => res.json())
-      .then((data) => {
-        const formatted = (Array.isArray(data) ? data : data.formations || []).map(
-          (f) => ({
-            id: f.idFormation,
-            titre: f.titre,
-            description: f.description,
-            image: f.image ? `http://localhost:8000${f.image}` : "", 
-            filename: f.filename || "",
-          })
-        );
-        setFormations(formatted);
-        
-      })
-      
-      .catch((err) => console.error(err));
-  };
 
 
   const [isPopupOpen, setIsPopupOpen] = useState(false);
@@ -92,11 +108,9 @@ export default function GererFormation({ darkMode }: Props) {
             }),
           }
         );
-        const updated = await res.json();
-        setFormations((prev) =>
-          prev.map((f) => (f.id === updated.id ? updated : f))
-        );
-        ListeFormation();
+        await res.json();
+        // recharger la liste pour garder la logique simple et cohérente
+        await ListeFormation();
       } else {
         // Ajouter Formation
        let headers: Record<string, string> = { "Content-Type": "application/json" };
@@ -176,6 +190,7 @@ export default function GererFormation({ darkMode }: Props) {
       );
       setFormations((prev) => prev.filter((f) => f.id !== deleteFormation.id));
       setDeleteFormation(null);
+      ListeFormation();
     } catch (error) {
       console.error(error);
     }

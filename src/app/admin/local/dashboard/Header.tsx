@@ -146,7 +146,6 @@ export default function Header({ darkMode, setDarkMode,sidebarOpen, setSidebarOp
     console.error(error);
      }
   };
-
   return (
     <header
       className={`px-4 py-3 shadow-md bg-opacity-90 backdrop-blur-md ${

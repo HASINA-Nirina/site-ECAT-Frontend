@@ -1,6 +1,7 @@
 "use client";
-import { useState } from "react";
-import { BookOpen, PlusCircle, ChevronLeft, Edit, Trash2, FileText, Plus, PlusIcon, PlusSquareIcon, LucidePlusCircle } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import Image from "next/image";
+import { BookOpen, PlusCircle, ChevronLeft, Edit, Trash2, FileText, LucidePlusCircle } from "lucide-react";
 
 interface MainContentProps {
   readonly darkMode: boolean;
@@ -8,45 +9,95 @@ interface MainContentProps {
 }
 
 interface Formation {
-  id: number;
-  name: string;
+  idFormation: number;
+  titre: string;
+  description?: string;
+  image?: string;
 }
 
 interface Livre {
-  id: number;
+  idLivre?: number;
+  id?: number;
   titre: string;
-  auteur: string;
-  pdf: string;
-  prix: string;
-  description: string;
+  auteur?: string;
+  urlPdf?: string;
+  prix?: string;
+  description?: string;
+  image?: string;
 }
 
 export default function MainContentLivres({ darkMode, lang }: MainContentProps) {
-  const formations: Formation[] = [
-    { id: 1, name: "Informatique" },
-    { id: 2, name: "Mathématiques" },
-    { id: 3, name: "Physique" },
-  ];
-
-  const livres: Livre[] = [
-    { id: 1, titre: "Livre 1", auteur: "Auteur 1", pdf: "fiche1.pdf", prix: "10000", description: "Description 1" },
-    { id: 2, titre: "Livre 2", auteur: "Auteur 2", pdf: "fiche2.pdf", prix: "12000", description: "Description 2" },
-    { id: 3, titre: "Livre 3", auteur: "Auteur 3", pdf: "fiche3.pdf", prix: "15000", description: "Description 3" },
-  ];
-
+  const [formations, setFormations] = useState<Formation[]>([]);
   const [selectedFormation, setSelectedFormation] = useState<Formation | null>(null);
-  const [showFormationList, setShowFormationList] = useState(true);
+  const [livres, setLivres] = useState<Livre[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [formValues, setFormValues] = useState({ titre: "", auteur: "", prix: "", description: "" });
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Helper to normalize image paths coming from backend
+  const normalizeImage = (raw: any) => {
+    try {
+      if (!raw) return "";
+      const s = String(raw);
+      if (s.startsWith("http://") || s.startsWith("https://")) return s;
+      if (s.startsWith("/")) return `http://localhost:8000${s}`;
+      return `http://localhost:8000/${s}`;
+    } catch {
+      return "";
+    }
+  };
+
+  useEffect(() => {
+    // fetch formations from backend
+    const fetchFormations = async () => {
+      try {
+        const res = await fetch("http://localhost:8000/formation/ReadFormation");
+        const data = await res.json();
+        const arr = Array.isArray(data) ? data : data.formations || [];
+        const mapped = arr.map((f: any) => ({
+          idFormation: f.idFormation ?? f.id ?? f.id_formation ?? 0,
+          titre: f.titre ?? f.name ?? "Formation",
+          description: f.description ?? "",
+          image: normalizeImage(f.image),
+        }));
+        setFormations(mapped);
+      } catch (err) {
+        console.error("Erreur fetch formations:", err);
+      }
+    };
+    fetchFormations();
+  }, []);
+
+  const fetchLivresForFormation = async (idFormation: number) => {
+    try {
+      const res = await fetch(`http://localhost:8000/livre/ReadLivresLocal/${idFormation}`);
+      const data = await res.json();
+      const arr = Array.isArray(data) ? data : data.livres || [];
+      const mapped = arr.map((l: any) => ({
+        id: l.idLivre ?? l.id ?? l.idLivre ?? 0,
+        titre: l.titre ?? l.title ?? "Livre",
+        auteur: l.auteur ?? l.author ?? "",
+        urlPdf: l.urlPdf ?? l.pdf ?? "",
+        prix: l.prix ?? l.price ?? "",
+        description: l.description ?? "",
+        image: normalizeImage(l.image ?? l.cover ?? ""),
+      }));
+      setLivres(mapped);
+    } catch (err) {
+      console.error("Erreur fetch livres:", err);
+      setLivres([]);
+    }
+  };
 
   const handleSelectFormation = (f: Formation) => {
     setSelectedFormation(f);
-    setShowFormationList(false);
+    fetchLivresForFormation(f.idFormation);
   };
 
   const handleBackToFormations = () => {
-    setShowFormationList(true);
     setSelectedFormation(null);
+    setLivres([]);
     setShowAddForm(false);
   };
 
@@ -56,143 +107,191 @@ export default function MainContentLivres({ darkMode, lang }: MainContentProps) 
     }
   };
 
+  const openAddPopup = () => {
+    setFormValues({ titre: "", auteur: "", prix: "", description: "" });
+    setSelectedFile(null);
+    setShowAddForm(true);
+  };
+
+  const addLivre = async () => {
+    if (!selectedFormation) return;
+    try {
+      const body = new FormData();
+      body.append("idFormation", String(selectedFormation.idFormation));
+      body.append("titre", formValues.titre);
+      body.append("auteur", formValues.auteur);
+      body.append("description", formValues.description);
+      body.append("prix", formValues.prix || "0");
+      if (selectedFile) body.append("urlPdf", selectedFile);
+
+      const res = await fetch("http://localhost:8000/livre/NewLivre/", {
+        method: "POST",
+        body,
+      });
+      const added = await res.json();
+      // after add, refresh list
+      await fetchLivresForFormation(selectedFormation.idFormation);
+      setShowAddForm(false);
+    } catch (err) {
+      console.error("Erreur add livre:", err);
+    }
+  };
+
+  const deleteLivre = async (id: number) => {
+    try {
+      await fetch(`http://localhost:8000/livre/DeleteLivre/${id}`, { method: "DELETE" });
+      if (selectedFormation) fetchLivresForFormation(selectedFormation.idFormation);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  // Minimal edit: open a popup prefilled and submit via FormData to UpdateLivre/{id}
+  const [editingLivre, setEditingLivre] = useState<Livre | null>(null);
+
+  const openEdit = (l: Livre) => {
+    setEditingLivre(l);
+    setFormValues({ titre: l.titre, auteur: l.auteur || "", prix: l.prix || "", description: l.description || "" });
+    setSelectedFile(null);
+    setShowAddForm(true);
+  };
+
+  const submitEdit = async () => {
+    if (!editingLivre) return;
+    try {
+      const body = new FormData();
+      body.append("titre", formValues.titre);
+      body.append("auteur", formValues.auteur);
+      body.append("prix", formValues.prix || "0");
+      body.append("description", formValues.description || "");
+      if (selectedFile) body.append("image", selectedFile);
+      // Update expects form fields - router uses UpdateLivre/{livre_id}
+      await fetch(`http://localhost:8000/livre/UpdateLivre/${editingLivre.id}`, {
+        method: "PUT",
+        body,
+      });
+      if (selectedFormation) fetchLivresForFormation(selectedFormation.idFormation);
+      setEditingLivre(null);
+      setShowAddForm(false);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   return (
     <main className="flex-1 p-6 relative">
-      {/* TITRE */}
       <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
         <h1 className="text-2xl font-bold flex items-center gap-2">
-          <BookOpen size={26} className={darkMode ? "text-[#17f]" : "text-[#17f]"}/> {lang === "fr" ? "Gestion des Livres" : "Books Management"}
+          <BookOpen size={26} className={darkMode ? "text-[#17f]" : "text-[#17f]"} /> {lang === "fr" ? "Gestion des Livres" : "Books Management"}
         </h1>
 
-        {!showFormationList && selectedFormation && (
-          <button
-            className="flex items-center gap-2 bg-[#7ebd01] hover:bg-[#bffe28] text-black px-4 py-2 rounded-lg shadow transition"
-            onClick={() => setShowAddForm(true)}
-          >
-            <LucidePlusCircle size={18} /> {lang === "fr" ? "Ajouter un Livre" : "Add Book"}
-          </button>
+        {!selectedFormation && null}
+        {selectedFormation && (
+          <div className="flex items-center gap-3">
+            <button onClick={openAddPopup} className="flex items-center gap-2 bg-[#17f] text-white px-4 py-2 rounded-lg">
+              <PlusCircle size={18} /> {lang === "fr" ? "Ajouter un Livre" : "Add Book"}
+            </button>
+          </div>
         )}
       </div>
 
-      {/* ================= PAGE 1 : LISTE FORMATIONS ================= */}
-      {showFormationList && (
-  <>
-    <h2 className="font-semibold mb-12 text-center text-2xl">
-      {lang === "fr" ? "Choisir une Formation" : "Select a Formation"}
-    </h2>
-    <div className="h-6"></div> {/* Ligne vide */}
-    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 mb-1 justify-items-center">
-      {formations.map((f) => (
-        <div
-          key={f.id}
-          className={`
-            p-8 min-h-[180px] w-full max-w-xs rounded-xl cursor-pointer 
-            transition-shadow shadow-md 
-            ${darkMode ? "bg-gray-800 text-white hover:bg-gray-700" : "bg-gray-100 text-gray-900 hover:bg-gray-100"} 
-            flex flex-col items-center justify-center
-            hover:shadow-xl
-            border border-transparent hover:border-purple-500
-          `}
-          onClick={() => handleSelectFormation(f)}
-        >
-            <h3 className="font-bold text-2xl text-center">{f.name}</h3>
-            </div>
-        ))}
-        </div>
-    </>
-    )}
-    
-      {/* ================= PAGE 2 : LIVRES FORMATION ================= */}
-      {!showFormationList && selectedFormation && (
+      {/* Formations grid */}
+      {!selectedFormation && (
         <>
-          <button
-            onClick={handleBackToFormations}
-            className="flex items-center gap-2 mb-4 text-purple-600 hover:text-purple-700"
-          >
+          <h2 className="font-semibold mb-6 text-center text-2xl">{lang === "fr" ? "Choisir une Formation" : "Select a Formation"}</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 mb-1">
+            {formations.map((f) => (
+              <div
+                key={f.idFormation}
+                onClick={() => handleSelectFormation(f)}
+                className={`p-4 min-h-[220px] rounded-2xl cursor-pointer transition-shadow shadow-md flex flex-col overflow-hidden ${darkMode ? "bg-gray-800 text-white" : "bg-gray-50 text-gray-900"}`}
+              >
+                <div className="relative w-full h-40 mb-3">
+                  {f.image ? (
+                    <Image src={f.image} alt={f.titre} fill className="object-cover rounded-md" />
+                  ) : (
+                    <div className="w-full h-full bg-blue-200 flex items-center justify-center text-white font-bold text-3xl">{f.titre.charAt(0)}</div>
+                  )}
+                </div>
+                <h3 className="font-bold text-lg">{f.titre}</h3>
+                <p className="text-sm text-gray-500">{f.description}</p>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      {/* Livres grid for selected formation */}
+      {selectedFormation && (
+        <>
+          <button onClick={handleBackToFormations} className="flex items-center gap-2 mb-4 text-purple-600 hover:text-purple-700">
             <ChevronLeft size={20} /> {lang === "fr" ? "Retour aux formations" : "Back to formations"}
           </button>
+          <h2 className="font-semibold mb-3">{lang === "fr" ? "Livres de la formation" : "Books in Formation"}: {selectedFormation.titre}</h2>
 
-          <h2 className="font-semibold mb-3">{lang === "fr" ? "Livres de la formation" : "Books in Formation"}: {selectedFormation.name}</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {livres.map((l) => (
+              <div key={l.id} className={`rounded-2xl overflow-hidden shadow-lg ${darkMode ? "bg-gray-800" : "bg-white"}`}>
+                <div className="relative w-full h-48 overflow-hidden">
+                  {l.image ? (
+                    <Image src={l.image} alt={l.titre} fill className="object-cover w-full h-full" />
+                  ) : (
+                    <div className="w-full h-full bg-blue-200 flex items-center justify-center text-white font-bold text-2xl">{l.titre.charAt(0)}</div>
+                  )}
 
-          {/* FORMULAIRE D'AJOUT POPUP */}
-          {showAddForm && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-              <div className={`w-full max-w-md p-8 rounded-2xl shadow-lg ${darkMode ? "bg-gray-800 text-white" : "bg-white"}`}>
-                <h3 className="text-2xl font-bold mb-6 text-center">{lang === "fr" ? "Ajouter un Livre" : "Add Book"}</h3>
-                
-                <div className="flex flex-col gap-4">
-                  <input
-                    type="text"
-                    placeholder="Titre"
-                    className="w-full p-3 border border-purple-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  />
-                  <input
-                    type="text"
-                    placeholder="Auteur"
-                    className="w-full p-3 border border-purple-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  />
-
-                  {/* Champ fichier avec icône */}            
-                    <label className="flex items-center gap-3 cursor-pointer">
-                    {/* bouton vert transformé en div pour déclencher input */}
-                    <div className="flex items-center justify-center bg-green-500 hover:bg-green-600 text-white p-3 rounded-lg shadow">
-                        <FileText size={20} />
-                    </div>
-                    <span className="text-[#17f]">{selectedFile ? selectedFile.name : "Importer un fichier"}</span>
-                    <input
-                        type="file"
-                        accept=".pdf"
-                        className="hidden"
-                        onChange={handleFileChange}
-                    />
-                    </label>
-                  <input
-                    type="text"
-                    placeholder="Prix en Ariary"
-                    className="w-full p-3 border border-purple-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  />
-                  <textarea
-                    placeholder="Description"
-                    className="w-full p-3 border border-purple-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  ></textarea>
-
-                  <div className="flex gap-32 mt-4 justify-end">
-                    <button
-                      className="w-32 bg-red-400 hover:bg-red-500 text-white py-2 rounded-lg shadow"
-                      onClick={() => setShowAddForm(false)}
-                    >
-                      {lang === "fr" ? "Annuler" : "Cancel"}
+                  <div className="absolute top-2 right-2 flex gap-2">
+                    <button onClick={() => openEdit(l)} className="p-1 rounded-full bg-white/80 hover:bg-white transition" title="Modifier">
+                      <Edit size={16} className="text-[#17f]" />
                     </button>
-                    <button className="w-32 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg shadow">
-                      {lang === "fr" ? "Ajouter" : "Add"}
+                    <button onClick={() => deleteLivre(l.id!)} className="p-1 rounded-full bg-white/80 hover:bg-white transition" title="Supprimer">
+                      <Trash2 size={16} className="text-red-600" />
                     </button>
                   </div>
                 </div>
-              </div>
-            </div>
-          )}
 
-          {/* GRID Livres */}
-          <div className={`grid grid-cols-1 md:grid-cols-3 gap-6`}>
-            {livres.map((l) => (
-              <div
-                key={l.id}
-                className={`p-4 rounded-lg shadow-md relative ${darkMode ? "bg-gray-800 text-white" : "bg-white"}`}
-              >
-                <h2 className="font-semibold mb-2">Livre</h2>
-                <p className="font-medium mb-1">Titre: {l.titre}</p>
-                <p className="text-sm mb-1">Auteur: {l.auteur}</p>
-                <p className="text-sm mb-1">PDF: {l.pdf}</p>
-                <p className="text-sm mb-1">Prix: {l.prix}</p>
-                <p className="text-sm mb-6">Description: {l.description}</p>
-                <div className="absolute bottom-3 right-3 flex gap-2">
-                  <button className="text-blue-500 hover:text-blue-700"><Edit size={18} /></button>
-                  <button className="text-red-500 hover:text-red-700"><Trash2 size={18} /></button>
+                <div className="p-4">
+                  <h3 className="text-lg font-semibold text-[#17f]">{l.titre}</h3>
+                  <p className={`text-sm leading-relaxed ${darkMode ? "text-gray-300" : "text-gray-700"}`}>{l.description && l.description.length > 120 ? l.description.substring(0, 120) + "..." : l.description}</p>
                 </div>
               </div>
             ))}
           </div>
         </>
+      )}
+
+      {/* Popup Add / Edit livre */}
+      {showAddForm && (
+        <div className="fixed inset-0 flex items-center justify-center z-50">
+          <div className="relative w-[95%] max-w-lg p-6 rounded-xl shadow-2xl bg-white text-gray-900">
+            <h2 className="text-xl font-bold mb-4 text-center">{editingLivre ? "Modifier le livre" : "Ajouter un livre"}</h2>
+            <div className="space-y-4">
+              <input type="text" placeholder="Titre" value={formValues.titre} onChange={(e) => setFormValues({ ...formValues, titre: e.target.value })} className="w-full px-3 py-2 rounded-lg border" />
+              <input type="text" placeholder="Auteur" value={formValues.auteur} onChange={(e) => setFormValues({ ...formValues, auteur: e.target.value })} className="w-full px-3 py-2 rounded-lg border" />
+
+              <input type="text" placeholder="Prix en Ariary" value={formValues.prix} onChange={(e) => setFormValues({ ...formValues, prix: e.target.value })} className="w-full px-3 py-2 rounded-lg border" />
+              <textarea placeholder="Description" value={formValues.description} onChange={(e) => setFormValues({ ...formValues, description: e.target.value })} className="w-full px-3 py-2 rounded-lg border" rows={4} />
+
+               <label className="flex items-center gap-3 cursor-pointer">
+                <div className="flex items-center justify-center bg-green-500 hover:bg-green-600 text-white p-3 rounded-lg shadow">
+                  <FileText size={20} />
+                </div>
+                <span className="text-[#17f]">{selectedFile ? selectedFile.name : "Importer un fichier PDF"}</span>
+                <input ref={fileInputRef} type="file" accept=".pdf,image/*" className="hidden" onChange={handleFileChange} />
+              </label>
+               <label className="flex items-center gap-3 cursor-pointer">
+                <div className="flex items-center justify-center bg-green-500 hover:bg-green-600 text-white p-3 rounded-lg shadow">
+                  <FileText size={20} />
+                </div>
+                <span className="text-[#17f]">{selectedFile ? selectedFile.name : "Importer un image"}</span>
+                <input ref={fileInputRef} type="file" accept=".pdf,image/*" className="hidden" onChange={handleFileChange} />
+              </label>
+              <div className="flex justify-end gap-4 mt-4">
+                <button onClick={() => { setShowAddForm(false); setEditingLivre(null); }} className="px-5 py-2 bg-red-400 hover:bg-red-500 text-white rounded-lg">Annuler</button>
+                <button onClick={() => (editingLivre ? submitEdit() : addLivre())} className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg">{editingLivre ? "Enregistrer" : "Ajouter"}</button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </main>
   );

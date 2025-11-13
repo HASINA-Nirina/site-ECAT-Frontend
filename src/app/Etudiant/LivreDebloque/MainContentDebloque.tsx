@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { BookOpen, Search, Eye } from "lucide-react";
 
+import { useState, useEffect } from "react";
+import { BookOpen, Search, Eye } from "lucide-react";
 interface MainContentProps {
   readonly darkMode: boolean;
   readonly lang: string;
@@ -12,50 +12,77 @@ interface Book {
   id: number;
   title: string;
   author: string;
-  progress: string;
+  //progress: string;
   image: string;
+  urlPdf: string;
 }
 
-export default function MainContent({ darkMode, lang }: MainContentProps) {
+
+export default function MainContent({ darkMode, lang}: MainContentProps) {
   const [search, setSearch] = useState("");
-  const [books] = useState<Book[]>([
-    {
-      id: 1,
-      title: "Développement Web Moderne",
-      author: "Jean Rakoto",
-      progress: "75%",
-      image: "https://images.unsplash.com/photo-1522205408450-add114ad53fe?w=600",
-    },
-    {
-      id: 2,
-      title: "Cybersécurité Avancée",
-      author: "Aina R.",
-      progress: "40%",
-      image: "https://images.unsplash.com/photo-1590608897129-79da98d15969?w=600",
-    },
-    {
-      id: 3,
-      title: "UX/UI Design Créatif",
-      author: "Hery T.",
-      progress: "100%",
-      image: "https://images.unsplash.com/photo-1507842217343-583bb7270b66?w=600",
-    },
-    {
-      id: 4,
-      title: "Programmation Python",
-      author: "Mickael R.",
-      progress: "20%",
-      image: "https://images.unsplash.com/photo-1581090700227-1e37b190418e?w=600",
-    },
-  ]);
+  const [books, setBooks] = useState<Book[]>([]);
+  const [loading, setLoading] = useState(true);
+  
+
+
+  const idUser = typeof window !== "undefined" ? localStorage.getItem("iduser") : null;
+
+  useEffect(() => {
+  const idUser = localStorage.getItem("iduser");
+  
+
+    const fetchBooks = async () => {
+      setLoading(true);
+      try {
+        const res = await fetch(`http://127.0.0.1:8000/livre/livreDebloqueEtudiant/${idUser}`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          
+        });
+
+        if (!res.ok) {
+          console.error("Erreur fetch:", res.status, await res.text());
+          setBooks([]);
+          return;
+        }
+
+       const data = await res.json();
+      
+        setBooks(data);
+      } catch (err) {
+        console.error("Erreur réseau :", err);
+        setBooks([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (idUser) {
+      fetchBooks();
+    } else {
+      setLoading(false);
+      setBooks([]);
+    }
+  }, [idUser]);
 
   const bgClass = darkMode ? "bg-gray-900 text-white" : "bg-gray-50 text-black";
   const cardClass = darkMode ? "bg-gray-800 text-white" : "bg-white text-black";
   const borderClass = darkMode ? "border-gray-700" : "border-gray-200";
 
-  const filteredBooks = books.filter((book) =>
-    book.title.toLowerCase().includes(search.toLowerCase())
-  );
+const filteredBooks = books.filter((book) =>
+  book.title?.toLowerCase().includes(search?.toLowerCase() ?? "")
+);
+
+  if (loading) {
+    return (
+      <main className={`flex-1 p-6 ${bgClass}`}>
+        <p className="text-center text-gray-400">Chargement des livres...</p>
+      </main>
+    );
+  }
+
 
   const getProgressColor = (progress: string) => {
     const value = parseInt(progress);
@@ -97,41 +124,38 @@ export default function MainContent({ darkMode, lang }: MainContentProps) {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {filteredBooks.length > 0 ? (
           filteredBooks.map((book) => {
-            const progressColor = getProgressColor(book.progress);
+           // const progressColor = getProgressColor(book.progress);
             return (
               <div
                 key={book.id}
-                className={`rounded-xl shadow-md border ${borderClass} ${cardClass} overflow-hidden hover:scale-105 hover:shadow-xl transition-transform duration-300 cursor-pointer`}
+                className={`rounded-2xl overflow-hidden shadow-md border ${borderClass} ${cardClass} hover:scale-105 hover:shadow-xl transition-transform duration-300 cursor-pointer`}
               >
-                <img
-                  src={book.image}
-                  alt={book.title}
-                  className="w-full h-48 object-cover"
-                />
+                {/* Image area similar to MainContentFormation: show image if present, otherwise initial */}
+                <div className="relative w-full h-48 overflow-hidden bg-gray-100">
+                  {book.image ? (
+                    <img src={book.image} alt={book.title} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full bg-blue-200 flex items-center justify-center text-white font-bold text-4xl">
+                      {(book.title || "?").charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                </div>
 
                 <div className="p-4 flex flex-col gap-2">
                   <h2 className="text-lg font-semibold truncate">{book.title}</h2>
                   <p className="text-sm opacity-80">{book.author}</p>
 
-                  {/* Barre de progression stylisée */}
+                  {/* Barre de progression stylisée (vide si pas de progress) */}
                   <div className="w-full bg-gray-300 dark:bg-gray-700 rounded-full h-3 mt-2 overflow-hidden">
-                    <div
-                      className="h-3 rounded-full transition-all"
-                      style={{
-                        width: book.progress,
-                        backgroundColor: progressColor,
-                      }}
-                    />
+                    <div className="h-3 rounded-full transition-all" />
                   </div>
-                  <p className="text-sm text-right text-gray-500 dark:text-gray-400 mt-1 font-medium">
-                    Progression : {book.progress}
-                  </p>
 
                   {/* Bouton Lire maintenant */}
                   <button
+                    onClick={() => window.open(book.urlPdf, "_blank")}
                     className="mt-2 flex items-center justify-center gap-2 bg-[#17f] hover:bg-[#0f0fcf] text-white py-2 rounded-lg font-medium transition"
                   >
-                    <Eye size={18} /> Lire maintenant
+                    <Eye size={18} /> {lang === "fr" ? "Lire maintenant" : "Read now"}
                   </button>
                 </div>
               </div>

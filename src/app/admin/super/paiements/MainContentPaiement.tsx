@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   Search,
   ArrowDownWideNarrow,
@@ -25,62 +25,87 @@ export default function ListePaiements({ darkMode }: ListePaiementsProps) {
     darkMode ? "bg-gray-800" : "bg-gray-50"
   }`;
 
-  // Données temporaires simulées
-  const paiements = [
-    {
-      id: 1,
-      etudiant: "Rakoto Jean",
-      antenne: "Fianarantsoa",
-      montant: 45000,
-      date: "2025-10-18",
-      statut: "succès",
-    },
-    {
-      id: 2,
-      etudiant: "Rasoa Marie",
-      antenne: "Toliara",
-      montant: 30000,
-      date: "2025-10-25",
-      statut: "en attente",
-    },
-    {
-      id: 3,
-      etudiant: "Randria Paul",
-      antenne: "Antananarivo",
-      montant: 60000,
-      date: "2025-09-22",
-      statut: "échoué",
-    },
-    {
-      id: 4,
-      etudiant: "Rabe Luc",
-      antenne: "Fianarantsoa",
-      montant: 50000,
-      date: "2025-10-01",
-      statut: "succès",
-    },
-    {
-      id: 5,
-      etudiant: "Andry Lina",
-      antenne: "Antananarivo",
-      montant: 70000,
-      date: "2025-10-20",
-      statut: "succès",
-    },
-  ];
+  // State chargé depuis le backend
+  const [paiements, setPaiements] = useState<{
+    id: number | string;
+    etudiant: string;
+    antenne: string | null;
+    montant: number;
+    date: string | null;
+    statut: string;
+  }[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const [antennesList, setAntennesList] = useState<string[]>([]);
+
+  const normalizeKey = (s: any) => {
+    if (s === null || s === undefined) return "Inconnue";
+    return String(s).toString().trim().replace(/\s+/g, " ");
+  };
+  
+
+  useEffect(() => {
+    const fetchPaiements = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const token = localStorage.getItem("token");
+        const url = `http://localhost:8000/paiement/ReadPaiement/`;
+        const res = await fetch(url, { headers: token ? { Authorization: `Bearer ${token}` } : undefined });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+
+        // normalisation minimale : s'assurer des champs attendus
+        const normalized = (data || []).map((p: any) => ({
+          id: p.id ?? p.idPaiement ?? Math.random(),
+          etudiant: p.etudiant ?? (p.utilisateur ? `${p.utilisateur.nom} ${p.utilisateur.prenom}` : ""),
+          antenne: p.antenne ?? (p.utilisateur ? p.utilisateur.province : null),
+          montant: Number(p.montant ?? 0),
+          date: p.date ?? p.date_creation ?? null,
+          statut: p.statut ?? p.status ?? "",
+        }));
+
+        setPaiements(normalized);
+      } catch (err) {
+        console.error("fetch paiements failed:", err);
+        setError("Impossible de charger les paiements depuis le serveur.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPaiements();
+  }, []);
+
+  // fetch canonical antennes from backend
+  useEffect(() => {
+    const fetchAntennes = async () => {
+      try {
+        const res = await fetch("http://localhost:8000/auth/antennes");
+        if (!res.ok) return;
+  const data = await res.json();
+  // data may be list of objects {id, province} or strings
+  const list = (data || []).map((a: any) => normalizeKey(a?.province ?? a?.name ?? a));
+  setAntennesList(Array.from(new Set(list)));
+      } catch (e) {
+        console.warn("Could not fetch antennes:", e);
+      }
+    };
+    fetchAntennes();
+  }, []);
 
   // Filtrage et tri
   const filtered = useMemo(() => {
     return paiements
-      .filter(
-        (p) =>
-          p.etudiant.toLowerCase().includes(search.toLowerCase()) ||
-          p.antenne.toLowerCase().includes(search.toLowerCase()) ||
-          p.statut.toLowerCase().includes(search.toLowerCase())
-      )
+      .filter((p) => {
+        const etu = (p.etudiant || "").toString().toLowerCase();
+        const ant = (p.antenne || "").toString().toLowerCase();
+        const stat = (p.statut || "").toString().toLowerCase();
+        return etu.includes(search.toLowerCase()) || ant.includes(search.toLowerCase()) || stat.includes(search.toLowerCase());
+      })
       .sort((a, b) => {
         if (sortBy === "az") return a.etudiant.localeCompare(b.etudiant);
-        return new Date(b.date).getTime() - new Date(a.date).getTime();
+        return new Date(b.date ?? 0).getTime() - new Date(a.date ?? 0).getTime();
       });
   }, [paiements, search, sortBy]);
 
@@ -88,19 +113,34 @@ export default function ListePaiements({ darkMode }: ListePaiementsProps) {
   const statsAntenne = useMemo(() => {
     const counts: Record<string, number> = {};
     paiements.forEach((p) => {
-      counts[p.antenne] = (counts[p.antenne] || 0) + 1;
+      const key = normalizeKey(p.antenne);
+      counts[key] = (counts[key] || 0) + 1;
     });
-    return Object.entries(counts);
-  }, [paiements]);
+    // ensure canonical antennes from backend are present with 0
+    antennesList.forEach((a) => {
+      const key = normalizeKey(a);
+      if (!(key in counts)) counts[key] = 0;
+    });
+    // also ensure a bucket for unknown antennes exists (if no paiement had null antenne)
+    if (!("Inconnue" in counts)) counts["Inconnue"] = 0;
+    return Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  }, [paiements, antennesList]);
 
   // Statistiques par statut
   const statsStatut = useMemo(() => {
-    const counts: Record<string, number> = {
-      succès: 0,
-      "en attente": 0,
-      échoué: 0,
-    };
-    paiements.forEach((p) => (counts[p.statut] += 1));
+    const counts: Record<string, number> = {};
+    paiements.forEach((p) => {
+      const s = (p.statut || "").toString();
+      const key = s === "" ? "Inconnu" : s;
+      counts[key] = (counts[key] || 0) + 1;
+    });
+    // default statuses to show even if count is 0
+    const defaultStatuses = ["succès", "en attente", "échoué"];
+    defaultStatuses.forEach((st) => {
+      if (!(st in counts)) counts[st] = 0;
+    });
+    // ensure unknown status key exists
+    if (!("Inconnu" in counts)) counts["Inconnu"] = 0;
     return counts;
   }, [paiements]);
 
@@ -156,19 +196,25 @@ export default function ListePaiements({ darkMode }: ListePaiementsProps) {
 
       {/* Statistiques */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-8">
-        {/* Statistiques par antenne - UTILISE statCardClass */}
+  {/* Statistiques par antenne - UTILISE statCardClass */}
         <div className={statCardClass}>
           <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
             <MapPin className="text-[#17f]" size={22} />
             Paiements par antenne
           </h2>
           <div className="space-y-2">
-            {statsAntenne.map(([antenne, count]) => (
-              <div key={antenne} className="flex justify-between">
-                <span className="font-medium text-orange-500">{antenne}</span>
-                <span className="font-semibold">{count}</span>
-              </div>
-            ))}
+            {loading ? (
+              <div className="col-span-full p-4 text-center text-gray-400">Chargement des paiements...</div>
+            ) : statsAntenne.length === 0 ? (
+              <div className="col-span-full p-4 text-center text-gray-400">Aucune donnée pour les antennes.</div>
+            ) : (
+              statsAntenne.map(([antenne, count]) => (
+                <div key={antenne} className="flex justify-between">
+                  <span className="font-medium text-orange-500">{antenne}</span>
+                  <span className="font-semibold">{count}</span>
+                </div>
+              )))
+            }
           </div>
         </div>
 
@@ -178,26 +224,20 @@ export default function ListePaiements({ darkMode }: ListePaiementsProps) {
             <CreditCard className="text-[#17f]" size={22} />
             Statut des paiements
           </h2>
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="flex items-center gap-2 text-green-500">
-                <CheckCircle size={18} /> Succès
-              </span>
-              <span className="font-semibold">{statsStatut["succès"]}</span>
+            <div className="space-y-3">
+              {Object.entries(statsStatut).length === 0 ? (
+                <div className="text-sm text-gray-400">Aucun statut</div>
+              ) : (
+                Object.entries(statsStatut).map(([s, count]) => (
+                  <div key={s} className="flex items-center justify-between">
+                    <span className="flex items-center gap-2 text-gray-200">
+                      {s}
+                    </span>
+                    <span className="font-semibold">{count}</span>
+                  </div>
+                ))
+              )}
             </div>
-            <div className="flex items-center justify-between">
-              <span className="flex items-center gap-2 text-yellow-400">
-                <Clock size={18} /> En attente
-              </span>
-              <span className="font-semibold">{statsStatut["en attente"]}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="flex items-center gap-2 text-red-500">
-                <XCircle size={18} /> Échoué
-              </span>
-              <span className="font-semibold">{statsStatut["échoué"]}</span>
-            </div>
-          </div>
         </div>
       </div>
 
@@ -228,11 +268,11 @@ export default function ListePaiements({ darkMode }: ListePaiementsProps) {
                 }`}
               >
                 <td className="p-3">{p.etudiant}</td>
-                <td className="p-3 font-semibold">{p.antenne}</td>
+                <td className="p-3 font-semibold">{p.antenne ?? "-"}</td>
                 <td className="p-3 font-medium">
                   {p.montant.toLocaleString("fr-FR")}
                 </td>
-                <td className="p-3">{new Date(p.date).toLocaleDateString()}</td>
+                <td className="p-3">{p.date ? new Date(p.date).toLocaleDateString() : "-"}</td>
                 <td className="p-3">
                   {p.statut === "succès" && (
                     <span className="text-green-500 font-semibold">Succès</span>
