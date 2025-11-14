@@ -3,6 +3,7 @@
 
 import { useState, useEffect } from "react";
 import { BookOpen, Search, Eye } from "lucide-react";
+import Image from "next/image";
 interface MainContentProps {
   readonly darkMode: boolean;
   readonly lang: string;
@@ -128,34 +129,40 @@ const filteredBooks = books.filter((book) =>
             return (
               <div
                 key={book.id}
-                className={`rounded-2xl overflow-hidden shadow-md border ${borderClass} ${cardClass} hover:scale-105 hover:shadow-xl transition-transform duration-300 cursor-pointer`}
+                className={`rounded-xl shadow-md border ${borderClass} ${cardClass} overflow-hidden hover:scale-105 hover:shadow-xl transition-transform duration-300 cursor-pointer`}
               >
-                {/* Image area similar to MainContentFormation: show image if present, otherwise initial */}
-                <div className="relative w-full h-48 overflow-hidden bg-gray-100">
-                  {book.image ? (
-                    <img src={book.image} alt={book.title} className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full bg-blue-200 flex items-center justify-center text-white font-bold text-4xl">
-                      {(book.title || "?").charAt(0).toUpperCase()}
-                    </div>
-                  )}
-                </div>
+                <Image
+                 src={book.image}
+                 alt={book.title}
+                 width={400}      
+                 height={250}     
+                 className="object-cover w-full h-full"
+               />
 
                 <div className="p-4 flex flex-col gap-2">
                   <h2 className="text-lg font-semibold truncate">{book.title}</h2>
                   <p className="text-sm opacity-80">{book.author}</p>
 
-                  {/* Barre de progression stylisée (vide si pas de progress) */}
+                  {/* Barre de progression stylisée */}
                   <div className="w-full bg-gray-300 dark:bg-gray-700 rounded-full h-3 mt-2 overflow-hidden">
-                    <div className="h-3 rounded-full transition-all" />
+                    <div
+                      className="h-3 rounded-full transition-all"
+                     // style={{
+                      //  width: book.progress,
+                        //backgroundColor: progressColor,
+                    //  }}
+                    />
                   </div>
+                 {/* <p className="text-sm text-right text-gray-500 dark:text-gray-400 mt-1 font-medium">
+                    Progression : {book.progress}
+                  </p>*/}
 
                   {/* Bouton Lire maintenant */}
                   <button
                     onClick={() => window.open(book.urlPdf, "_blank")}
                     className="mt-2 flex items-center justify-center gap-2 bg-[#17f] hover:bg-[#0f0fcf] text-white py-2 rounded-lg font-medium transition"
                   >
-                    <Eye size={18} /> {lang === "fr" ? "Lire maintenant" : "Read now"}
+                    <Eye size={18} /> Lire maintenant
                   </button>
                 </div>
               </div>

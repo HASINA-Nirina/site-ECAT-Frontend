@@ -31,9 +31,17 @@ export default function MainContentLivres({ darkMode, lang }: MainContentProps) 
   const [selectedFormation, setSelectedFormation] = useState<Formation | null>(null);
   const [livres, setLivres] = useState<Livre[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [formValues, setFormValues] = useState({ titre: "", auteur: "", prix: "", description: "" });
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
+ // fichiers séparés
+const [selectedPDF, setSelectedPDF] = useState<File | null>(null);
+const [selectedImage, setSelectedImage] = useState<File | null>(null);
+
+// valeurs du formulaire
+const [formValues, setFormValues] = useState({ titre: "", auteur: "", prix: "", description: "" });
+
+// refs séparées pour déclencher les input file
+const pdfInputRef = useRef<HTMLInputElement | null>(null);
+const imageInputRef = useRef<HTMLInputElement | null>(null);
+
 
   // Helper to normalize image paths coming from backend
   const normalizeImage = (raw: any) => {
@@ -47,9 +55,7 @@ export default function MainContentLivres({ darkMode, lang }: MainContentProps) 
       return "";
     }
   };
-
-  useEffect(() => {
-    // fetch formations from backend
+   // fetch formations from backend
     const fetchFormations = async () => {
       try {
         const res = await fetch("http://localhost:8000/formation/ReadFormation");
@@ -67,7 +73,18 @@ export default function MainContentLivres({ darkMode, lang }: MainContentProps) 
       }
     };
     fetchFormations();
-  }, []);
+
+  useEffect(() => {
+  // Fonction asynchrone à l'intérieur
+  const loadLivres = async () => {
+    if (selectedFormation) {
+      await fetchLivresForFormation(selectedFormation.idFormation);
+    }
+  };
+
+  loadLivres();
+}, [selectedFormation]); 
+
 
   const fetchLivresForFormation = async (idFormation: number) => {
     try {
@@ -108,75 +125,94 @@ export default function MainContentLivres({ darkMode, lang }: MainContentProps) 
   };
 
   const openAddPopup = () => {
+  setFormValues({ titre: "", auteur: "", prix: "", description: "" });
+  setSelectedPDF(null);
+  setSelectedImage(null);
+  setShowAddForm(true);
+};
+
+
+const addLivre = async () => {
+  if (!selectedFormation) return;
+  try {
+    const body = new FormData();
+    body.append("idFormation", String(selectedFormation.idFormation));
+    body.append("titre", formValues.titre);
+    body.append("auteur", formValues.auteur);
+    body.append("description", formValues.description);
+    body.append("prix", formValues.prix || "0");
+    if (selectedPDF) body.append("urlPdf", selectedPDF);    // champ attendu pour pdf
+    if (selectedImage) body.append("image", selectedImage);  // champ attendu pour image
+
+    const res = await fetch("http://localhost:8000/livre/NewLivre/", {
+      method: "POST",
+      body,
+    });
+    const added = await res.json();
+    // after add, refresh list
+    await fetchLivresForFormation(selectedFormation.idFormation);
+    
+    // reset form
+    setShowAddForm(false);
+    setSelectedPDF(null);
+    setSelectedImage(null);
     setFormValues({ titre: "", auteur: "", prix: "", description: "" });
-    setSelectedFile(null);
-    setShowAddForm(true);
-  };
+  } catch (err) {
+    console.error("Erreur add livre:", err);
+  }
+};
 
-  const addLivre = async () => {
-    if (!selectedFormation) return;
-    try {
-      const body = new FormData();
-      body.append("idFormation", String(selectedFormation.idFormation));
-      body.append("titre", formValues.titre);
-      body.append("auteur", formValues.auteur);
-      body.append("description", formValues.description);
-      body.append("prix", formValues.prix || "0");
-      if (selectedFile) body.append("urlPdf", selectedFile);
-
-      const res = await fetch("http://localhost:8000/livre/NewLivre/", {
-        method: "POST",
-        body,
-      });
-      const added = await res.json();
-      // after add, refresh list
-      await fetchLivresForFormation(selectedFormation.idFormation);
-      setShowAddForm(false);
-    } catch (err) {
-      console.error("Erreur add livre:", err);
-    }
-  };
-
-  const deleteLivre = async (id: number) => {
-    try {
-      await fetch(`http://localhost:8000/livre/DeleteLivre/${id}`, { method: "DELETE" });
-      if (selectedFormation) fetchLivresForFormation(selectedFormation.idFormation);
-    } catch (err) {
-      console.error(err);
-    }
-  };
 
   // Minimal edit: open a popup prefilled and submit via FormData to UpdateLivre/{id}
   const [editingLivre, setEditingLivre] = useState<Livre | null>(null);
 
-  const openEdit = (l: Livre) => {
-    setEditingLivre(l);
-    setFormValues({ titre: l.titre, auteur: l.auteur || "", prix: l.prix || "", description: l.description || "" });
-    setSelectedFile(null);
-    setShowAddForm(true);
-  };
+ const openEdit = (l: Livre) => {
+  setEditingLivre(l);
+  setFormValues({ titre: l.titre, auteur: l.auteur || "", prix: l.prix || "", description: l.description || "" });
+  setSelectedPDF(null);  
+  setSelectedImage(null);
+  setShowAddForm(true);
+};
 
-  const submitEdit = async () => {
-    if (!editingLivre) return;
-    try {
-      const body = new FormData();
-      body.append("titre", formValues.titre);
-      body.append("auteur", formValues.auteur);
-      body.append("prix", formValues.prix || "0");
-      body.append("description", formValues.description || "");
-      if (selectedFile) body.append("image", selectedFile);
-      // Update expects form fields - router uses UpdateLivre/{livre_id}
-      await fetch(`http://localhost:8000/livre/UpdateLivre/${editingLivre.id}`, {
-        method: "PUT",
-        body,
-      });
-      if (selectedFormation) fetchLivresForFormation(selectedFormation.idFormation);
-      setEditingLivre(null);
-      setShowAddForm(false);
-    } catch (err) {
-      console.error(err);
-    }
-  };
+
+ const submitEdit = async () => {
+  if (!editingLivre) return;
+  try {
+    const body = new FormData();
+    body.append("titre", formValues.titre);
+    body.append("auteur", formValues.auteur);
+    body.append("prix", formValues.prix || "0");
+    body.append("description", formValues.description || "");
+    if (selectedPDF) body.append("urlPdf", selectedPDF);
+    if (selectedImage) body.append("image", selectedImage);
+
+    await fetch(`http://localhost:8000/livre/UpdateLivre/${editingLivre.id}`, {
+      method: "PUT",
+      body,
+    });
+
+    if (selectedFormation) fetchLivresForFormation(selectedFormation.idFormation);
+    setEditingLivre(null);
+    setShowAddForm(false);
+    setSelectedPDF(null);
+    setSelectedImage(null);
+  } catch (err) {
+    console.error(err);
+  }
+};
+// Gérer le fichier PDF
+const handlePDFChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const file = e.target.files?.[0];
+  if (file) setSelectedPDF(file);
+};
+
+// Gérer le fichier image
+const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const file = e.target.files?.[0];
+  if (file) setSelectedImage(file);
+};
+
+
 
   return (
     <main className="flex-1 p-6 relative">
@@ -270,21 +306,37 @@ export default function MainContentLivres({ darkMode, lang }: MainContentProps) 
 
               <input type="text" placeholder="Prix en Ariary" value={formValues.prix} onChange={(e) => setFormValues({ ...formValues, prix: e.target.value })} className="w-full px-3 py-2 rounded-lg border" />
               <textarea placeholder="Description" value={formValues.description} onChange={(e) => setFormValues({ ...formValues, description: e.target.value })} className="w-full px-3 py-2 rounded-lg border" rows={4} />
+             {/* Importer un PDF */}
+              <label className="flex items-center gap-3 cursor-pointer">
+                <div className="flex items-center justify-center bg-green-500 hover:bg-green-600 text-white p-3 rounded-lg shadow">
+                  <FileText size={20} />
+                </div>
+                <span className="text-[#17f]">{selectedPDF ? selectedPDF.name : "Importer un fichier PDF"}</span>
+                <input
+                  ref={pdfInputRef}
+                  type="file"
+                  accept=".pdf"
+                  className="hidden"
+                  onChange={handlePDFChange}
+                />
+              </label>
 
-               <label className="flex items-center gap-3 cursor-pointer">
+              {/* Importer une image */}
+              <label className="flex items-center gap-3 cursor-pointer">
                 <div className="flex items-center justify-center bg-green-500 hover:bg-green-600 text-white p-3 rounded-lg shadow">
                   <FileText size={20} />
                 </div>
-                <span className="text-[#17f]">{selectedFile ? selectedFile.name : "Importer un fichier PDF"}</span>
-                <input ref={fileInputRef} type="file" accept=".pdf,image/*" className="hidden" onChange={handleFileChange} />
+                <span className="text-[#17f]">{selectedImage ? selectedImage.name : "Importer une image"}</span>
+                <input
+                  ref={imageInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleImageChange}
+                />
               </label>
-               <label className="flex items-center gap-3 cursor-pointer">
-                <div className="flex items-center justify-center bg-green-500 hover:bg-green-600 text-white p-3 rounded-lg shadow">
-                  <FileText size={20} />
-                </div>
-                <span className="text-[#17f]">{selectedFile ? selectedFile.name : "Importer un image"}</span>
-                <input ref={fileInputRef} type="file" accept=".pdf,image/*" className="hidden" onChange={handleFileChange} />
-              </label>
+
+
               <div className="flex justify-end gap-4 mt-4">
                 <button onClick={() => { setShowAddForm(false); setEditingLivre(null); }} className="px-5 py-2 bg-red-400 hover:bg-red-500 text-white rounded-lg">Annuler</button>
                 <button onClick={() => (editingLivre ? submitEdit() : addLivre())} className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg">{editingLivre ? "Enregistrer" : "Ajouter"}</button>

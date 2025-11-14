@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
     MessageSquare,
     Search,
@@ -8,51 +8,314 @@ import {
     Send,
     ArrowLeft,
     X,
-    Paperclip // <-- Import de l'icône d'attachement
+    Paperclip,
+    Plus,
+    Loader2,
+    FileText
 } from 'lucide-react';
 
-/**
- * Données simulées des contacts pour la barre latérale.
- */
-const mockContacts = [
-    { id: '1', name: 'Amélie Dubois', initials: 'AD', status: 'En ligne', message: "C'est la version finale ?", time: '1 min', unread: 0, avatarColor: 'bg-indigo-200' },
-    { id: '2', name: 'Bruno Chatel', initials: 'BC', status: 'Hors ligne', message: "Merci, j'ai bien reçu.", time: '3h', unread: 3, avatarColor: 'bg-pink-200' },
-    { id: '3', name: 'Équipe Qualité', initials: 'EQ', status: 'En ligne', message: "Rapport hebdomadaire disponible.", time: '1h', unread: 0, avatarColor: 'bg-yellow-200' },
-    { id: '4', name: 'Sophie Martin', initials: 'SM', status: 'Hors ligne', message: "On se voit demain.", time: '1j', unread: 0, avatarColor: 'bg-green-200' },
-];
+// Types pour les données du backend
+interface Sujet {
+    idSujet: number;
+    titre: string;
+    idCreateur: number;
+    date_creation: string;
+    image: string | null;
+    messages?: Message[];
+}
 
-/**
- * Données simulées des messages pour le chat actif.
- */
-const mockMessages = [
-    { type: 'received', text: "Bonjour ! J'ai bien intégré les modifications, ça rend beaucoup mieux avec le fond uniforme. Est-ce que ce layout est ce que vous aviez en tête ?", time: '09:45' },
-    { type: 'sent', text: "Oui, c'est parfait ! L'harmonie des fonds est là et le compte dans le sidebar est très visible. Bravo pour l'intégration responsive.", time: '09:47' },
-    { type: 'received', text: "Super ! On peut passer à la phase suivante maintenant. N'oubliez pas les tests sur mobile pour garantir la 'bonne vue'.", time: '09:50' },
-    { type: 'sent', text: "Compris. Je m'en occupe tout de suite. Merci pour la réactivité !", time: '09:52' },
+interface Message {
+    idMessage: number;
+    idSender: number;
+    contenu: string;
+    date_creation: string;
+    idParentMessage?: number | null;
+}
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const AVATAR_COLORS = [
+    'bg-indigo-200', 'bg-pink-200', 'bg-yellow-200', 'bg-green-200',
+    'bg-blue-200', 'bg-purple-200', 'bg-red-200', 'bg-orange-200'
 ];
 
 // Mise à jour de l'interface pour accepter darkMode
 interface MessagePopupProps {
     onClose?: () => void;
-    darkMode: boolean; // Ajout de la prop darkMode
+    darkMode: boolean; 
 }
+
+// Fonction utilitaire pour obtenir les initiales
+const getInitials = (titre: string): string => {
+    const words = titre.split(' ');
+    if (words.length >= 2) {
+        return (words[0][0] + words[1][0]).toUpperCase();
+    }
+    return titre.substring(0, 2).toUpperCase();
+};
+
+// Fonction utilitaire pour obtenir une couleur d'avatar
+const getAvatarColor = (id: number): string => {
+    return AVATAR_COLORS[id % AVATAR_COLORS.length];
+};
+
+// Fonction utilitaire pour formater la date
+const formatDate = (dateString: string): string => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return 'À l\'instant';
+    if (diffMins < 60) return `${diffMins} min`;
+    if (diffHours < 24) return `${diffHours}h`;
+    if (diffDays < 7) return `${diffDays}j`;
+    return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+};
+
+// Fonction utilitaire pour formater l'heure
+const formatTime = (dateString: string): string => {
+    const date = new Date(dateString);
+    return date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+};
 
 // Mise à jour de l'export pour accepter la prop darkMode
 export default function MessagePopup({ onClose, darkMode }: MessagePopupProps) {
-    const [activeChatId, setActiveChatId] = useState(mockContacts[0].id);
+    const [sujets, setSujets] = useState<Sujet[]>([]);
+    const [activeChatId, setActiveChatId] = useState<number | null>(null);
+    const [messages, setMessages] = useState<Message[]>([]);
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-    const activeChat = mockContacts.find(c => c.id === activeChatId);
+    const [loadingSujets, setLoadingSujets] = useState(true);
+    const [loadingMessages, setLoadingMessages] = useState(false);
+    const [sendingMessage, setSendingMessage] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [showCreatePopup, setShowCreatePopup] = useState(false);
+    const [newSujetTitre, setNewSujetTitre] = useState('');
+    const [newSujetImage, setNewSujetImage] = useState<File | null>(null);
+    const [creatingSujet, setCreatingSujet] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [messageInput, setMessageInput] = useState('');
+    const messagesEndRef = useRef<HTMLDivElement>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
     
-    // Logique d'upload (inchangée)
-    const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-        if (event.target.files && event.target.files.length > 0) {
-            const file = event.target.files[0];
-            alert(`Fichier sélectionné : ${file.name}. Il n'y a plus qu'à l'uploader !`);
-            // Ici, vous ajouteriez la logique d'upload réelle (ex: API call)
+    const [idUser, setIdUser] = useState<number | null>(null);
+
+    useEffect(() => {
+    const storedId = localStorage.getItem("idUser");
+    if (storedId) setIdUser(Number(storedId));
+    }, []);
+
+    const activeChat = sujets.find(s => s.idSujet === activeChatId);
+    
+    // Debug: afficher l'état actuel
+    useEffect(() => {
+        console.log(' État actuel:', {
+            idUser,
+            sujetsCount: sujets.length,
+            sujets,
+            activeChatId,
+            loadingSujets,
+            error
+        });
+    }, [sujets, activeChatId, loadingSujets, error, idUser]);
+
+    // Récupérer les sujets 
+    const fetchSujets = async () => {
+        const idUser = localStorage.getItem("idUser");
+        try {
+            setLoadingSujets(true);
+            setError(null);
+            const url = `${API_URL}/forum/ReadSujet/${idUser}`;
+            console.log(' Fetch sujets:', url);
+            
+            const response = await fetch(url, {
+                credentials: "include",
+            });
+            
+            console.log(' Response status:', response.status, response.statusText);
+            
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error(' Erreur response:', errorText);
+                throw new Error(`Erreur ${response.status}: ${errorText}`);
+            }
+            
+            const data: Sujet[] = await response.json();
+            console.log('Sujets reçus:', data);
+            console.log(' Nombre de sujets:', data.length);
+            
+            setSujets(data); 
+            if (data.length > 0 && !activeChatId) {
+                setActiveChatId(data[0].idSujet);
+            }
+        } catch (err) {
+            const errorMessage = err instanceof Error ? err.message : 'Erreur inconnue';
+            setError(`Impossible de charger les sujets: ${errorMessage}`);
+            alert(' Erreur fetch sujets:' +err);
+        } finally {
+            setLoadingSujets(false);
         }
     };
 
-    const handleContactClick = (id: string) => {
+    // Récupérer les messages d'un sujet
+    const fetchMessages = async (idSujet: number) => {
+        try {
+            setLoadingMessages(true);
+            setError(null);
+            const response = await fetch(`${API_URL}/forum/${idSujet}`, {
+                credentials: "include",
+            });
+            if (!response.ok) throw new Error('Erreur chargement messages');
+            const data = await response.json();
+            setMessages(data.messages || []); 
+        } catch (err) {
+            setError('Impossible de charger les messages');
+            console.error('Erreur fetch messages:', err);
+        } finally {
+            setLoadingMessages(false);
+        }
+    };
+
+    // Envoyer un message
+    const handleSendMessage = async () => {
+        if (!messageInput.trim() || !activeChatId || !idUser || sendingMessage) return;
+
+        try {
+            setSendingMessage(true);
+            setError(null);
+            const response = await fetch(`${API_URL}/forum/ajouter`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: "include",
+                body: JSON.stringify({
+                    idSender: parseInt(idUser),
+                    idSujet: activeChatId,
+                    contenu: messageInput.trim(),
+                    idParentMessage: null
+                })
+            });
+
+            if (!response.ok) throw new Error('Erreur envoi message');
+            
+            setMessageInput('');
+            // Recharger les messages
+            await fetchMessages(activeChatId);
+        } catch (err) {
+            setError('Impossible d\'envoyer le message');
+            console.error('Erreur send message:', err);
+        } finally {
+            setSendingMessage(false);
+        }
+    };
+
+    // Créer un nouveau sujet
+    const handleCreateSujet = async () => {
+        if (!newSujetTitre.trim() || !idUser || creatingSujet) {
+            console.warn('⚠️ Validation échouée:', { 
+                titre: newSujetTitre.trim(), 
+                idUser, 
+                creatingSujet 
+            });
+            return;
+        }
+
+        try {
+            setCreatingSujet(true);
+            setError(null);
+            const formData = new FormData();
+            formData.append('titre', newSujetTitre.trim());
+            formData.append('idCreateur', idUser.toString());
+            
+            if (newSujetImage instanceof File) {
+                formData.append('image', newSujetImage);
+                console.log(' Image ajoutée:', newSujetImage.name);
+            } else {
+                console.log('Aucune image à envoyer');
+            }
+
+            const url = `${API_URL}/forum/NewSujet`;
+            console.log('Création sujet:', url);
+            console.log(' Données:', { 
+                titre: newSujetTitre.trim(), 
+                idCreateur: idUser.toString() 
+            });
+
+            const response = await fetch(url, {
+                method: 'POST',
+                credentials: "include",
+                body: formData
+            });
+
+            console.log(' Response status:', response.status, response.statusText);
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('❌ Erreur response:', errorText);
+                throw new Error(`Erreur ${response.status}: ${errorText}`);
+            }
+            
+            const data = await response.json();
+            console.log(' Sujet créé:', data);
+            
+            // Fermer le popup et réinitialiser les champs
+            setShowCreatePopup(false);
+            setNewSujetTitre('');
+            setNewSujetImage(null);
+            if (fileInputRef.current) fileInputRef.current.value = '';
+            
+            // Recharger la liste des sujets
+            await fetchSujets();
+            
+            // Après création : ouvrir directement le nouveau sujet
+            if (data.idSujet) {
+                console.log('🎯 Ouverture du nouveau sujet:', data.idSujet);
+                setActiveChatId(data.idSujet);
+            }
+        } catch (err) {
+            const errorMessage = err instanceof Error ? err.message : 'Erreur inconnue';
+            setError(`Erreur lors de l'ajout du sujet: ${errorMessage}`);
+            console.error('❌ Erreur create sujet:', err);
+        } finally {
+            setCreatingSujet(false);
+        }
+    };
+
+    // Charger les sujets au montage et quand idUser change
+    useEffect(() => {
+        const idUser = localStorage.getItem("idUser");
+        alert(' useEffect - idUser:'+ idUser);
+        if (idUser) {
+            console.log(' idUser trouvé, chargement des sujets...');
+            fetchSujets();
+        } else {
+            console.warn('idUser est null dans localStorage');
+        }
+    }, [idUser]);
+
+    // Charger les messages quand un sujet est sélectionné
+    useEffect(() => {
+        if (activeChatId) {
+            fetchMessages(activeChatId);
+        }
+    }, [activeChatId]);
+
+    // Scroll vers le bas quand de nouveaux messages arrivent
+    useEffect(() => {
+        if (messagesEndRef.current && activeChatId) {
+          messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+        }
+      }, [messages, activeChatId]);
+      
+    // Logique d'upload de fichier pour les messages (pour l'instant juste un placeholder)
+    const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        if (event.target.files && event.target.files.length > 0) {
+            const file = event.target.files[0];
+            alert(`Fichier sélectionné : ${file.name}. Fonctionnalité à implémenter !`);
+        }
+    };
+
+    const handleSujetClick = (id: number) => {
         setActiveChatId(id);
         if (window.innerWidth < 1024) setIsSidebarOpen(false); 
     };
@@ -71,6 +334,11 @@ export default function MessagePopup({ onClose, darkMode }: MessagePopupProps) {
         window.addEventListener('resize', handleResize);
         return () => window.removeEventListener('resize', handleResize);
     }, [activeChatId]);
+
+    // Filtrer les sujets selon la recherche
+    const filteredSujets = sujets.filter(sujet =>
+        sujet.titre.toLowerCase().includes(searchQuery.toLowerCase())
+    );
 
     // ----------------------------------------------------
     // Définition des classes de Thème (Light/Dark)
@@ -122,19 +390,43 @@ export default function MessagePopup({ onClose, darkMode }: MessagePopupProps) {
             <div className="mb-4 relative">
                 <input
                     type="text"
-                    placeholder="Rechercher un contact..."
+                    placeholder="Rechercher un sujet..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
                     className={`w-full pl-10 p-2.5 text-sm rounded-xl border ${borderDefault} ${inputInteractiveClasses} transition shadow-sm ${darkMode ? "bg-gray-700 text-white placeholder-gray-400" : "bg-white text-gray-900 placeholder-gray-500"}`}
                 />
                 <Search className={`absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 ${subtleText}`} />
             </div>
 
             <div className="flex-1 overflow-y-auto space-y-2 pb-4">
-                {mockContacts.map(contact => {
-                    const isActive = contact.id === activeChatId;
+                {loadingSujets ? (
+                    <div className="flex items-center justify-center py-8">
+                        <Loader2 className="w-6 h-6 animate-spin text-indigo-600" />
+                        <span className={`ml-2 ${subtleText} text-sm`}>Chargement...</span>
+                    </div>
+                ) : filteredSujets.length === 0 ? (
+                    <div className={`text-center py-8 ${subtleText} text-sm`}>
+                        {searchQuery ? 'Aucun sujet trouvé' : sujets.length === 0 ? 'Aucun sujet disponible' : 'Aucun sujet ne correspond à votre recherche'}
+                        {!searchQuery && sujets.length === 0 && (
+                            <div className={`mt-2 text-xs ${subtleText}`}>
+                                Créez votre premier sujet avec le bouton ci-dessous
+                            </div>
+                        )}
+                    </div>
+                ) : (
+                    filteredSujets.map(sujet => {
+                        const isActive = sujet.idSujet === activeChatId;
+                        const initials = getInitials(sujet.titre);
+                        const avatarColor = getAvatarColor(sujet.idSujet);
+                        const lastMessage = sujet.messages && sujet.messages.length > 0 
+                            ? sujet.messages[sujet.messages.length - 1] 
+                            : null;
+                        const timeDisplay = lastMessage ? formatDate(lastMessage.date_creation) : formatDate(sujet.date_creation);
+                        
                     return (
                         <div
-                            key={contact.id}
-                            onClick={() => handleContactClick(contact.id)}
+                                key={sujet.idSujet}
+                                onClick={() => handleSujetClick(sujet.idSujet)}
                             className={`flex items-center p-3 text-sm rounded-xl shadow-sm cursor-pointer transition duration-150 ${
                                 isActive
                                     ? 'font-semibold text-white bg-indigo-600 hover:bg-indigo-700'
@@ -142,24 +434,43 @@ export default function MessagePopup({ onClose, darkMode }: MessagePopupProps) {
                             }`}
                         >
                             <div className="relative w-10 h-10 mr-3 shrink-0">
-                                <div className={`w-full h-full ${contact.avatarColor} rounded-full flex items-center justify-center font-semibold text-sm ${isActive ? 'text-white' : generalText}`}>{contact.initials}</div>
-                                <OnlineDot isOnline={contact.status === 'En ligne'} />
+                                    {sujet.image ? (
+                                        <img
+                                            src={`${API_URL}/upload/forum/${sujet.image}`}
+                                            alt={sujet.titre}
+                                            className="w-full h-full rounded-full object-cover"
+                                        />
+                                    ) : (
+                                    <div className={`w-full h-full ${avatarColor} rounded-full flex items-center justify-center font-semibold text-sm ${isActive ? 'text-white' : generalText}`}>
+                                        {initials}
+                                    </div>
+                                )}
                             </div>
                             <div className="flex-1 overflow-hidden">
-                                <p className="truncate">{contact.name}</p>
-                                <p className={`text-xs ${isActive ? 'font-normal opacity-90' : subtleText} truncate`}>{contact.message}</p>
+                                    <p className="truncate">{sujet.titre}</p>
+                                    {lastMessage && (
+                                        <p className={`text-xs ${isActive ? 'font-normal opacity-90' : subtleText} truncate`}>
+                                            {lastMessage.contenu}
+                                        </p>
+                                    )}
                             </div>
                             <div className="flex flex-col items-end ml-2 shrink-0">
-                                {contact.unread > 0 && (
-                                    <span className="text-xs w-5 h-5 flex items-center justify-center rounded-full bg-red-500 text-white font-bold mb-1">
-                                        {contact.unread}
-                                    </span>
-                                )}
-                                <span className={`text-xs ${isActive ? 'opacity-90' : subtleText} block`}>{contact.time}</span>
+                                    <span className={`text-xs ${isActive ? 'opacity-90' : subtleText} block`}>{timeDisplay}</span>
                             </div>
                         </div>
                     );
-                })}
+                    })
+                )}
+                
+                {/* Bouton pour créer un nouveau sujet */}
+                <button
+                    onClick={() => setShowCreatePopup(true)}
+                    className={`w-full flex items-center justify-center p-3 rounded-xl shadow-sm transition duration-150 border-2 border-dashed ${borderDefault} hover:border-indigo-500 hover:bg-indigo-50 ${darkMode ? 'hover:bg-gray-700' : ''}`}
+                    title="Créer un nouveau sujet"
+                >
+                    <Plus className={`w-5 h-5 ${subtleText} mr-2`} />
+                    <span className={`text-sm font-medium ${subtleText}`}>Nouveau sujet</span>
+                </button>
             </div>
 
             <div className={`mt-auto pt-4 border-t ${borderDefault}`}>
@@ -201,12 +512,21 @@ export default function MessagePopup({ onClose, darkMode }: MessagePopupProps) {
                 </button>
 
                 <div className="relative w-10 h-10 shrink-0">
-                    <div className={`w-full h-full ${activeChat?.avatarColor} rounded-full flex items-center justify-center font-semibold ${generalText}`}>{activeChat?.initials}</div>
-                    <OnlineDot isOnline={activeChat?.status === 'En ligne'} />
+                    {activeChat?.image ? (
+                        <img
+                            src={`${API_URL}/upload/forum/${activeChat.image}`}
+                            alt={activeChat.titre}
+                            className="w-full h-full rounded-full object-cover"
+                        />
+                    ) : (
+                        <div className={`w-full h-full ${activeChat ? getAvatarColor(activeChat.idSujet) : 'bg-indigo-200'} rounded-full flex items-center justify-center font-semibold ${generalText}`}>
+                            {activeChat ? getInitials(activeChat.titre) : '?'}
+                        </div>
+                    )}
                 </div>
                 <div className="ml-4 overflow-hidden flex-1">
-                    <h3 className={`text-lg font-semibold ${generalText} truncate`}>{activeChat?.name}</h3>
-                    <p className={`text-xs ${activeChat?.status === 'En ligne' ? 'text-green-500' : subtleText}`}>{activeChat?.status}</p>
+                    <h3 className={`text-lg font-semibold ${generalText} truncate`}>{activeChat?.titre || 'Sélectionnez un sujet'}</h3>
+                    <p className={`text-xs ${subtleText}`}>{activeChat ? `${messages.length} message${messages.length > 1 ? 's' : ''}` : ''}</p>
                 </div>
 
                 <button
@@ -219,26 +539,39 @@ export default function MessagePopup({ onClose, darkMode }: MessagePopupProps) {
             </header>
 
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                {mockMessages.map((message, index) => (
-                    // Conteneur du message
-                    <div 
-                        key={index} 
-                        className={`flex ${message.type === 'sent' ? 'justify-end' : 'justify-start'}`}
-                    >
-                        {/* Bulle de message - MODIFIÉE */}
+                {loadingMessages ? (
+                    <div className="flex items-center justify-center py-8">
+                        <Loader2 className="w-6 h-6 animate-spin text-indigo-600" />
+                    </div>
+                ) : messages.length === 0 ? (
+                    <div className={`text-center py-8 ${subtleText} text-sm`}>
+                        Aucun message pour le moment. Soyez le premier à écrire !
+                    </div>
+                ) : (
+                    messages.map((message) => {
+                        const isSent = message.idSender.toString() === idUser;
+                        return (
+                            <div 
+                                key={message.idMessage} 
+                                className={`flex ${isSent ? 'justify-end' : 'justify-start'}`}
+                            >
                         <div 
                             className={`p-3 max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg shadow-md ${
-                                message.type === 'sent'
-                                    // Messages envoyés : grand arrondi, coin supérieur droit légèrement arrondi pour la flèche
+                                        isSent
                                     ? 'bg-indigo-600 text-white rounded-2xl rounded-tr-sm' 
-                                    : receivedBubble // Utilise la constante mise à jour
-                            } ${message.type === 'received' ? 'ml-4' : ''}`} // Ajout d'une marge à gauche pour le message reçu pour l'esthétique
-                        >
-                            <p className="text-sm">{message.text}</p>
-                            <span className={`text-xs block mt-1 text-right ${message.type === 'sent' ? 'opacity-80' : subtleText}`}>{message.time}</span>
+                                            : receivedBubble
+                                    } ${!isSent ? 'ml-4' : ''}`}
+                                >
+                                    <p className="text-sm">{message.contenu}</p>
+                                    <span className={`text-xs block mt-1 text-right ${isSent ? 'opacity-80' : subtleText}`}>
+                                        {formatTime(message.date_creation)}
+                                    </span>
                         </div>
                     </div>
-                ))}
+                        );
+                    })
+                )}
+                <div ref={messagesEndRef} />
             </div>
 
             <footer className={`p-4 border-t ${borderDefault} ${footerBg} shadow-inner`}>
@@ -264,15 +597,30 @@ export default function MessagePopup({ onClose, darkMode }: MessagePopupProps) {
                     <input
                         type="text"
                         placeholder="Écrire un message..."
-                        className={`flex-1 p-3 rounded-xl border ${borderDefault} ${inputInteractiveClasses} transition mr-3 shadow-sm ${darkMode ? "bg-gray-700 text-white placeholder-gray-400" : "bg-white text-gray-900 placeholder-gray-500"}`}
+                        value={messageInput}
+                        onChange={(e) => setMessageInput(e.target.value)}
+                        onKeyPress={(e) => {
+                            if (e.key === 'Enter' && !e.shiftKey) {
+                                e.preventDefault();
+                                handleSendMessage();
+                            }
+                        }}
+                        disabled={!activeChatId || sendingMessage}
+                        className={`flex-1 p-3 rounded-xl border ${borderDefault} ${inputInteractiveClasses} transition mr-3 shadow-sm ${darkMode ? "bg-gray-700 text-white placeholder-gray-400" : "bg-white text-gray-900 placeholder-gray-500"} disabled:opacity-50 disabled:cursor-not-allowed`}
                     />
                     
                     {/* Bouton Envoyer */}
                     <button
-                        className="bg-indigo-600 text-white p-3 rounded-xl hover:bg-indigo-700 transition duration-150 shadow-lg flex items-center justify-center w-12 h-12 shrink-0"
+                        onClick={handleSendMessage}
+                        disabled={!activeChatId || !messageInput.trim() || sendingMessage}
+                        className="bg-indigo-600 text-white p-3 rounded-xl hover:bg-indigo-700 transition duration-150 shadow-lg flex items-center justify-center w-12 h-12 shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
                         title="Envoyer"
                     >
+                        {sendingMessage ? (
+                            <Loader2 className="w-5 h-5 animate-spin" />
+                        ) : (
                         <Send className="w-5 h-5" />
+                        )}
                     </button>
                 </div>
             </footer>
@@ -280,6 +628,7 @@ export default function MessagePopup({ onClose, darkMode }: MessagePopupProps) {
     );
 
     return (
+        <>
         <div
             className={`
                 absolute
@@ -296,10 +645,91 @@ export default function MessagePopup({ onClose, darkMode }: MessagePopupProps) {
                 transform -translate-y-1 
             `}
         >
+                {/* Message d'erreur */}
+                {error && (
+                    <div className={`absolute top-4 right-4 z-50 p-3 rounded-lg shadow-lg ${darkMode ? 'bg-red-900 text-white' : 'bg-red-100 text-red-800'} flex items-center justify-between max-w-md`}>
+                        <span className="text-sm">{error}</span>
+                        <button
+                            onClick={() => setError(null)}
+                            className="ml-4 text-lg font-bold hover:opacity-70"
+                        >
+                            ×
+                        </button>
+                    </div>
+                )}
+
             <div className="flex flex-row h-full w-full overflow-hidden">
                 {renderSidebar()}
                 {renderChatWindow()}
             </div>
         </div>
+
+            {/* Popup de création de sujet  */}
+            {showCreatePopup && (
+                <div className="fixed inset-0 flex items-center justify-center z-50">
+                    <div className={`relative w-[95%] max-w-lg p-6 rounded-xl shadow-2xl ${darkMode ? 'bg-gray-800 text-white' : 'bg-white text-gray-900'}`}>
+                        <h2 className={`text-xl font-bold mb-4 text-center ${generalText}`}>Créer un nouveau sujet</h2>
+                        <div className="space-y-4">
+                            <input
+                                type="text"
+                                placeholder="Titre du sujet *"
+                                value={newSujetTitre}
+                                onChange={(e) => setNewSujetTitre(e.target.value)}
+                                className={`w-full px-3 py-2 rounded-lg border ${borderDefault} ${darkMode ? "bg-gray-700 text-white placeholder-gray-400" : "bg-white text-gray-900 placeholder-gray-500"}`}
+                            />
+
+                            {/* Importer une image  */}
+                            <label className="flex items-center gap-3 cursor-pointer">
+                                <div className="flex items-center justify-center bg-green-500 hover:bg-green-600 text-white p-3 rounded-lg shadow">
+                                    <FileText size={20} />
+                                </div>
+                                <span className={darkMode ? "text-green-400" : "text-[#17f]"}>
+                                    {newSujetImage ? newSujetImage.name : "Importer une image (optionnelle)"}
+                                </span>
+                                <input
+                                    ref={fileInputRef}
+                                    type="file"
+                                    accept="image/*"
+                                    className="hidden"
+                                    onChange={(e) => {
+                                        if (e.target.files && e.target.files[0]) {
+                                            setNewSujetImage(e.target.files[0]);
+                                        }
+                                    }}
+                                />
+                            </label>
+
+                            <div className="flex justify-end gap-4 mt-4">
+                                <button
+                                    onClick={() => {
+                                        setShowCreatePopup(false);
+                                        setNewSujetTitre('');
+                                        setNewSujetImage(null);
+                                        if (fileInputRef.current) fileInputRef.current.value = '';
+                                    }}
+                                    className="px-5 py-2 bg-red-400 hover:bg-red-500 text-white rounded-lg transition"
+                                >
+                                    Annuler
+                                </button>
+                                <button
+                                    onClick={handleCreateSujet}
+                                    disabled={!newSujetTitre.trim() || creatingSujet}
+                                    className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                                >
+                                    {creatingSujet ? (
+                                        <>
+                                            <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                                            Création...
+                                        </>
+                                    ) : (
+                                        'Ajouter'
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </>
     );
 }

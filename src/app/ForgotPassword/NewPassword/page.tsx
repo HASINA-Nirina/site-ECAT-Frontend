@@ -35,22 +35,17 @@ const handleSubmit = async (e: React.FormEvent) => {
 
   try {
     // Récupérer l'id utilisateur correspondant à l'email via l'API des étudiants
-    const etuRes = await fetch("http://127.0.0.1:8000/auth/ReadEtudiantAll");
-    if (!etuRes.ok) {
-      throw new Error("Impossible de récupérer les utilisateurs")
-    }
+    const etuRes = await fetch(`http://127.0.0.1:8000/auth/ReadUser?email=${email}`);
+
+
     const etuList = await etuRes.json();
-    const matched = etuList.find((u: any) => u.email === email);
-    if (!matched) {
-      setError("Aucun compte étudiant trouvé pour cet email.");
-      return;
-    }
+    
 
     const res = await fetch("http://127.0.0.1:8000/auth/modifPassword", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        id: matched.id,
+        id: etuList.id,
         mot_de_passe: password,
       }),
     });
