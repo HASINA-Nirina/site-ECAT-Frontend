@@ -24,12 +24,31 @@ interface Sujet {
     messages?: Message[];
 }
 
+// Interface pour les données de l'expéditeur
+interface Sender {
+    id: number;
+    nom: string;
+    prenom: string;
+    email: string;
+    image?: string | null;
+}
+
+// Interface pour le message complet
 interface Message {
     idMessage: number;
-    idSender: number;
+    idSujet: number;
     contenu: string;
+    idSender: number;
+    fichier?: string | null;
     date_creation: string;
     idParentMessage?: number | null;
+
+    sender: {       
+        id: number;
+        nom: string;
+        prenom: string;
+        image: string | null;
+    };
 }
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
@@ -98,15 +117,23 @@ export default function MessagePopup({ onClose, darkMode }: MessagePopupProps) {
     const [messageInput, setMessageInput] = useState('');
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
-    
     const [idUser, setIdUser] = useState<number | null>(null);
+        useEffect(() => {
+          const storedId = localStorage.getItem("idUser");
+           if (storedId) setIdUser(Number(storedId)); 
+        }, []);
 
-    useEffect(() => {
-    const storedId = localStorage.getItem("idUser");
-    if (storedId) setIdUser(Number(storedId));
-    }, []);
 
     const activeChat = sujets.find(s => s.idSujet === activeChatId);
+    const getFileType = (filePath: string) => {
+        if (!filePath) return null;
+    
+        const ext = filePath.split('.').pop().toLowerCase();
+    
+        if (["jpg", "jpeg", "png", "gif", "webp"].includes(ext)) return "image";
+        if (ext === "pdf") return "pdf";
+        return "file"; // Word, Excel, txt, etc.
+    };
     
     // Debug: afficher l'état actuel
     useEffect(() => {
@@ -158,57 +185,108 @@ export default function MessagePopup({ onClose, darkMode }: MessagePopupProps) {
         }
     };
 
+   
     // Récupérer les messages d'un sujet
-    const fetchMessages = async (idSujet: number) => {
-        try {
-            setLoadingMessages(true);
-            setError(null);
-            const response = await fetch(`${API_URL}/forum/${idSujet}`, {
-                credentials: "include",
-            });
-            if (!response.ok) throw new Error('Erreur chargement messages');
-            const data = await response.json();
-            setMessages(data.messages || []); 
-        } catch (err) {
-            setError('Impossible de charger les messages');
-            console.error('Erreur fetch messages:', err);
-        } finally {
-            setLoadingMessages(false);
-        }
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    
+    const [ws, setWs] = useState<WebSocket | null>(null);
+
+    const setupWebSocket = (idSujet: number) => {
+        // Réinitialiser les messages
+        setMessages([]);
+        // Créer la connexion WebSocket
+        const websocket = new WebSocket(`ws://localhost:8000/forum/ws/${idSujet}`);
+    
+        websocket.onopen = () => {
+            console.log('WebSocket connecté au sujet', idSujet);
+        };
+    
+        websocket.onmessage = (event) => {
+            try {
+                const raw = JSON.parse(event.data);
+                const message: Message = {
+                    idMessage: raw.id || raw.idMessage || null,
+                    idSender: Number(raw.idSender),
+                    idSujet: Number(raw.idSujet),
+                    contenu: raw.contenu,
+                    fichier: raw.fichier || null,
+                    date_creation: raw.date_creation,
+                    idParentMessage: raw.idParentMessage || null,
+                    sender: {
+                        id: raw.sender?.id || raw.idSender,
+                        nom: raw.sender?.nom || "Nom inconnu",
+                        prenom: raw.sender?.prenom || "",
+                        image: raw.sender?.image || null,
+                    }
+                };
+    
+                // Ajouter le message seulement pour le sujet actif
+                setMessages(prev => [...prev, message]);
+    
+            } catch (err) {
+                console.error("Erreur parsing WS:", err);
+            }
+        };
+    
+        websocket.onclose = () => console.log('WebSocket déconnecté');
+        websocket.onerror = (err) => console.error('WebSocket error:', err);
+    
+        setWs(websocket);
+    
+        return () => websocket.close();
     };
-
+    const [user, setUser] = useState<{nom: string; prenom: string} | null>(null);
+    useEffect(() => {
+        if (!activeChatId) return;
+        const storedNom = localStorage.getItem("userNom");
+        const storedPrenom = localStorage.getItem("userPrenom");
+        if (storedNom && storedPrenom) {
+            setUser({ nom: storedNom, prenom: storedPrenom });
+        }
+        const cleanup = setupWebSocket(activeChatId);
+    
+        return () => {
+            cleanup();
+        };
+    }, [activeChatId]);
+    
     // Envoyer un message
-    const handleSendMessage = async () => {
-        if (!messageInput.trim() || !activeChatId || !idUser || sendingMessage) return;
-
+    const handleSendMessage = async () => { 
+        if ((!messageInput.trim() && !selectedFile) || !idUser || !activeChatId) return;
+    
         try {
             setSendingMessage(true);
-            setError(null);
-            const response = await fetch(`${API_URL}/forum/ajouter`, {
+    
+            const formData = new FormData();
+            formData.append("idSender", idUser.toString());
+            formData.append("idSujet", activeChatId.toString());
+            formData.append("contenu", messageInput || "");
+            if (selectedFile) {
+                formData.append("fichier", selectedFile);
+            }
+    
+            // Toujours utiliser fetch pour créer le message
+            const response = await fetch(`${API_URL}/forum/ajouter_message`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
                 credentials: "include",
-                body: JSON.stringify({
-                    idSender: parseInt(idUser),
-                    idSujet: activeChatId,
-                    contenu: messageInput.trim(),
-                    idParentMessage: null
-                })
+                body: formData,
             });
-
-            if (!response.ok) throw new Error('Erreur envoi message');
-            
+    
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`Erreur ${response.status}: ${errorText}`);
+            }
             setMessageInput('');
-            // Recharger les messages
-            await fetchMessages(activeChatId);
+            setSelectedFile(null);
+            setupWebSocket(activeChatId);
         } catch (err) {
-            setError('Impossible d\'envoyer le message');
-            console.error('Erreur send message:', err);
+            console.error('Erreur en envoyant le message:', err);
+            setError(err instanceof Error ? err.message : 'Erreur inconnue');
         } finally {
             setSendingMessage(false);
         }
     };
-
+    
     // Créer un nouveau sujet
     const handleCreateSujet = async () => {
         if (!newSujetTitre.trim() || !idUser || creatingSujet) {
@@ -284,7 +362,6 @@ export default function MessagePopup({ onClose, darkMode }: MessagePopupProps) {
     // Charger les sujets au montage et quand idUser change
     useEffect(() => {
         const idUser = localStorage.getItem("idUser");
-        alert(' useEffect - idUser:'+ idUser);
         if (idUser) {
             console.log(' idUser trouvé, chargement des sujets...');
             fetchSujets();
@@ -293,7 +370,7 @@ export default function MessagePopup({ onClose, darkMode }: MessagePopupProps) {
         }
     }, [idUser]);
 
-    // Charger les messages quand un sujet est sélectionné
+   /* // Charger les messages quand un sujet est sélectionné
     useEffect(() => {
         if (activeChatId) {
             fetchMessages(activeChatId);
@@ -305,7 +382,7 @@ export default function MessagePopup({ onClose, darkMode }: MessagePopupProps) {
         if (messagesEndRef.current && activeChatId) {
           messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
         }
-      }, [messages, activeChatId]);
+      }, [messages, activeChatId]);*/
       
     // Logique d'upload de fichier pour les messages (pour l'instant juste un placeholder)
     const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -481,7 +558,10 @@ export default function MessagePopup({ onClose, darkMode }: MessagePopupProps) {
                     </div>
 
                     <div className="ml-3 leading-tight overflow-hidden flex-1 min-w-0">
-                        <p className={`text-sm font-bold ${generalText} truncate`}>Jean L&apos;Utilisateur</p>
+                    <p className={`text-sm font-bold ${generalText} truncate`}>
+                        {user ? `${user.prenom} ${user.nom}` : 'Utilisateur'}
+                    </p>
+
                         <p className="text-xs text-green-500 truncate">Connecté</p>
                     </div>
 
@@ -549,81 +629,155 @@ export default function MessagePopup({ onClose, darkMode }: MessagePopupProps) {
                     </div>
                 ) : (
                     messages.map((message) => {
-                        const isSent = message.idSender.toString() === idUser;
+                        const isSent = message.idSender === idUser; 
+                        // Récupérer les initiales pour l'avatar du message reçu
+                          const prenom = message.sender?.prenom || '';
+                        const nom = message.sender?.nom || '';
+                        const initials = (prenom[0] || '') + (nom[0] || '');
+                        const avatarColor = getAvatarColor(message.idSender || 0);
+
                         return (
-                            <div 
-                                key={message.idMessage} 
-                                className={`flex ${isSent ? 'justify-end' : 'justify-start'}`}
+                            <div 
+                                key={message.idMessage} 
+                                className={`flex ${isSent ? 'justify-end' : 'justify-start'} items-start`} // Ajout de items-start
                             >
-                        <div 
-                            className={`p-3 max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg shadow-md ${
+                                
+                                {/* 💡 1. AVATAR (Pour messages Reçus seulement) */}
+                                {!isSent && (
+                                    <div className="relative w-8 h-8 mr-2 shrink-0">
+                                        
+                                        {/* Si l'utilisateur a une image de profil */}
+                                     {/* Si l'utilisateur a une image de profil */}
+                                     {message.sender?.image ? (
+                                            <img
+                                                src={`${API_URL}${message.sender.image}`}
+                                                alt={`${prenom} ${nom}`}
+                                                className="w-full h-full rounded-full object-cover"
+                                            />
+                                    ) : (
+                                            /* Sinon, avatar avec initiales */
+                                            <div
+                                                className={`w-full h-full ${avatarColor} rounded-full flex items-center justify-center font-bold text-xs text-white`}
+                                            >
+                                                {initials.toUpperCase() || '??'}
+                                            </div>
+                                        )}
+
+                                    </div>
+                                )}
+
+
+                                <div 
+                                    className={`p-3 max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg shadow-lg ${
                                         isSent
-                                    ? 'bg-indigo-600 text-white rounded-2xl rounded-tr-sm' 
+                                            ? 'bg-indigo-600 text-white rounded-2xl rounded-tr-sm' 
                                             : receivedBubble
-                                    } ${!isSent ? 'ml-4' : ''}`}
+                                        } ${isSent ? '' : 'mr-4'}` // Réajustement de la marge
+                                    }
                                 >
-                                    <p className="text-sm">{message.contenu}</p>
+                                    {/* Nom de l'expéditeur pour messages reçus */}
+                                        {!isSent && message.sender && (
+                                            <p className={`text-xs font-semibold mb-1 ${darkMode ? 'text-indigo-400' : 'text-indigo-600'}`}>
+                                                {message.sender.prenom} {message.sender.nom}
+                                            </p>
+                                        )}
+                                    
+
+                                    
+                                    {/* 💡 3. GESTION DU FICHIER ATTACHÉ */}
+                                    {message.fichier && (
+                                        <a 
+                                            href={`${API_URL}/files/download/${message.fichier}`}
+                                            target="_blank" 
+                                            rel="noopener noreferrer"
+                                            className={`flex items-center p-2 rounded-lg mb-2 transition duration-150 ${isSent ? 'bg-indigo-700 hover:bg-indigo-800' : 'bg-gray-100 hover:bg-gray-200'} ${darkMode && !isSent ? 'bg-gray-600 hover:bg-gray-500' : ''}`}
+                                        >
+                                            <FileText className={`w-4 h-4 mr-2 ${isSent ? 'text-white' : 'text-indigo-600'}`} />
+                                            <span className={`text-sm truncate ${isSent ? 'text-white' : 'text-gray-800'}`}>{message.fichier}</span>
+                                        </a>
+                                    )}
+
+                                    {/* Contenu textuel */}
+                                    {message.contenu && <p className="text-sm break-words">{message.contenu}</p>}
+                                    
+                                    {/* Heure */}
                                     <span className={`text-xs block mt-1 text-right ${isSent ? 'opacity-80' : subtleText}`}>
                                         {formatTime(message.date_creation)}
                                     </span>
-                        </div>
-                    </div>
+                                </div>
+                            </div>
                         );
                     })
                 )}
+
                 <div ref={messagesEndRef} />
             </div>
 
-            <footer className={`p-4 border-t ${borderDefault} ${footerBg} shadow-inner`}>
-                <div className="flex items-center">
-                    {/* Bouton d'importation de fichier */}
-                    <label 
-                        htmlFor="file-upload" 
-                        title="Attacher un fichier (sauf vidéo)"
-                        className={`p-3 mr-3 ${subtleText} hover:text-indigo-600 hover:bg-gray-100 rounded-xl transition duration-150 cursor-pointer shrink-0 ${darkMode && 'hover:bg-gray-700'}`}
-                    >
-                        <Paperclip className="w-6 h-6 rotate-45" />
-                        <input
-                            id="file-upload"
-                            type="file"
-                            className="hidden"
-                            onChange={handleFileChange}
-                            // Permet tous les fichiers sauf les vidéos
-                            accept="image/*, application/pdf, application/msword, application/vnd.ms-excel, application/vnd.openxmlformats-officedocument.wordprocessingml.document, application/vnd.openxmlformats-officedocument.spreadsheetml.document, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, text/plain"
-                        />
-                    </label>
+<footer className={`p-4 border-t ${borderDefault} ${footerBg} shadow-inner`}>
+    <div className="flex items-center">
 
-                    {/* Champ de message */}
-                    <input
-                        type="text"
-                        placeholder="Écrire un message..."
-                        value={messageInput}
-                        onChange={(e) => setMessageInput(e.target.value)}
-                        onKeyPress={(e) => {
-                            if (e.key === 'Enter' && !e.shiftKey) {
-                                e.preventDefault();
-                                handleSendMessage();
-                            }
-                        }}
-                        disabled={!activeChatId || sendingMessage}
-                        className={`flex-1 p-3 rounded-xl border ${borderDefault} ${inputInteractiveClasses} transition mr-3 shadow-sm ${darkMode ? "bg-gray-700 text-white placeholder-gray-400" : "bg-white text-gray-900 placeholder-gray-500"} disabled:opacity-50 disabled:cursor-not-allowed`}
-                    />
-                    
-                    {/* Bouton Envoyer */}
-                    <button
-                        onClick={handleSendMessage}
-                        disabled={!activeChatId || !messageInput.trim() || sendingMessage}
-                        className="bg-indigo-600 text-white p-3 rounded-xl hover:bg-indigo-700 transition duration-150 shadow-lg flex items-center justify-center w-12 h-12 shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
-                        title="Envoyer"
-                    >
-                        {sendingMessage ? (
-                            <Loader2 className="w-5 h-5 animate-spin" />
-                        ) : (
-                        <Send className="w-5 h-5" />
-                        )}
-                    </button>
-                </div>
-            </footer>
+        {/* Bouton d'importation de fichier */}
+        <label 
+            htmlFor="file-upload"
+            title="Attacher un fichier (sauf vidéo)"
+            className={`p-3 mr-3 ${subtleText} hover:text-indigo-600 hover:bg-gray-100 rounded-xl transition duration-150 cursor-pointer shrink-0 ${darkMode && 'hover:bg-gray-700'}`}
+        >
+            <Paperclip className="w-6 h-6 rotate-45" />
+            <input
+                id="file-upload"
+                type="file"
+                className="hidden"
+                onChange={handleFileChange}
+                accept="image/*, application/pdf, application/msword, application/vnd.ms-excel, application/vnd.openxmlformats-officedocument.wordprocessingml.document, application/vnd.openxmlformats-officedocument.spreadsheetml.document, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, text/plain"
+            />
+        </label>
+
+        {/* Champ de message */}
+        <input
+            type="text"
+            placeholder="Écrire un message..."
+            value={messageInput}
+            onChange={(e) => setMessageInput(e.target.value)}
+            onKeyPress={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSendMessage();
+                }
+            }}
+            disabled={!activeChatId || sendingMessage}
+            className={`flex-1 p-3 rounded-xl border ${borderDefault} ${inputInteractiveClasses} transition mr-3 shadow-sm ${darkMode ? "bg-gray-700 text-white placeholder-gray-400" : "bg-white text-gray-900 placeholder-gray-500"} disabled:opacity-50 disabled:cursor-not-allowed`}
+        />
+
+        {/* Bouton Envoyer */}
+        <button
+            onClick={handleSendMessage}
+            disabled={!activeChatId || (!messageInput.trim() && !selectedFile) || sendingMessage}
+            className="bg-indigo-600 text-white p-3 rounded-xl hover:bg-indigo-700 transition duration-150 shadow-lg flex items-center justify-center w-12 h-12 shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Envoyer"
+        >
+            {sendingMessage ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+            ) : (
+                <Send className="w-5 h-5" />
+            )}
+        </button>
+    </div>
+
+    {/* Aperçu du fichier sélectionné */}
+    {selectedFile && (
+        <div className="mt-2 text-sm text-gray-600 dark:text-gray-300 flex items-center">
+            <FileText className="w-4 h-4 mr-2" />
+            <span>{selectedFile.name}</span>
+            <button
+                className="ml-3 text-red-500 hover:text-red-700"
+                onClick={() => setSelectedFile(null)}
+            >
+                <X className="w-4 h-4" />
+            </button>
+        </div>
+    )}
+</footer>
+
         </div>
     );
 

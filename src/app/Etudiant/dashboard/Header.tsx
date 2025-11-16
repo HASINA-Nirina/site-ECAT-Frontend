@@ -58,6 +58,7 @@ export default function Header({ darkMode, setDarkMode,sidebarOpen, setSidebarOp
         setNom(data.nom || "");
         setAdminName(`${data.prenom}  ${data.nom}`);
         setProfileImage(data.image || null);
+        localStorage.setItem("idUser", data.id.toString());
 
         const initials =
           (data.prenom?.[0] || "").toUpperCase() +

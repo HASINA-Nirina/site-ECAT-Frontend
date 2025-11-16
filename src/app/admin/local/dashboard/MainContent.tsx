@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { LayoutDashboard, MessageCircle, Users, CreditCard } from "lucide-react";
-import MessagePopup from "@/app/admin/local/dashboard/Message/MessagePopup";
+import MessagePopup from "@/app/admin/super/dashboard/Message/MessagePopup";
 
 interface MainContentProps {
   readonly darkMode: boolean;

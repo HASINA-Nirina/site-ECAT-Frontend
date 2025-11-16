@@ -141,8 +141,8 @@ const addLivre = async () => {
     body.append("auteur", formValues.auteur);
     body.append("description", formValues.description);
     body.append("prix", formValues.prix || "0");
-    if (selectedPDF) body.append("urlPdf", selectedPDF);    // champ attendu pour pdf
-    if (selectedImage) body.append("image", selectedImage);  // champ attendu pour image
+    if (selectedPDF) body.append("urlPdf", selectedPDF);
+    if (selectedImage) body.append("image", selectedImage);  
 
     const res = await fetch("http://localhost:8000/livre/NewLivre/", {
       method: "POST",
@@ -190,7 +190,7 @@ const addLivre = async () => {
       method: "PUT",
       body,
     });
-
+      await fetchLivresForFormation(selectedFormation.idFormation);
     if (selectedFormation) fetchLivresForFormation(selectedFormation.idFormation);
     setEditingLivre(null);
     setShowAddForm(false);
