@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { ArrowUpDown, Calendar, ChevronUp, ChevronDown, Users } from "lucide-react";
+import { useEffect } from "react";
 
 interface MainContentProps {
   readonly darkMode: boolean;
@@ -21,24 +22,52 @@ export default function MainContentEtudiants({ darkMode, lang }: MainContentProp
   const [sortBy, setSortBy] = useState<"nom" | "dateCreation" | null>(null);
   const [sortAsc, setSortAsc] = useState(true);
 
-  const etudiants: Etudiant[] = [
-    { id: 1, nom: "Rakoto", prenom: "Jean", email: "jean@example.com", statut: "Actif", dateCreation: "2025-10-20" },
-    { id: 2, nom: "Rabe", prenom: "Alice", email: "alice@example.com", statut: "Actif", dateCreation: "2025-09-15" },
-    { id: 3, nom: "Andriamasy", prenom: "Paul", email: "paul@example.com", statut: "Inactif", dateCreation: "2025-08-10" },
-  ];
+ 
 
-  const filtered = etudiants.filter((e) =>
-    `${e.nom} ${e.prenom}`.toLowerCase().includes(search.toLowerCase())
+const [etudiants, setEtudiants] = useState<Etudiant[]>([]);
+const [loading, setLoading] = useState(true);
+
+useEffect(() => {
+  const fetchEtudiants = async () => {
+    try {
+      const province=localStorage.getItem("province");
+      setLoading(true);
+      const response = await fetch(`http://localhost:8000/auth/ReadEtudiantByprovince/${province}`);
+      if (!response.ok) throw new Error("Erreur lors du chargement des étudiants");
+      const data: Etudiant[] = await response.json();
+      setEtudiants(data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  fetchEtudiants();
+}, []);
+
+if (loading) {
+  return (
+    <main className="flex-1 p-4 sm:p-6">
+      <p className={darkMode ? "text-white" : "text-gray-900"}>Chargement...</p>
+    </main>
   );
+}
 
-  const sorted = [...filtered].sort((a, b) => {
-    if (!sortBy) return 0;
-    const valA = sortBy === "nom" ? a.nom : a.dateCreation;
-    const valB = sortBy === "nom" ? b.nom : b.dateCreation;
-    if (valA < valB) return sortAsc ? -1 : 1;
-    if (valA > valB) return sortAsc ? 1 : -1;
-    return 0;
-  });
+
+const filtered = etudiants.filter((e) =>
+  `${e.nom} ${e.prenom}`.toLowerCase().includes(search.toLowerCase())
+);
+
+const sorted = [...filtered].sort((a, b) => {
+  if (!sortBy) return 0;
+  const valA = sortBy === "nom" ? a.nom : a.dateCreation;
+  const valB = sortBy === "nom" ? b.nom : b.dateCreation;
+  if (valA < valB) return sortAsc ? -1 : 1;
+  if (valA > valB) return sortAsc ? 1 : -1;
+  return 0;
+});
+
 
   const toggleSort = (column: "nom" | "dateCreation") => {
     if (sortBy === column) setSortAsc(!sortAsc);
@@ -130,7 +159,6 @@ export default function MainContentEtudiants({ darkMode, lang }: MainContentProp
               </th>
               <th className="p-4">Prénom</th>
               <th className="p-4">Email</th>
-              <th className="p-4">Statut</th>
             </tr>
           </thead>
           <tbody>

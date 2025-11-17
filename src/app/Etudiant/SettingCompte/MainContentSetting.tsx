@@ -32,14 +32,13 @@ export default function MainContent({ darkMode, lang }: MainContentProps) {
         if (!res.ok) throw new Error("Non autorisé");
   
         const data = await res.json();
-        const province = data.province ;
         localStorage.setItem("id", data.id);
         setProfile({
           id: data.id ?? null,
           nom: data.nom,
           prenom: data.prenom,
           email: data.email,
-          universite: `Université ECAT Taratra `,
+          universite:  `Université ECAT Taratra ${data.province}`,
           image: data.image,
         });
       } catch  {

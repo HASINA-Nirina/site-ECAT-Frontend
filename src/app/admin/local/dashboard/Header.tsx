@@ -54,6 +54,7 @@ export default function Header({ darkMode, setDarkMode,sidebarOpen, setSidebarOp
         setAdminName(`${data.prenom} ${data.nom}`);
         setProfileImage(data.image || null);
         localStorage.setItem("idUser", data.id.toString());
+        localStorage.setItem("province", data.province);
 
       //Appliquer le thème sauvegardé
       if (data.theme === "dark") {

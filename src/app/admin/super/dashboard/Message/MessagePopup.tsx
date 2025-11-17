@@ -388,9 +388,11 @@ export default function MessagePopup({ onClose, darkMode }: MessagePopupProps) {
     const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         if (event.target.files && event.target.files.length > 0) {
             const file = event.target.files[0];
-            alert(`Fichier sélectionné : ${file.name}. Fonctionnalité à implémenter !`);
+            setSelectedFile(file);
         }
     };
+    
+    
 
     const handleSujetClick = (id: number) => {
         setActiveChatId(id);
@@ -645,8 +647,6 @@ export default function MessagePopup({ onClose, darkMode }: MessagePopupProps) {
                                 {/* 💡 1. AVATAR (Pour messages Reçus seulement) */}
                                 {!isSent && (
                                     <div className="relative w-8 h-8 mr-2 shrink-0">
-                                        
-                                        {/* Si l'utilisateur a une image de profil */}
                                      {/* Si l'utilisateur a une image de profil */}
                                      {message.sender?.image ? (
                                             <img
@@ -681,10 +681,7 @@ export default function MessagePopup({ onClose, darkMode }: MessagePopupProps) {
                                                 {message.sender.prenom} {message.sender.nom}
                                             </p>
                                         )}
-                                    
-
-                                    
-                                    {/* 💡 3. GESTION DU FICHIER ATTACHÉ */}
+                                    {/*  GESTION DU FICHIER ATTACHÉ */}
                                     {message.fichier && (
                                         <a 
                                             href={`${API_URL}/files/download/${message.fichier}`}
@@ -731,22 +728,46 @@ export default function MessagePopup({ onClose, darkMode }: MessagePopupProps) {
                 accept="image/*, application/pdf, application/msword, application/vnd.ms-excel, application/vnd.openxmlformats-officedocument.wordprocessingml.document, application/vnd.openxmlformats-officedocument.spreadsheetml.document, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, text/plain"
             />
         </label>
+       {/* Champ message + aperçu fichier dans le même input */}
+       <div
+    className={`flex items-center p-3 rounded-xl border ${borderDefault} ${inputInteractiveClasses} 
+        transition mr-3 shadow-sm 
+        ${darkMode ? "bg-gray-700 text-white placeholder-gray-400" : "bg-white text-gray-900 placeholder-gray-500"}
+        disabled:opacity-50 disabled:cursor-not-allowed
+    `}
+>
+    {/* Aperçu du fichier sélectionné */}
+    {selectedFile && (
+        <div className="flex items-center mr-3 px-2 py-1 rounded-lg bg-gray-200 dark:bg-gray-600">
+            <FileText className="w-4 h-4 mr-2" />
+            <span className="text-sm">{selectedFile.name}</span>
+            <button
+                className="ml-2 text-red-500 hover:text-red-700"
+                onClick={() => setSelectedFile(null)}
+            >
+                <X className="w-4 h-4" />
+            </button>
+        </div>
+    )}
 
-        {/* Champ de message */}
-        <input
-            type="text"
-            placeholder="Écrire un message..."
-            value={messageInput}
-            onChange={(e) => setMessageInput(e.target.value)}
-            onKeyPress={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    handleSendMessage();
-                }
-            }}
-            disabled={!activeChatId || sendingMessage}
-            className={`flex-1 p-3 rounded-xl border ${borderDefault} ${inputInteractiveClasses} transition mr-3 shadow-sm ${darkMode ? "bg-gray-700 text-white placeholder-gray-400" : "bg-white text-gray-900 placeholder-gray-500"} disabled:opacity-50 disabled:cursor-not-allowed`}
-        />
+    {/* Champ de message */}
+    <input
+        type="text"
+        placeholder="Écrire un message..."
+        value={messageInput}
+        onChange={(e) => setMessageInput(e.target.value)}
+        onKeyPress={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSendMessage();
+            }
+        }}
+        disabled={!activeChatId || sendingMessage}
+        className={`flex-1 bg-transparent outline-none 
+            ${darkMode ? "text-white placeholder-gray-400" : "text-gray-900 placeholder-gray-500"}
+        `}
+    />
+</div>
 
         {/* Bouton Envoyer */}
         <button
@@ -763,23 +784,10 @@ export default function MessagePopup({ onClose, darkMode }: MessagePopupProps) {
         </button>
     </div>
 
-    {/* Aperçu du fichier sélectionné */}
-    {selectedFile && (
-        <div className="mt-2 text-sm text-gray-600 dark:text-gray-300 flex items-center">
-            <FileText className="w-4 h-4 mr-2" />
-            <span>{selectedFile.name}</span>
-            <button
-                className="ml-3 text-red-500 hover:text-red-700"
-                onClick={() => setSelectedFile(null)}
-            >
-                <X className="w-4 h-4" />
-            </button>
-        </div>
-    )}
 </footer>
 
         </div>
-    );
+    )
 
     return (
         <>

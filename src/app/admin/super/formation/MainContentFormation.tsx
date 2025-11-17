@@ -92,10 +92,10 @@ export default function GererFormation({ darkMode }: Props) {
 
   const handleAddOrEditFormation = async () => {
     if (!newFormation.titre) return;
-
+  
     try {
+      // ---- MODIFICATION ----
       if (editFormation) {
-        // Modifier (PUT)
         const res = await fetch(
           `http://localhost:8000/formation/UpdateFormation/${editFormation.id}`,
           {
@@ -104,57 +104,54 @@ export default function GererFormation({ darkMode }: Props) {
             body: JSON.stringify({
               titre: newFormation.titre,
               description: newFormation.description,
-              image: newFormation.image,
+              image: newFormation.image, // pour JSON, pas d'imageFile
             }),
           }
         );
         await res.json();
-        // recharger la liste pour garder la logique simple et cohérente
         await ListeFormation();
       } else {
-        // Ajouter Formation
-       let headers: Record<string, string> = { "Content-Type": "application/json" };
-      
-       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      let body: any;
+       // ---- AJOUT ----
+const formData = new FormData();
+formData.append("titre", newFormation.titre);
+formData.append("description", newFormation.description);
+if (newFormation.imageFile) {
+  formData.append("image", newFormation.imageFile);
+}
 
-      if (newFormation.imageFile) {
-        body = new FormData();
-        body.append("titre", newFormation.titre);
-        body.append("description", newFormation.description);
-        body.append("image", newFormation.imageFile);
+// fetch directement avec formData
+const res = await fetch("http://localhost:8000/formation/NewFormation", {
+  method: "POST",
+  body: formData, // pas besoin de Content-Type ici
+});
 
-        headers = {}; // ok, Record<string,string> peut être vide
-      } else {
-        body = JSON.stringify(newFormation);
-      }
-
-
-        const res = await fetch("http://localhost:8000/formation/NewFormation", {
-          method: "POST",
-          headers,
-          body,
-        });
         const added = await res.json();
-
-        const newFormationItem = {
+  
+        // Créer l’objet formation pour l’état
+        const newFormationItem: Formation = {
           id: added.idFormation,
           titre: added.titre,
           description: added.description,
           image: added.image ? `http://localhost:8000${added.image}` : "",
           filename: added.filename || "",
         };
-
-        setFormations((prev) => [newFormationItem, ...prev]);
       }
-
+  
+      // Réinitialiser popup et formulaire
       setIsPopupOpen(false);
-      setNewFormation({ titre: "", description: "", image: "", filename: "", imageFile: null });
+      setNewFormation({
+        titre: "",
+        description: "",
+        image: "",
+        filename: "",
+        imageFile: null,
+      });
+      await ListeFormation();
     } catch (error) {
-      console.error(error);
+      console.error("Erreur ajout/modification formation :", error);
     }
   };
-
+  
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
@@ -241,7 +238,8 @@ export default function GererFormation({ darkMode }: Props) {
               />
           ) : (
             <div className="w-full h-full bg-blue-200 flex items-center justify-center text-white font-bold text-2xl">
-              {formation.titre.charAt(0).toUpperCase()}
+            {formation.titre ? formation.titre.charAt(0).toUpperCase() : ""}
+
             </div>
           )}           {/* Modifier / Supprimer overlay */}
 

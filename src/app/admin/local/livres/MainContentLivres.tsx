@@ -84,6 +84,9 @@ const imageInputRef = useRef<HTMLInputElement | null>(null);
 
   loadLivres();
 }, [selectedFormation]); 
+useEffect(() => {
+  fetchFormations();
+}, []);
 
 
   const fetchLivresForFormation = async (idFormation: number) => {
@@ -211,6 +214,31 @@ const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
   const file = e.target.files?.[0];
   if (file) setSelectedImage(file);
 };
+const deleteLivre = async (idLivre: number) => {
+  if (!idLivre) return;
+
+  // Confirmation visuelle
+  if (!confirm("Voulez-vous vraiment supprimer ce livre ?")) return;
+
+  try {
+    const res = await fetch(`http://localhost:8000/livre/DeleteLivre/${idLivre}`, {
+      method: "DELETE",
+    });
+
+    if (!res.ok) {
+      console.error("Erreur suppression livre");
+      return;
+    }
+
+    // Recharger la liste après suppression
+    if (selectedFormation) {
+      await fetchLivresForFormation(selectedFormation.idFormation);
+    }
+  } catch (err) {
+    console.error("Erreur deleteLivre :", err);
+  }
+};
+
 
 
 

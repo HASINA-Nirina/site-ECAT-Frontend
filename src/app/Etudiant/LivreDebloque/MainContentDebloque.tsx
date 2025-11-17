@@ -132,7 +132,7 @@ const filteredBooks = books.filter((book) =>
                 className={`rounded-xl shadow-md border ${borderClass} ${cardClass} overflow-hidden hover:scale-105 hover:shadow-xl transition-transform duration-300 cursor-pointer`}
               >
                 <Image
-                 src={book.image}
+                src={`http://localhost:8000/${book.image}`}
                  alt={book.title}
                  width={400}      
                  height={250}     
