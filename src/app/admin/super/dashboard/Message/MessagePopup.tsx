@@ -13,6 +13,7 @@ import {
     Loader2,
     FileText
 } from 'lucide-react';
+import {  Image as ImageIcon } from "lucide-react";
 
 // Types pour les données du backend
 interface Sujet {
@@ -125,16 +126,6 @@ export default function MessagePopup({ onClose, darkMode }: MessagePopupProps) {
 
 
     const activeChat = sujets.find(s => s.idSujet === activeChatId);
-    const getFileType = (filePath: string) => {
-        if (!filePath) return null;
-    
-        const ext = filePath.split('.').pop().toLowerCase();
-    
-        if (["jpg", "jpeg", "png", "gif", "webp"].includes(ext)) return "image";
-        if (ext === "pdf") return "pdf";
-        return "file"; // Word, Excel, txt, etc.
-    };
-    
     // Debug: afficher l'état actuel
     useEffect(() => {
         console.log(' État actuel:', {
@@ -219,9 +210,17 @@ export default function MessagePopup({ onClose, darkMode }: MessagePopupProps) {
                         image: raw.sender?.image || null,
                     }
                 };
-    
-                // Ajouter le message seulement pour le sujet actif
-                setMessages(prev => [...prev, message]);
+                setMessages(prev => {
+                    const newMessages = [message, ...prev]; // ajouter le message au début
+                    return newMessages.sort(
+                        (a, b) => new Date(b.date_creation).getTime() - new Date(a.date_creation).getTime()
+                    );
+                });
+                
+                
+                
+                
+                
     
             } catch (err) {
                 console.error("Erreur parsing WS:", err);
@@ -368,23 +367,7 @@ export default function MessagePopup({ onClose, darkMode }: MessagePopupProps) {
         } else {
             console.warn('idUser est null dans localStorage');
         }
-    }, [idUser]);
-
-   /* // Charger les messages quand un sujet est sélectionné
-    useEffect(() => {
-        if (activeChatId) {
-            fetchMessages(activeChatId);
-        }
-    }, [activeChatId]);
-
-    // Scroll vers le bas quand de nouveaux messages arrivent
-    useEffect(() => {
-        if (messagesEndRef.current && activeChatId) {
-          messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
-        }
-      }, [messages, activeChatId]);*/
-      
-    // Logique d'upload de fichier pour les messages (pour l'instant juste un placeholder)
+    }, [idUser]);    // Logique d'upload de fichier pour les messages (pour l'instant juste un placeholder)
     const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         if (event.target.files && event.target.files.length > 0) {
             const file = event.target.files[0];
@@ -418,7 +401,8 @@ export default function MessagePopup({ onClose, darkMode }: MessagePopupProps) {
     const filteredSujets = sujets.filter(sujet =>
         sujet.titre.toLowerCase().includes(searchQuery.toLowerCase())
     );
-
+   
+    
     // ----------------------------------------------------
     // Définition des classes de Thème (Light/Dark)
     // ----------------------------------------------------
@@ -593,7 +577,7 @@ export default function MessagePopup({ onClose, darkMode }: MessagePopupProps) {
                     <ArrowLeft className="w-6 h-6" />
                 </button>
 
-                <div className="relative w-10 h-10 shrink-0">
+                <div className="relative w-10 h-10 shrink-0 flex-col-reverse">
                     {activeChat?.image ? (
                         <img
                             src={`${API_URL}/upload/forum/${activeChat.image}`}
@@ -620,7 +604,7 @@ export default function MessagePopup({ onClose, darkMode }: MessagePopupProps) {
                 </button>
             </header>
 
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 flex-1 overflow-y-auto p-4 space-y-4 flex flex-col-reverse">
                 {loadingMessages ? (
                     <div className="flex items-center justify-center py-8">
                         <Loader2 className="w-6 h-6 animate-spin text-indigo-600" />
@@ -672,7 +656,7 @@ export default function MessagePopup({ onClose, darkMode }: MessagePopupProps) {
                                         isSent
                                             ? 'bg-indigo-600 text-white rounded-2xl rounded-tr-sm' 
                                             : receivedBubble
-                                        } ${isSent ? '' : 'mr-4'}` // Réajustement de la marge
+                                        } ${isSent ? '' : 'mr-4'}` 
                                     }
                                 >
                                     {/* Nom de l'expéditeur pour messages reçus */}
@@ -682,18 +666,45 @@ export default function MessagePopup({ onClose, darkMode }: MessagePopupProps) {
                                             </p>
                                         )}
                                     {/*  GESTION DU FICHIER ATTACHÉ */}
-                                    {message.fichier && (
-                                        <a 
-                                            href={`${API_URL}/files/download/${message.fichier}`}
-                                            target="_blank" 
-                                            rel="noopener noreferrer"
-                                            className={`flex items-center p-2 rounded-lg mb-2 transition duration-150 ${isSent ? 'bg-indigo-700 hover:bg-indigo-800' : 'bg-gray-100 hover:bg-gray-200'} ${darkMode && !isSent ? 'bg-gray-600 hover:bg-gray-500' : ''}`}
-                                        >
-                                            <FileText className={`w-4 h-4 mr-2 ${isSent ? 'text-white' : 'text-indigo-600'}`} />
-                                            <span className={`text-sm truncate ${isSent ? 'text-white' : 'text-gray-800'}`}>{message.fichier}</span>
-                                        </a>
-                                    )}
 
+                                    {message.fichier && (() => {
+                                        const filenameOnly = message.fichier.split("/").pop()?.trim() || "";
+                                        if (!filenameOnly) return null;
+
+                                        const isImage = /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(filenameOnly);
+
+                                        return isImage ? (
+                                            // Affichage direct de l'image
+                                            <div
+                                                className="w-40 h-40 rounded-lg mb-2 overflow-hidden cursor-pointer hover:opacity-90"
+                                                style={{
+                                                    backgroundImage: `url(${API_URL}/forum/filesdownload/${encodeURIComponent(filenameOnly)})`,
+                                                    backgroundSize: "cover",
+                                                    backgroundPosition: "center",
+                                                }}
+                                                onClick={() => window.open(`${API_URL}/forum/filesdownload/${encodeURIComponent(filenameOnly)}`, "_blank")}
+                                            />
+                                        ) : (
+                                            // Sinon, icône fichier
+                                            <a
+                                                href={`${API_URL}/forum/filesdownload/${encodeURIComponent(filenameOnly)}`}
+                                                download
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className={`flex items-center p-2 rounded-lg mb-2 transition duration-150 
+                                                    ${isSent ? 'bg-indigo-700 hover:bg-indigo-800' : 'bg-gray-100 hover:bg-gray-200'} 
+                                                    ${darkMode && !isSent ? 'bg-gray-600 hover:bg-gray-500' : ''}`}
+                                            >
+                                                <FileText className={`w-4 h-4 mr-2 ${isSent ? 'text-white' : 'text-indigo-600'}`} />
+                                                <span className={`text-sm truncate ${isSent ? 'text-white' : 'text-gray-800'}`}>
+                                                    {filenameOnly}
+                                                </span>
+                                            </a>
+                                        )
+                                    })()}
+
+
+                            
                                     {/* Contenu textuel */}
                                     {message.contenu && <p className="text-sm break-words">{message.contenu}</p>}
                                     
@@ -703,6 +714,7 @@ export default function MessagePopup({ onClose, darkMode }: MessagePopupProps) {
                                     </span>
                                 </div>
                             </div>
+                            
                         );
                     })
                 )}

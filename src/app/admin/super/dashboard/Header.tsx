@@ -196,45 +196,6 @@ export default function Header({ darkMode, setDarkMode,sidebarOpen, setSidebarOp
 
     const [ws, setWs] = useState<WebSocket | null>(null);
 
-    useEffect(() => {
-        if (!activeChatId) return;
-    
-        const socket = new WebSocket(`${API_URL.replace('http', 'ws')}/forum/ws/${activeChatId}`);
-        setWs(socket);
-    
-        socket.onopen = () => console.log("WebSocket connecté:", activeChatId);
-    
-        socket.onmessage = (event) => {
-            const newMessage: Message = JSON.parse(event.data);
-            setMessages(prev => [...prev, newMessage]);
-        };
-    
-        socket.onclose = () => console.log("WebSocket fermé:", activeChatId);
-    
-        return () => socket.close();
-    }, [activeChatId]);
-
-    const handleSendMessage = async () => {
-      if (!messageInput.trim() || !activeChatId || !idUser || sendingMessage) return;
-  
-      const messageData: Message = {
-          idMessage: Date.now(), // temporaire, remplacé par l’ID réel côté backend
-          idSender: idUser,
-          idSujet: activeChatId,
-          contenu: messageInput.trim(),
-          date_creation: new Date().toISOString(),
-          idParentMessage: null
-      };
-  
-      // Envoyer via WebSocket
-      ws?.send(JSON.stringify(messageData));
-  
-      // Ajouter localement pour un rendu instantané
-      setMessages(prev => [...prev, messageData]);
-      setMessageInput('');
-  };
-  
-
 
   // Marquer comme lu quand le popup notifications s’ouvre
   useEffect(() => {

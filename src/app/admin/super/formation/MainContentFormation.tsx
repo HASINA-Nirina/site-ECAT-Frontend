@@ -112,18 +112,18 @@ export default function GererFormation({ darkMode }: Props) {
         await ListeFormation();
       } else {
        // ---- AJOUT ----
-const formData = new FormData();
-formData.append("titre", newFormation.titre);
-formData.append("description", newFormation.description);
-if (newFormation.imageFile) {
-  formData.append("image", newFormation.imageFile);
-}
+        const formData = new FormData();
+        formData.append("titre", newFormation.titre);
+        formData.append("description", newFormation.description);
+        if (newFormation.imageFile) {
+          formData.append("image", newFormation.imageFile);
+        }
 
-// fetch directement avec formData
-const res = await fetch("http://localhost:8000/formation/NewFormation", {
-  method: "POST",
-  body: formData, // pas besoin de Content-Type ici
-});
+        // fetch directement avec formData
+        const res = await fetch("http://localhost:8000/formation/NewFormation", {
+          method: "POST",
+          body: formData, // pas besoin de Content-Type ici
+        });
 
         const added = await res.json();
   
@@ -241,7 +241,7 @@ const res = await fetch("http://localhost:8000/formation/NewFormation", {
             {formation.titre ? formation.titre.charAt(0).toUpperCase() : ""}
 
             </div>
-          )}           {/* Modifier / Supprimer overlay */}
+          )}         {/* Modifier / Supprimer overlay */}
 
                 <div className="absolute top-2 right-2 flex gap-2">
                   <button
@@ -285,6 +285,11 @@ const res = await fetch("http://localhost:8000/formation/NewFormation", {
       {/* Popup ajout / modification */}
       {isPopupOpen && (
         <div className="fixed inset-0 flex items-center justify-center z-50">
+          <div
+            // Ajout du flou ici
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={() => setIsPopupOpen(false)}
+          />
           <div
             className={`relative w-[95%] max-w-lg p-6 rounded-xl shadow-2xl ${
               darkMode ? "bg-gray-900 text-white" : "bg-white text-gray-900"
@@ -359,10 +364,11 @@ const res = await fetch("http://localhost:8000/formation/NewFormation", {
                 />
               </div>
 
-              <div className="flex justify-end gap-68 mt-4">
+              {/* Boutons Annuler / Ajouter Modifier */}
+              <div className="flex justify-end gap-4 mt-4"> {/* Ajustement du gap et inversion des boutons */}
                 <button
                   onClick={() => setIsPopupOpen(false)}
-                  className="px-5 py-2 hover:bg-red-700 text-white rounded-lg transition bg-red-600"
+                  className="px-5 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition" // Pas besoin de hover:bg-red-700 si bg-red-600 est déjà là
                 >
                   Annuler
                 </button>
@@ -381,7 +387,11 @@ const res = await fetch("http://localhost:8000/formation/NewFormation", {
       {/* Popup suppression */}
       {deleteFormation && (
         <div className="fixed inset-0 flex items-center justify-center z-50">
-          <div className="absolute inset-0 bg-black/50" />
+          <div 
+            // Ajout du flou ici
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={() => setDeleteFormation(null)} 
+          />
           <div
             className={`relative w-[90%] max-w-sm p-6 rounded-xl shadow-2xl ${
               darkMode ? "bg-gray-900 text-white" : "bg-white text-gray-900"
