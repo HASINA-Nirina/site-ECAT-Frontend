@@ -168,7 +168,7 @@ export default function ListeEtudiants({ darkMode }: ListeEtudiantsProps) {
                 placeholder="Rechercher un étudiant..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className={`pl-10 pr-4 py-2 rounded-lg border w-64 md:w-72 focus:outline-none transition ${
+                className={`pl-10 pr-4 py-2 rounded-full border w-64 md:w-72 focus:outline-none transition ${
                   darkMode
                     ? "bg-gray-900 border-gray-700 text-white focus:ring-2 focus:ring-[#eb11ff]"
                     : "bg-white border-gray-300 text-gray-900 focus:ring-2 focus:ring-[#eb11ff]"
@@ -190,59 +190,53 @@ export default function ListeEtudiants({ darkMode }: ListeEtudiantsProps) {
                 <ArrowUpNarrowWide size={18} />
               )}
               <span className="text-sm">
-                {sortBy === "az" ? "Trier par A-Z" : "Trier par récents"}
+                {sortBy === "az" ? "Trier par A-Z" : "Trier par Z-A"}
               </span>
             </button>
           </div>
         </div>
 
-        {/* Tableau */}
-            <div className="overflow-x-auto rounded-lg">
-              {error && (
-                <div className="mb-3 text-sm text-red-500">{error}</div>
-              )}
-          <table className="w-full border-collapse overflow-hidden text-sm">
-            <thead>
-              <tr
-                className={`${
-                  darkMode
-                    ? "bg-gray-900 text-[#eb11ff]"
-                    : "bg-gray-100 text-[#eb11ff]"
-                } text-left`}
-              >
-                <th className="p-3 font-semibold">Nom</th>
-                <th className="p-3 font-semibold">Prénom</th>
-                <th className="p-3 font-semibold">Antenne</th>
+        {/* Tableau stylisé */}
+        <div
+          className={`rounded-xl border shadow-md overflow-hidden ${
+            darkMode ? "border-gray-700 bg-gray-800 text-white" : "border-gray-200 bg-white text-gray-900"
+          }`}
+        >
+          {error && (
+            <div className="mb-3 text-sm text-red-500">{error}</div>
+          )}
+          <table className="w-full">
+            <thead
+              className={`text-left text-sm uppercase ${
+                darkMode ? "bg-purple-700 text-gray-300" : "bg-gray-200 text-purple-700"
+              }`}
+            >
+              <tr>
+                <th className="py-3 px-4">Nom</th>
+                <th className="py-3 px-4">Prénom</th>
+                <th className="py-3 px-4">Antenne</th>
               </tr>
             </thead>
             <tbody>
-                {filtered.length === 0 ? (
-                  <tr>
-                    <td
-                      colSpan={4}
-                      className="text-center py-6 text-gray-400"
-                    >
-                      {loading ? "Chargement..." : "Aucun étudiant trouvé."}
-                    </td>
-                  </tr>
-                ) : (
-                  filtered.map((e) => (
+              {filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={3} className="text-center py-6 text-gray-400">
+                    {loading ? "Chargement..." : "Aucun étudiant trouvé."}
+                  </td>
+                </tr>
+              ) : (
+                filtered.map((e) => (
                   <tr
                     key={e.id}
-                    className={`transition-colors ${
+                    className={`border-t ${
                       darkMode
-                        ? "hover:bg-gray-900 border-b border-gray-700"
-                        : "hover:bg-gray-100 border-b border-gray-200"
-                    }`}
+                        ? "border-gray-700 hover:bg-gray-700"
+                        : "border-gray-200 hover:bg-gray-100"
+                    } transition`}
                   >
-                    <td className="p-3">{e.nom}</td>
-                    <td className="p-3">{e.prenom}</td>
-                    <td className="p-3 font-medium">
-                      {e.antenne}
-                    </td>
-                    <td className="p-3">
-                        {e.dateInscription ? new Date(e.dateInscription).toLocaleDateString() : "-"}
-                    </td>
+                    <td className="py-3 px-4 font-medium">{e.nom}</td>
+                    <td className="py-3 px-4">{e.prenom}</td>
+                    <td className="py-3 px-4">{e.antenne}</td>
                   </tr>
                 ))
               )}
@@ -250,6 +244,7 @@ export default function ListeEtudiants({ darkMode }: ListeEtudiantsProps) {
           </table>
         </div>
       </div>
+
     </div>
   );
 }

@@ -1,6 +1,14 @@
 import type { NextConfig } from 'next';
+import withBundleAnalyzer from '@next/bundle-analyzer';
 
+// Activer le bundle analyzer seulement si ANALYZE=true
+const isAnalyze = process.env.ANALYZE === 'true';
 const nextConfig: NextConfig = {
+  reactStrictMode: true,
+  swcMinify: true,
+  eslint: {
+    ignoreDuringBuilds: true, // <--- ignore les erreurs ESLint pendant build
+  },
   images: {
     remotePatterns: [
       {
@@ -21,6 +29,9 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  devIndicators: false
 };
 
-export default nextConfig;
+export default withBundleAnalyzer({
+  enabled: isAnalyze,
+})(nextConfig);

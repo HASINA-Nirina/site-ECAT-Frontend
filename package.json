@@ -6,9 +6,11 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "analyze": "ANALYZE=true next build"
   },
   "dependencies": {
+    "@next/bundle-analyzer": "^16.0.4",
     "framer-motion": "^12.23.22",
     "libphonenumber-js": "^1.12.25",
     "lucide-react": "^0.545.0",

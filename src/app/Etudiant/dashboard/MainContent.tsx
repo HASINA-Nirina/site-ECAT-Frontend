@@ -1,191 +1,184 @@
 "use client";
 
-import { useState } from "react";
-import { BookOpen, CreditCard, MessageCircle, FileText, BarChart3, Clock } from "lucide-react";
+import { useEffect, useState, useMemo } from "react";
 import MessagePopup from "@/app/admin/super/dashboard/Message/MessagePopup";
-
+import { LayoutDashboard, BookOpen, CreditCard, Clock, Users, MessageCircle, } from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, Tooltip as ReTooltip, ResponsiveContainer, Cell, CartesianGrid, PieChart, Pie, Legend } from "recharts";
 
 interface MainContentProps {
   readonly darkMode: boolean;
   readonly lang: string;
 }
 
-export default function MainContent({ darkMode, lang }: MainContentProps) {
-  const [activeSection, setActiveSection] = useState("dashboard");
-  const [showMessage, setShowMessage] = useState(false);
-  const bgClass = darkMode ? "bg-gray-900 text-white" : "bg-gray-50 text-black";
-  const cardClass = darkMode ? "bg-gray-800 text-white" : "bg-white text-black";
-  const borderClass = darkMode ? "border-gray-700" : "border-gray-200";
+function rankToColors(values: number[]) {
+  const palette = {
+    highest: "#16a34a", // vert = plus grande valeur
+    second: "#3b82f6", // bleu = valeur moyenne haute
+    third: "#fbbf24", // jaune = moyenne
+    lowest: "#ef4444", // rouge = faible
+  };
+  const pairs = values.map((v, i) => ({ v, i })).sort((a, b) => b.v - a.v);
+  const colorsByIndex: string[] = new Array(values.length).fill(palette.lowest);
+  if (pairs[0]) colorsByIndex[pairs[0].i] = palette.highest;
+  if (pairs[1]) colorsByIndex[pairs[1].i] = palette.second;
+  if (pairs[2]) colorsByIndex[pairs[2].i] = palette.third;
+  return colorsByIndex;
+}
 
-  // Données fictives pour la section rapports
-  const reports = [
-    {
-      id: 1,
-      mois: "Janvier 2025",
-      livres: 5,
-      progression: 87,
-      temps: "12h 30min",
-    },
-    {
-      id: 2,
-      mois: "Février 2025",
-      livres: 4,
-      progression: 74,
-      temps: "10h 10min",
-    },
-    {
-      id: 3,
-      mois: "Mars 2025",
-      livres: 7,
-      progression: 92,
-      temps: "15h 05min",
-    },
+// Tooltip personnalisé
+const CustomTooltip = ({ active, payload, label, darkMode }: any) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className={`p-2 rounded-lg shadow-xl ${darkMode ? "bg-gray-800 text-white" : "bg-white text-gray-900"} border border-gray-300`}>
+        <p className="text-sm font-semibold">{label}</p>
+        <p className="text-xs">{`Valeur : ${payload[0].value}`}</p>
+      </div>
+    );
+  }
+  return null;
+};
+
+const renderCustomLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent }: any) => {
+  const RADIAN = Math.PI / 180;
+  const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
+  const x = cx + radius * Math.cos(-midAngle * RADIAN);
+  const y = cy + radius * Math.sin(-midAngle * RADIAN);
+  return (
+    <text x={x} y={y} fill="white" textAnchor={x > cx ? "start" : "end"} dominantBaseline="central" className="font-bold text-xs" style={{ textShadow: "1px 1px 2px rgba(0,0,0,0.7)" }}>
+      {`${(percent * 100).toFixed(1)}%`}
+    </text>
+  );
+};
+
+export default function MainContent({ darkMode, lang }: MainContentProps) {
+  const [showMessage, setShowMessage] = useState(false);
+  const [time, setTime] = useState<Date | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  // Données étudiant
+  const [formations, setFormations] = useState<number>(0);
+  const [paiements, setPaiements] = useState<number>(0);
+  const [livres, setLivres] = useState<number>(0);
+  const [tempsActivite, setTempsActivite] = useState<number>(0); // en heures par exemple
+
+  const [historique, setHistorique] = useState<{ mois: string; livres: number; heures: number }[]>([]);
+
+  useEffect(() => {
+    setMounted(true);
+    setTime(new Date());
+    const timer = setInterval(() => setTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const res = await fetch("http://localhost:8000/student/dashboard");
+        if (!res.ok) return;
+        const data = await res.json();
+        setFormations(data.formations ?? 0);
+        setPaiements(data.paiements ?? 0);
+        setLivres(data.livres ?? 0);
+        setTempsActivite(data.temps_activite ?? 0);
+
+        setHistorique(data.historique ?? []); // [{mois:'Jan', livres:2, heures:5},...]
+      } catch (e) {
+        console.warn("Erreur fetch étudiant:", e);
+      }
+    };
+    fetchData();
+  }, []);
+
+  const statCardClass = `rounded-2xl shadow-xl transition-all p-6 border-l-4 border-[#17f] ${darkMode ? "bg-gradient-to-br from-gray-800 to-gray-900 text-white" : "bg-gradient-to-br from-white to-gray-100 text-gray-900"}`;
+  const chartCardClass = `rounded-2xl shadow-xl transition-all p-6 ${darkMode ? "bg-gradient-to-br from-gray-800 to-gray-900 text-white" : "bg-gradient-to-br from-white to-gray-100 text-gray-900"}`;
+
+  const pieData = [
+    { name: "Formations", value: formations },
+    { name: "Paiements", value: paiements },
+    { name: "Livres débloqués", value: livres },
+    { name: "Temps activité", value: tempsActivite },
   ];
 
+  const pieColors = rankToColors(pieData.map(d => d.value));
+
+  const barColors = rankToColors(historique.map(h => h.livres + h.heures));
+
   return (
-    <main className={`flex-1 p-6 ${bgClass}`}>
-      <h1 className="text-2xl font-bold mb-6">Bienvenue sur votre espace étudiant</h1>
-
-      {/* Statistiques principales */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div className={`p-5 rounded-xl shadow-md ${cardClass} border ${borderClass}`}>
-          <BookOpen size={32} className="text-purple-600 mb-3" />
-          <h2 className="text-lg font-semibold">Formations suivies</h2>
-          <p className="text-3xl font-bold mt-2">3</p>
+    <main className="flex-1 p-6 relative">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center gap-3">
+          <LayoutDashboard size={28} color="#17f" />
+          <h1 className="text-2xl font-bold">{lang === "fr" ? "Tableau de bord - Étudiant" : "Student Dashboard"}</h1>
         </div>
-
-        <div className={`p-5 rounded-xl shadow-md ${cardClass} border ${borderClass}`}>
-          <CreditCard size={32} className="text-green-500 mb-3" />
-          <h2 className="text-lg font-semibold">Paiements effectués</h2>
-          <p className="text-3xl font-bold mt-2">2</p>
-        </div>
-
-        <div className={`p-5 rounded-xl shadow-md ${cardClass} border ${borderClass}`}>
-          <MessageCircle size={32} className="text-blue-500 mb-3" />
-          <h2 className="text-lg font-semibold">Discussions actives</h2>
-          <p className="text-3xl font-bold mt-2">1</p>
+        <div className="flex flex-col items-end bg-gradient-to-r from-purple-600 to-blue-500 text-white rounded-xl px-4 py-3 shadow-lg">
+          <div className="flex items-center gap-2">
+            <Clock size={22} />
+            <span className="text-xl font-semibold">{mounted && time ? time.toLocaleTimeString("fr-FR") : "--:--:--"}</span>
+          </div>
+          <span className="text-sm opacity-90">{mounted && time ? time.toLocaleDateString("fr-FR", { weekday: "long", day: "2-digit", month: "long", year: "numeric" }) : ""}</span>
         </div>
       </div>
 
-      {/* Navigation interne simple */}
-      <div className="flex flex-wrap gap-3 mb-6">
-        {[
-          { key: "dashboard", label: "Tableau de bord" },
-          { key: "messages", label: "Messages" },
-          { key: "rapports", label: "Rapports" },
-        ].map((tab) => (
-          <button
-            key={tab.key}
-            onClick={() => setActiveSection(tab.key)}
-            className={`px-4 py-2 rounded-lg font-medium transition ${
-              activeSection === tab.key
-                ? "bg-purple-600 text-white"
-                : "bg-gray-300 hover:bg-gray-400"
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
+      {/* Top stats */}
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-6 mb-6">
+        <div className={statCardClass}>
+          <div className="flex items-center gap-3 mb-2"><BookOpen size={22} color="#fbbf24" /><h3 className="font-semibold text-lg">Formations</h3></div>
+          <h2 className="text-4xl font-extrabold text-yellow-400">{formations}</h2>
+          <p className="text-sm opacity-75">Formations suivies</p>
+        </div>
+        <div className={statCardClass}>
+          <div className="flex items-center gap-3 mb-2"><CreditCard size={22} color="#3b82f6" /><h3 className="font-semibold text-lg">Paiements</h3></div>
+          <h2 className="text-4xl font-extrabold text-green-400">{paiements}</h2>
+          <p className="text-sm opacity-75">Paiements validés</p>
+        </div>
+        <div className={statCardClass}>
+          <div className="flex items-center gap-3 mb-2"><Users size={22} color="#16a34a" /><h3 className="font-semibold text-lg">Livres</h3></div>
+          <h2 className="text-4xl font-extrabold text-blue-400">{livres}</h2>
+          <p className="text-sm opacity-75">Livres débloqués</p>
+        </div>
+        <div className={statCardClass}>
+          <div className="flex items-center gap-3 mb-2"><Clock size={22} color="#ef4444" /><h3 className="font-semibold text-lg">Activité</h3></div>
+          <h2 className="text-4xl font-extrabold text-red-400">{tempsActivite}h</h2>
+          <p className="text-sm opacity-75">Heures d&apos;activité</p>
+        </div>
       </div>
 
-      {/* Contenu dynamique */}
-      <section className={`p-6 rounded-xl shadow-md border ${borderClass} ${cardClass}`}>
-        {activeSection === "dashboard" && (
-          <div>
-            <h2 className="text-xl font-semibold mb-2">Vos formations récentes</h2>
-            <ul className="list-disc pl-6 space-y-1">
-              <li>Développement Web – Niveau 1</li>
-              <li>Design UI/UX – Atelier pratique</li>
-              <li>Introduction à la cybersécurité</li>
-            </ul>
-          </div>
-        )}
+      {/* Graphiques */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        {/* Diagramme circulaire */}
+        <div className={chartCardClass}>
+          <h2 className="text-lg font-semibold mb-4 text-center">Répartition des activités</h2>
+          <PieChart width={300} height={300}>
+            <ReTooltip content={<CustomTooltip darkMode={darkMode} />} />
+            <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={70} outerRadius={120} paddingAngle={4} cornerRadius={10} startAngle={90} endAngle={-270} label={renderCustomLabel} labelLine={false}>
+              {pieData.map((entry, index) => <Cell key={index} fill={pieColors[index]} />)}
+            </Pie>
+            <Legend layout="horizontal" verticalAlign="bottom" align="center" iconType="circle" wrapperStyle={{ paddingTop: "20px" }} formatter={v => <span className="text-sm font-medium opacity-90">{v}</span>} />
+          </PieChart>
+        </div>
 
-        {activeSection === "messages" && (
-          <div>
-            <h2 className="text-xl font-semibold mb-2">Discussion avec votre antenne</h2>
-            <p className="opacity-80">
-              Retrouvez vos échanges avec l’administration locale dans votre espace de messagerie.
-            </p>
-          </div>
-        )}
-
-        {activeSection === "rapports" && (
-          <div>
-            <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-              <FileText className="text-blue-500" /> Vos Rapports Mensuels
-            </h2>
-
-            {/* Résumé global */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-6">
-              <div className={`p-5 rounded-xl shadow-md border ${borderClass} ${cardClass} flex items-center gap-4`}>
-                <BookOpen size={40} className="text-blue-500" />
-                <div>
-                  <h2 className="text-lg font-semibold">Livres lus</h2>
-                  <p className="text-2xl font-bold">16</p>
-                </div>
-              </div>
-
-              <div className={`p-5 rounded-xl shadow-md border ${borderClass} ${cardClass} flex items-center gap-4`}>
-                <BarChart3 size={40} className="text-green-500" />
-                <div>
-                  <h2 className="text-lg font-semibold">Progression moyenne</h2>
-                  <p className="text-2xl font-bold">84%</p>
-                </div>
-              </div>
-
-              <div className={`p-5 rounded-xl shadow-md border ${borderClass} ${cardClass} flex items-center gap-4`}>
-                <Clock size={40} className="text-yellow-500" />
-                <div>
-                  <h2 className="text-lg font-semibold">Temps total</h2>
-                  <p className="text-2xl font-bold">37h 45min</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Tableau des rapports */}
-            <div className={`rounded-xl border ${borderClass} ${cardClass} shadow-md overflow-hidden`}>
-              <table className="w-full text-left text-sm">
-                <thead
-                  className={`${
-                    darkMode ? "bg-gray-700 text-gray-300" : "bg-gray-200 text-gray-700"
-                  } uppercase`}
-                >
-                  <tr>
-                    <th className="py-3 px-4">Mois</th>
-                    <th className="py-3 px-4">Livres lus</th>
-                    <th className="py-3 px-4">Progression</th>
-                    <th className="py-3 px-4">Temps de lecture</th>
-                    <th className="py-3 px-4 text-center">Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {reports.map((r) => (
-                    <tr
-                      key={r.id}
-                      className={`border-t ${borderClass} hover:bg-gray-100 dark:hover:bg-gray-800 transition`}
-                    >
-                      <td className="py-3 px-4 font-medium">{r.mois}</td>
-                      <td className="py-3 px-4">{r.livres}</td>
-                      <td className="py-3 px-4">{r.progression}%</td>
-                      <td className="py-3 px-4">{r.temps}</td>
-                      <td className="py-3 px-4 text-center">
-                        <button
-                          onClick={() => alert(`Téléchargement du rapport ${r.mois}...`)}
-                          className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-sm flex items-center gap-1 mx-auto"
-                        >
-                          <FileText size={14} /> Télécharger
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-      </section>
-      {/* Floating message button */}
+        {/* Histogramme */}
+        <div className={chartCardClass}>
+          <h2 className="text-lg font-semibold mb-4 text-center">Historique mensuel</h2>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={historique} barSize={40}>
+              <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? "#222731" : "#e6eef8"} />
+              <XAxis dataKey="mois" tick={{ fill: "#9aa4b2" }} />
+              <YAxis tick={{ fill: "#9aa4b2" }} />
+              <ReTooltip content={<CustomTooltip darkMode={darkMode} />} />
+              <Bar dataKey="livres" radius={[10, 10, 0, 0]}>
+                {historique.map((entry, i) => <Cell key={i} fill={barColors[i]} />)}
+              </Bar>
+              <Bar dataKey="heures" radius={[10, 10, 0, 0]}>
+                {historique.map((entry, i) => <Cell key={`h-${i}`} fill={barColors[i]} />)}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+          <p className="mt-3 text-xs opacity-75 text-center">Couleurs selon l&apos;importance des valeurs : vert = élevé, bleu/jaune = moyen, rouge = faible</p>
+        </div>
+      </div>
+            {/* Floating message button */}
       <button
         className="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-purple-600 hover:bg-purple-700 text-white flex items-center justify-center shadow-xl transition-all duration-300 hover:scale-105"
         title="Messages"
@@ -202,5 +195,5 @@ export default function MainContent({ darkMode, lang }: MainContentProps) {
         />
       )}
     </main>
-   );
- }
+  );
+}
