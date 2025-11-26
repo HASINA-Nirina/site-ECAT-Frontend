@@ -96,21 +96,26 @@ export default function GererFormation({ darkMode }: Props) {
     try {
       // ---- MODIFICATION ----
       if (editFormation) {
+        const formData = new FormData();
+
+        formData.append("titre", newFormation.titre);
+        formData.append("description", newFormation.description);
+
+        // Ajouter l'image seulement si elle est modifiée
+        if (newFormation.imageFile) {
+          formData.append("image", newFormation.imageFile);
+        }
+
         const res = await fetch(
           `http://localhost:8000/formation/UpdateFormation/${editFormation.id}`,
           {
             method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              titre: newFormation.titre,
-              description: newFormation.description,
-              image: newFormation.image, // pour JSON, pas d'imageFile
-            }),
+            body: formData, 
           }
         );
-        await res.json();
-        await ListeFormation();
-      } else {
+      }
+
+      else {
        // ---- AJOUT ----
         const formData = new FormData();
         formData.append("titre", newFormation.titre);
@@ -132,7 +137,7 @@ export default function GererFormation({ darkMode }: Props) {
           id: added.idFormation,
           titre: added.titre,
           description: added.description,
-          image: added.image ? `http://localhost:8000${added.image}` : "",
+          image: added.image ? added.image : "",
           filename: added.filename || "",
         };
       }
