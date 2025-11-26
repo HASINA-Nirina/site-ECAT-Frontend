@@ -20,9 +20,7 @@ const RegisterPage = () => {
     email: "",
     password: "",
     // 'city' est le choix du select 
-    city: "", 
-    // 'customCity' est la valeur tapée dans le champ texte libre
-    customCity: "", 
+    city: "",  
     paymentMethod: "",
   });
   const router = useRouter();
@@ -46,26 +44,7 @@ const RegisterPage = () => {
     fetchAntennes();
   }, []);
   
-  //  Gestion des changements dans le formulaire
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
-  ) => {
-    const { name, value } = e.target;
 
-    setForm((prevForm) => {
-      let newForm = { ...prevForm, [name]: value };
-
-      // interdiction des champs de province
-      if (name === "city") {
-        // Si l'utilisateur choisit une province dans le select, vide le champ customCity
-        newForm.customCity = "";
-      } else if (name === "customCity") {
-        // Si l'utilisateur tape dans customCity, vide le select
-        newForm.city = "";
-      }
-      return newForm;
-    });
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -86,8 +65,8 @@ const RegisterPage = () => {
           nom: form.lastName,
           prenom: form.firstName,
           email: form.email,
-          mot_de_passe: form.password,
-          province: provinceToSend, 
+          mot_de_passe: form.password, 
+          province: form.city,
           role: "etudiante",
           statuts: "Actif",
         }),
@@ -106,11 +85,17 @@ const RegisterPage = () => {
       alert("Impossible de contacter le serveur.");
     }
   };
+   //  Gestion des changements dans le formulaire
+   const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) => {
+    const { name, value } = e.target;
 
-  // Déterminer si l'input texte libre doit être désactivé
-  const isCustomCityDisabled = form.city !== "";
-  // Déterminer si le select doit être désactivé
-  const isCitySelectDisabled = form.customCity !== "";
+    setForm((prevForm) => {
+      let newForm = { ...prevForm, [name]: value };
+      return newForm;
+    });
+  };
 
   return (
     <section
@@ -174,10 +159,10 @@ const RegisterPage = () => {
             name="city"
             value={form.city}
             onChange={handleChange}
-            className={`w-full p-3 mb-4 border border-gray-300 rounded-lg text-black focus:outline-none focus:ring-2 focus:ring-purple-500 ${isCitySelectDisabled ? "bg-gray-100 cursor-not-allowed" : ""}`}
-            required={!form.customCity} // Requis SEULEMENT si customCity est vide
-            disabled={isCitySelectDisabled} // Désactivé si customCity est rempli
-          >
+            className="w-full p-3 mb-4 border border-gray-300 rounded-lg text-black focus:outline-none focus:ring-2 focus:ring-purple-500"
+            required
+            >
+        
             <option value="">Sélectionnez votre ville (Antenne existante)</option>
             {/* Si la liste est chargée, les options apparaissent ici */}
             {antennes.map((antenne) => (
@@ -186,24 +171,6 @@ const RegisterPage = () => {
               </option>
             ))}
           </select>
-          
-          <div className="text-center text-gray-500 italic mb-4">OU</div>
-
-          {/* PROVINCE NON EXISTANTE (CHAMP LIBRE) */}
-          <div className="relative w-full mb-6">
-            <input
-              type="text"
-              name="customCity" // Nom différent pour le champ libre
-              placeholder="Province non existante, saisir votre province"
-              value={form.customCity}
-              onChange={handleChange}
-              className={`w-full p-3 pl-10 border border-gray-300 rounded-lg text-black focus:outline-none focus:ring-2 focus:ring-purple-500 ${isCustomCityDisabled ? "bg-gray-100 cursor-not-allowed" : ""}`}
-              required={!form.city} // Requis SEULEMENT si city est vide
-              disabled={isCustomCityDisabled} // Désactivé si city est sélectionné
-            />
-            <Plus className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
-          </div>
-
           <button
             type="submit"
             className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition duration-300"

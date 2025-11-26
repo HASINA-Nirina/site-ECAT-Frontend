@@ -1,9 +1,14 @@
 "use client";
 
-import React, { useState } from "react";
-import { useRouter } from "next/navigation";
+import React, { useState, useEffect } from "react";
+// import { useRouter } from "next/navigation"; // L'importation n'est pas utilisée et peut être supprimée
 import background from "@/app/assets/background.png";
 import { Eye, EyeOff } from "lucide-react";
+
+interface Antenne {
+  id: number;
+  antenne: string;
+}
 
 const InscriptionAdminLocal = () => {
   const [nom, setNom] = useState("");
@@ -11,21 +16,29 @@ const InscriptionAdminLocal = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [antenne, setAntenne] = useState("");
+  const [antenne, setAntenne] = useState(""); // État pour la province sélectionnée
   const [message, setMessage] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [success, setSuccess] = useState<boolean | null>(null);
-  
+  // 🐛 FIX: Déclaration de l'état 'antennes' manquant
+  const [antennes, setAntennes] = useState<Antenne[]>([]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-       setSuccess(null);
+    setSuccess(null);
     if (password !== confirmPassword) {
       setMessage("❌ Les mots de passe ne correspondent pas.");
       setSuccess(false); // rouge
       return;
     }
+    // Ajout d'une vérification pour s'assurer qu'une antenne est sélectionnée
+    if (!antenne) {
+      setMessage("❌ Veuillez sélectionner une ville.");
+      setSuccess(false);
+      return;
+    }
+
     try {
       const res = await fetch("http://127.0.0.1:8000/auth/AdminLocalRegister", {
         method: "POST",
@@ -35,7 +48,7 @@ const InscriptionAdminLocal = () => {
           prenom: prenom,
           email: email,
           mot_de_passe: password,
-          province: antenne,
+          province: antenne, // Utilisez l'état 'antenne' pour la province
           role: "Admin Local",
           statut: "en attente",
         }),
@@ -44,10 +57,13 @@ const InscriptionAdminLocal = () => {
       const data = await res.json();
 
       if (res.ok && data.message) {
-        setMessage(" Votre demande d’inscription a été envoyée. En attente de validation.");
+        setMessage(
+          " Votre demande d’inscription a été envoyée. En attente de validation."
+        );
         setSuccess(true); // vert
       } else if (data.error) {
         setMessage("❌ " + data.error);
+        setSuccess(false);
       } else {
         setMessage(" Une erreur inconnue est survenue.");
         setSuccess(false); // rouge
@@ -65,6 +81,31 @@ const InscriptionAdminLocal = () => {
       .split(" ")
       .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
       .join(" ");
+
+  //  Récupération des antennes
+  const fetchAntennes = async () => {
+    try {
+      const res = await fetch("http://127.0.0.1:8000/antenne/ReadAntenne");
+      if (res.ok) {
+        const data: Antenne[] = await res.json();
+        // Le champ est 'antenne' dans l'interface, mais le champ du backend est 'province' pour l'inscription.
+        // On suppose que la réponse du backend contient la propriété 'province' que vous voulez afficher.
+        // Pour être sûr, on mappe l'objet Antenne[] pour avoir la bonne propriété à afficher si le champ est 'antenne'
+        // Si l'API retourne { id: 1, antenne: "Province X" }, le mapping dans le return est correct.
+        setAntennes(data);
+      } else {
+        console.error("Erreur lors de la récupération des antennes");
+        // Vous pouvez ajouter un message utilisateur ici si nécessaire
+      }
+    } catch (error) {
+      console.error("Impossible de contacter le serveur d'antennes:", error);
+      // Vous pouvez ajouter un message utilisateur ici si nécessaire
+    }
+  };
+
+  useEffect(() => {
+    fetchAntennes();
+  }, []);
 
   return (
     <section
@@ -109,20 +150,25 @@ const InscriptionAdminLocal = () => {
             required
           />
 
-          {/* Antenne */}
+          {/* SÉLECTION  DES PROVINCES */}
           <select
+            // Modification: Ajout d'une clé pour forcer le re-rendu après le chargement des antennes
+            key={`antennes-${antennes.length}`}
+            name="antenne"
             value={antenne}
+            // 🐛 FIX: setAntenne au lieu de setPassword
             onChange={(e) => setAntenne(e.target.value)}
             className="w-full p-3 mb-4 border border-gray-300 rounded-lg text-black focus:outline-none focus:ring-2 focus:ring-purple-500"
             required
           >
-            <option value="">-- Sélectionnez une antenne --</option>
-            <option value="Antananarivo">Antananarivo</option>
-            <option value="Fianarantsoa">Fianarantsoa</option>
-            <option value="Toamasina">Toamasina</option>
-            <option value="Toliara">Toliara</option>
-            <option value="Mahajanga">Mahajanga</option>
-            <option value="Antsiranana">Antsiranana</option>
+            <option value="">Sélectionnez votre ville </option>
+            {/* Si la liste est chargée, les options apparaissent ici */}
+            {antennes.map((item) => (
+          
+              <option key={item.id} value={item.province}>
+                {item.province}
+              </option>
+            ))}
           </select>
 
           {/* Mot de passe */}
@@ -135,11 +181,14 @@ const InscriptionAdminLocal = () => {
               className="w-full p-3 border border-gray-300 rounded-lg text-black focus:outline-none focus:ring-2 focus:ring-purple-500"
               required
             />
-            <Eye
-              size={20}
-              className="absolute right-3 top-3 text-purple-600 cursor-pointer"
+            <button
+              type="button" // Important pour éviter de soumettre le formulaire
               onClick={() => setShowPassword(!showPassword)}
-            />
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-purple-600 cursor-pointer"
+              aria-label={showPassword ? "Cacher le mot de passe" : "Afficher le mot de passe"}
+            >
+              {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+            </button>
           </div>
 
           {/* Confirmer mot de passe */}
@@ -152,11 +201,14 @@ const InscriptionAdminLocal = () => {
               className="w-full p-3 border border-gray-300 rounded-lg text-black focus:outline-none focus:ring-2 focus:ring-purple-500"
               required
             />
-            <Eye
-              size={20}
-              className="absolute right-3 top-3 text-purple-600 cursor-pointer"
+            <button
+              type="button" // Important pour éviter de soumettre le formulaire
               onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-            />
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-purple-600 cursor-pointer"
+              aria-label={showConfirmPassword ? "Cacher le mot de passe" : "Afficher le mot de passe"}
+            >
+              {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+            </button>
           </div>
 
           {/* Bouton */}
@@ -167,26 +219,29 @@ const InscriptionAdminLocal = () => {
             Créer mon compte
           </button>
 
-           {/* ✅ Message de succès / erreur */}
-        {message && (
-          <div
-            className={`flex justify-center items-center mt-4 font-medium text-center ${
-              success === true
-                ? "text-green-600"
-                : success === false
-                ? "text-red-600"
-                : message.toLowerCase().includes("en attente")
-                ? "text-yellow-600"
-                : "text-red-700"
-            }`}
-          >
-            {message}
-          </div>
-        )}
+          {/* ✅ Message de succès / erreur */}
+          {message && (
+            <div
+              className={`flex justify-center items-center mt-4 font-medium text-center ${
+                success === true
+                  ? "text-green-600"
+                  : success === false
+                  ? "text-red-600"
+                  : message.toLowerCase().includes("en attente")
+                  ? "text-yellow-600" // Affiche en jaune pour 'en attente'
+                  : "text-red-700"
+              }`}
+            >
+              {message}
+            </div>
+          )}
 
           <p className="text-center text-black mt-6">
             Déjà un compte ?{" "}
-            <a href="/login" className="text-purple-700 font-semibold hover:underline">
+            <a
+              href="/login"
+              className="text-purple-700 font-semibold hover:underline"
+            >
               Se connecter
             </a>
           </p>
