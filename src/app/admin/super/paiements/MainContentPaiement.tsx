@@ -188,7 +188,7 @@ export default function ListePaiements({ darkMode }: ListePaiementsProps) {
               <ArrowUpNarrowWide size={18} />
             )}
             <span className="text-sm">
-              {sortBy === "az" ? "Trier A-Z" : "Trier récents"}
+              {sortBy === "az" ? "Trier de A-Z" : "Trier de Z-A"}
             </span>
           </button>
         </div>

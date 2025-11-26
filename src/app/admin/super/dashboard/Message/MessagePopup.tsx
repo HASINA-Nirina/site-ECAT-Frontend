@@ -11,7 +11,9 @@ import {
     Paperclip,
     Plus,
     Loader2,
-    FileText
+    FileText,
+    UserPlus,
+    SquarePlus
 } from 'lucide-react';
 import {  Image as ImageIcon } from "lucide-react";
 
@@ -216,12 +218,6 @@ export default function MessagePopup({ onClose, darkMode }: MessagePopupProps) {
                         (a, b) => new Date(b.date_creation).getTime() - new Date(a.date_creation).getTime()
                     );
                 });
-                
-                
-                
-                
-                
-    
             } catch (err) {
                 console.error("Erreur parsing WS:", err);
             }
@@ -526,14 +522,41 @@ export default function MessagePopup({ onClose, darkMode }: MessagePopupProps) {
                 )}
                 
                 {/* Bouton pour créer un nouveau sujet */}
-                <button
-                    onClick={() => setShowCreatePopup(true)}
-                    className={`w-full flex items-center justify-center p-3 rounded-xl shadow-sm transition duration-150 border-2 border-dashed ${borderDefault} hover:border-indigo-500 hover:bg-indigo-50 ${darkMode ? 'hover:bg-gray-700' : ''}`}
-                    title="Créer un nouveau sujet"
-                >
-                    <Plus className={`w-5 h-5 ${subtleText} mr-2`} />
-                    <span className={`text-sm font-medium ${subtleText}`}>Nouveau sujet</span>
-                </button>
+        <button
+            onClick={() => setShowCreatePopup(true)}
+            className={`
+                // --- BASE : Forme et Disposition ---
+                w-full flex items-center justify-center p-3 rounded-xl
+                shadow-lg transition-all duration-300 ease-in-out
+                font-semibold text-sm tracking-wide 
+                
+                // --- MODE CLAIR (Light Mode) : Vert-Jaune (Chartreuse) ---
+                // Couleur par défaut
+                bg-yellow-500 text-gray-900 border-b-2 border-yellow-600 // Texte sombre sur fond clair
+                
+                // États interactifs
+                hover:bg-yellow-400 hover:shadow-xl hover:scale-[1.01]
+                active:bg-yellow-600 active:border-b-2 active:translate-y-px 
+                focus:outline-none focus:ring-4 focus:ring-yellow-300
+                
+                // État désactivé (optionnel)
+                disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none
+                
+                // --- MODE SOMBRE (Dark Mode) : Vert-Jaune (Chartreuse) ---
+                dark:bg-amber-600 dark:text-gray-900 dark:border-amber-700 // Utilisation d'Amber pour plus de contraste en sombre
+                
+                // États interactifs en mode sombre
+                dark:hover:bg-amber-500 dark:hover:shadow-xl 
+                dark:active:bg-amber-700 dark:active:border-b-2
+                dark:focus:ring-amber-500
+            `}
+            title="Créer un nouveau groupe"
+        >
+            {/* Remplacer 'Plus' par votre icône de création */}
+            <SquarePlus className="w-5 h-5 mr-2" /> 
+            <span>Nouveau Groupe</span>
+        </button>
+
             </div>
 
             <div className={`mt-auto pt-4 border-t ${borderDefault}`}>
@@ -545,19 +568,11 @@ export default function MessagePopup({ onClose, darkMode }: MessagePopupProps) {
 
                     <div className="ml-3 leading-tight overflow-hidden flex-1 min-w-0">
                     <p className={`text-sm font-bold ${generalText} truncate`}>
-                        {user ? `${user.prenom} ${user.nom}` : 'Utilisateur'}
+                        {user ? `${user.prenom}` : 'Utilisateur'}
                     </p>
 
                         <p className="text-xs text-green-500 truncate">Connecté</p>
                     </div>
-
-                    <button
-                        onClick={onClose}
-                        title="Déconnexion"
-                        className={`ml-2 p-1.5 ${subtleText} hover:text-red-500 hover:bg-gray-100 rounded-full transition duration-150 shrink-0 ${darkMode && 'hover:bg-gray-700'}`}
-                    >
-                        <LogOut className="w-5 h-5" />
-                    </button>
                 </div>
             </div>
         </div>
@@ -703,8 +718,6 @@ export default function MessagePopup({ onClose, darkMode }: MessagePopupProps) {
                                         )
                                     })()}
 
-
-                            
                                     {/* Contenu textuel */}
                                     {message.contenu && <p className="text-sm break-words">{message.contenu}</p>}
                                     
@@ -723,80 +736,86 @@ export default function MessagePopup({ onClose, darkMode }: MessagePopupProps) {
             </div>
 
 <footer className={`p-4 border-t ${borderDefault} ${footerBg} shadow-inner`}>
-    <div className="flex items-center">
+  <div className="flex items-center">
 
-        {/* Bouton d'importation de fichier */}
-        <label 
-            htmlFor="file-upload"
-            title="Attacher un fichier (sauf vidéo)"
-            className={`p-3 mr-3 ${subtleText} hover:text-indigo-600 hover:bg-gray-100 rounded-xl transition duration-150 cursor-pointer shrink-0 ${darkMode && 'hover:bg-gray-700'}`}
-        >
-            <Paperclip className="w-6 h-6 rotate-45" />
-            <input
-                id="file-upload"
-                type="file"
-                className="hidden"
-                onChange={handleFileChange}
-                accept="image/*, application/pdf, application/msword, application/vnd.ms-excel, application/vnd.openxmlformats-officedocument.wordprocessingml.document, application/vnd.openxmlformats-officedocument.spreadsheetml.document, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, text/plain"
-            />
-        </label>
-       {/* Champ message + aperçu fichier dans le même input */}
-       <div
-    className={`flex items-center p-3 rounded-xl border ${borderDefault} ${inputInteractiveClasses} 
-        transition mr-3 shadow-sm 
+    {/* Bouton d'importation de fichier */}
+    <label 
+      htmlFor="file-upload"
+      title="Attacher un fichier (sauf vidéo)"
+      className={`p-3 mr-3 ${subtleText} hover:text-indigo-600 hover:bg-gray-100 rounded-xl transition duration-150 cursor-pointer shrink-0 ${darkMode && 'hover:bg-gray-700'}`}
+    >
+      <Paperclip className="w-6 h-6 rotate-45" />
+      <input
+        id="file-upload"
+        type="file"
+        className="hidden"
+        onChange={handleFileChange}
+        accept="image/*, application/pdf, application/msword, application/vnd.ms-excel, application/vnd.openxmlformats-officedocument.wordprocessingml.document, application/vnd.openxmlformats-officedocument.spreadsheetml.document, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, text/plain"
+      />
+    </label>
+
+    {/* Champ message + aperçu fichier */}
+    <div
+      className={`flex items-center p-3 rounded-full border ${borderDefault} ${inputInteractiveClasses} 
+        transition mr-3 shadow-sm flex-1
         ${darkMode ? "bg-gray-700 text-white placeholder-gray-400" : "bg-white text-gray-900 placeholder-gray-500"}
         disabled:opacity-50 disabled:cursor-not-allowed
-    `}
->
-    {/* Aperçu du fichier sélectionné */}
-    {selectedFile && (
+        hover:border-purple-500 focus-within:border-purple-500
+      `}
+    >
+      {/* Aperçu du fichier sélectionné */}
+      {selectedFile && (
         <div className="flex items-center mr-3 px-2 py-1 rounded-lg bg-gray-200 dark:bg-gray-600">
-            <FileText className="w-4 h-4 mr-2" />
-            <span className="text-sm">{selectedFile.name}</span>
-            <button
-                className="ml-2 text-red-500 hover:text-red-700"
-                onClick={() => setSelectedFile(null)}
-            >
-                <X className="w-4 h-4" />
-            </button>
+          <FileText className="w-4 h-4 mr-2" />
+          <span className="text-sm">{selectedFile.name}</span>
+          <button
+            className="ml-2 text-red-500 hover:text-red-700"
+            onClick={() => setSelectedFile(null)}
+          >
+            <X className="w-4 h-4" />
+          </button>
         </div>
-    )}
+      )}
 
-    {/* Champ de message */}
-    <input
+      {/* Champ de message */}
+      <input
         type="text"
         placeholder="Écrire un message..."
         value={messageInput}
         onChange={(e) => setMessageInput(e.target.value)}
         onKeyPress={(e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                handleSendMessage();
-            }
+          if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            handleSendMessage();
+          }
         }}
         disabled={!activeChatId || sendingMessage}
-        className={`flex-1 bg-transparent outline-none 
-            ${darkMode ? "text-white placeholder-gray-400" : "text-gray-900 placeholder-gray-500"}
+        className={`flex-1 bg-transparent outline-none
+          ${darkMode ? "text-white placeholder-gray-400" : "text-gray-900 placeholder-gray-500"}
+          sm:text-sm md:text-base
         `}
-    />
-</div>
-
-        {/* Bouton Envoyer */}
-        <button
-            onClick={handleSendMessage}
-            disabled={!activeChatId || (!messageInput.trim() && !selectedFile) || sendingMessage}
-            className="bg-indigo-600 text-white p-3 rounded-xl hover:bg-indigo-700 transition duration-150 shadow-lg flex items-center justify-center w-12 h-12 shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
-            title="Envoyer"
-        >
-            {sendingMessage ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
-            ) : (
-                <Send className="w-5 h-5" />
-            )}
-        </button>
+      />
     </div>
 
+    {/* Bouton Envoyer */}
+    <button
+      onClick={handleSendMessage}
+      disabled={!activeChatId || (!messageInput.trim() && !selectedFile) || sendingMessage}
+      className="bg-indigo-600 text-white px-4 py-3 rounded-full hover:bg-indigo-700 transition duration-150 shadow-lg flex items-center justify-center space-x-2 shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+      title="Envoyer"
+    >
+      {sendingMessage ? (
+        <Loader2 className="w-5 h-5 animate-spin" />
+      ) : (
+        <>
+          <Send className="w-5 h-5" />
+          <span className="hidden sm:inline">Envoyer</span>
+        </>
+      )}
+    </button>
+  </div>
 </footer>
+
 
         </div>
     )

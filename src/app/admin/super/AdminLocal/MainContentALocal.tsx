@@ -13,6 +13,7 @@ import {
   CheckCircle,
   Plus,
   Edit,
+  FileX,
   X,
 } from "lucide-react";
 
@@ -363,7 +364,7 @@ const fetchAntenneStats = async () => {
             className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm border transition ${darkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}`}
           >
             {sortBy === "az" ? <ArrowDownWideNarrow size={16} /> : <ArrowUpNarrowWide size={16} />}
-            <span className="whitespace-nowrap">{sortBy === "az" ? "Trier récents" : "Trier A–Z"}</span>
+            <span className="whitespace-nowrap">{sortBy === "az" ? "Trier de Z-A" : "Trier de A–Z"}</span>
           </button>
         </div>
       </div>
@@ -611,8 +612,24 @@ const fetchAntenneStats = async () => {
                     </tr>
                   )) : (
                     <tr>
-                      <td colSpan={4} className="p-6 text-center text-gray-400">Aucun étudiant enregistré pour cet admin.</td>
+                      <td colSpan={4} className="p-8 text-center">
+                        <FileX
+                          size={80}
+                          className={`mx-auto mb-4 ${
+                            darkMode ? "text-gray-400" : "text-gray-500"
+                          }`}
+                        />
+
+                        <p className="text-lg font-semibold mb-1">
+                          Aucun étudiant trouvé
+                        </p>
+
+                        <p className={darkMode ? "text-gray-500" : "text-gray-600"}>
+                          Cet administrateur n’a encore aucun étudiant enregistré.
+                        </p>
+                      </td>
                     </tr>
+
                   )}
                 </tbody>
               </table>
