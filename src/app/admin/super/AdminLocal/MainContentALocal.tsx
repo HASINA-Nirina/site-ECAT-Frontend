@@ -1,8 +1,6 @@
 "use client";
 
-
 import React, { useMemo, useState, useEffect } from "react";
-
 import {
   Search,
   ArrowDownWideNarrow,
@@ -13,18 +11,28 @@ import {
   MoreHorizontal,
   Trash2,
   CheckCircle,
-  Eye,
+  Plus,
+  Edit,
   X,
 } from "lucide-react";
+
+// --- INTERFACES ---
 
 interface Student {
   id: number;
   nom: string;
   prenom: string;
   email: string;
-  inscrit?: string; // date d'inscription (optionnel)
+  inscrit?: string;
 }
 
+// Mise à jour de l'interface Antenne pour correspondre au backend (besoin de l'ID)
+interface Antenne {
+  id: number; 
+  antenne: string;
+  students: number; // Sera calculé ou récupéré
+  admins: number;   // Sera calculé ou récupéré
+}
 
 interface AdminLocal {
   id: number;
@@ -34,10 +42,8 @@ interface AdminLocal {
   email: string;
   etudiants: number;
   statut: "Actif" | "Suspendu" | "En attente";
-
   avatar?: string;
   students?: Student[];
-
 }
 
 interface Props {
@@ -45,19 +51,33 @@ interface Props {
 }
 
 export default function ListeAdminsLocaux({ darkMode }: Props) {
+  // --- ETATS ADMINS ---
   const [admins, setAdmins] = useState<AdminLocal[]>([]);
   const [search, setSearch] = useState<string>("");
   const [sortBy, setSortBy] = useState<"recent" | "az">("recent");
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  
+  // --- ETATS ANTENNES & POPUPS ---
+  const [antenneStats, setAntenneStats] = useState<Antenne[]>([]);
+  const [newAntenneName, setNewAntenneName] = useState("");
+  
+  // Edition
+  const [editingAntenne, setEditingAntenne] = useState<Antenne | null>(null);
+  const [editName, setEditName] = useState("");
+  
+  // Suppression (Popup)
+  const [deleteAntenne, setDeleteAntenne] = useState<Antenne | null>(null); 
 
+  // Modals Admins
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // --- 1. CHARGEMENT DES ADMINS (Code existant conservé) ---
   useEffect(() => {
     if (admins.length > 0 && selectedId === null) {
       setSelectedId(admins[0].id);
     }
   }, [admins, selectedId]);
-
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     setLoading(true);
@@ -78,9 +98,6 @@ export default function ListeAdminsLocaux({ darkMode }: Props) {
         }));
         setAdmins(normalized);
         setLoading(false);
-        // une fois les admins chargés, on tente de récupérer les statistiques par antenne depuis le backend
-        // si l'endpoint n'existe pas, la fonction fera un fallback local
-        fetchAntenneStats();
       })
       .catch((err) => {
         console.error(err);
@@ -89,7 +106,113 @@ export default function ListeAdminsLocaux({ darkMode }: Props) {
       });
   }, []);
 
-  // modal pour voir la liste des étudiants d'un admin
+  // Une fois les admins chargés, on charge les antennes
+  useEffect(() => {
+    fetchAntenneStats();
+  }, [admins]); // Dépendance à admins pour recalculer les stats si besoin
+
+  // --- 2. GESTION DES ANTENNES (Intégration Backend) ---
+
+// Dans ListeAdminsLocaux.tsx
+
+const fetchAntenneStats = async () => {
+  try {
+    const res = await fetch("http://localhost:8000/antenne/ReadAntenne");
+    if (!res.ok) throw new Error("Erreur récupération antennes");
+    
+    const backendAntennes: { id: number; province: string }[] = await res.json();
+    
+    if (admins.length === 0) {
+        setAntenneStats(backendAntennes.map(b => ({ id: b.id, antenne: b.province, students: 0, admins: 0 })));
+        return;
+    }
+    const mergedData: Antenne[] = backendAntennes.map((b) => {
+      const antenneKey = b.province.trim().toLowerCase(); 
+
+      // Calcul local des stats pour cette antenne
+      const stats = admins.reduce(
+        (acc, admin) => {
+          if (admin.antenne && admin.antenne.trim().toLowerCase() === antenneKey) { 
+            return {
+              students: acc.students + (admin.etudiants || 0),
+              admins: acc.admins + 1,
+            };
+          }
+          return acc;
+        },
+        { students: 0, admins: 0 }
+      );
+
+      return {
+        id: b.id,
+        antenne: b.province,
+        students: stats.students,
+        admins: stats.admins,
+      };
+    });
+
+    setAntenneStats(mergedData);
+  } catch (err) {
+    console.error("Erreur dans fetchAntenneStats:", err);
+    // Fallback silencieux ou alert
+  }
+};
+
+     
+  const onCreateAntenne = async (nom: string) => {
+    try {
+      const res = await fetch("http://localhost:8000/antenne/NewAntenne", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ province: nom }), // Correspond à AntenneCreate
+      });
+      if (!res.ok) throw new Error("Erreur lors de la création");
+      fetchAntenneStats(); 
+    } catch (err) {
+      console.error(err);
+      alert("Impossible de créer l'antenne");
+    }
+  };
+
+  const onUpdateAntenne = async (antenne: Antenne, newName: string) => {
+    try {
+      const res = await fetch(`http://localhost:8000/antenne/UpdateAntenne/${antenne.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ province: newName }), 
+      });
+      if (!res.ok) throw new Error("Erreur de mise à jour");
+      fetchAntenneStats();
+    } catch (err) {
+      console.error(err);
+      alert("Impossible de mettre à jour l'antenne");
+    }
+  };
+
+  // Déclenché par le bouton poubelle : ouvre juste la popup
+  const onDeleteAntenneClick = (antenne: Antenne) => {
+    setDeleteAntenne(antenne);
+  };
+
+  // Déclenché par le bouton "Oui" de la popup
+  const confirmDelete = async () => {
+    if (!deleteAntenne) return;
+    try {
+      const res = await fetch(`http://localhost:8000/antenne/DeleteAntenne/${deleteAntenne.id}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) throw new Error("Erreur suppression");
+      
+      setDeleteAntenne(null); 
+      fetchAntenneStats();    
+    } catch (err) {
+      console.error(err);
+      alert("Impossible de supprimer l'antenne");
+    }
+  };
+
+  // --- 3. LOGIQUE ADMINS (Code existant conservé) ---
+
   const [openStudentsModal, setOpenStudentsModal] = useState(false);
   const [modalAdmin, setModalAdmin] = useState<AdminLocal>({
     id: 0,
@@ -112,16 +235,13 @@ export default function ListeAdminsLocaux({ darkMode }: Props) {
       )
       .sort((a, b) => {
         if (sortBy === "az") return a.nom.localeCompare(b.nom);
-        return new Date(b.dateCreation).getTime() - new Date(a.dateCreation).getTime();
+        // dateCreation n'est pas dans l'interface AdminLocal fournie, fallback ID
+        return b.id - a.id; 
       });
   }, [admins, search, sortBy]);
 
   const totalAdmins = admins.length;
   const totalStudents = admins.reduce((s, a) => s + a.etudiants, 0);
-  // stats par antenne (récupérées depuis le backend si disponible, sinon calculées localement)
-  const [antenneStats, setAntenneStats] = useState<{ antenne: string; students: number; admins: number }[]>([]);
-  const [loadingAntenneStats, setLoadingAntenneStats] = useState(false);
-
   const selectedAdmin = admins.find((a) => a.id === selectedId) ?? admins[0] ?? null;
 
   const toggleStatus = async (id: number) => {
@@ -140,8 +260,6 @@ export default function ListeAdminsLocaux({ darkMode }: Props) {
       if (!res.ok) throw new Error("Erreur de mise à jour");
 
       setAdmins((prev) => prev.map((admin) => (admin.id === id ? { ...admin, statut: newStatus } : admin)));
-
-      // si le modal affiche cet admin, le mettre à jour aussi
       setModalAdmin((prev) => (prev.id === id ? { ...prev, statut: newStatus } : prev));
     } catch (err) {
       console.error(err);
@@ -149,20 +267,17 @@ export default function ListeAdminsLocaux({ darkMode }: Props) {
     }
   };
 
-  //  récupère la liste des étudiants pour une antenne / province donnée
   const fetchStudents = async (province: string): Promise<Student[]> => {
     try {
       if (!province) return [];
       const token = localStorage.getItem("token");
-  const url = `http://localhost:8000/auth/ReadEtudiantByprovince/${encodeURIComponent(province)}`;
+      const url = `http://localhost:8000/auth/ReadEtudiantByprovince/${encodeURIComponent(province)}`;
       const res = await fetch(url, {
         headers: token ? { Authorization: `Bearer ${token}` } : undefined,
       });
       if (!res.ok) throw new Error("Erreur lors du chargement des étudiants");
 
       const data = await res.json();
-
-      // data peut être un tableau d'étudiants. Normalisons le format minimal.
       const students: Student[] = (data || []).map((s: any) => ({
         id: s.id,
         prenom: s.prenom || s.firstName || "",
@@ -170,7 +285,6 @@ export default function ListeAdminsLocaux({ darkMode }: Props) {
         email: s.email || "",
         inscrit: s.inscrit || s.date_inscription || "",
       }));
-
       return students;
     } catch (err) {
       console.error(err);
@@ -179,49 +293,7 @@ export default function ListeAdminsLocaux({ darkMode }: Props) {
     }
   };
 
-  // récupère les statistiques agrégées par antenne depuis le backend (fallback sur agrégation locale)
-  const fetchAntenneStats = async () => {
-    setLoadingAntenneStats(true);
-    try {
-      const token = localStorage.getItem("token");
-      // NOTE: adapter l'URL ci-dessous si le backend utilise un autre chemin
-      const url = `http://localhost:8000/auth/GetStatsByAntenne`;
-      const res = await fetch(url, { headers: token ? { Authorization: `Bearer ${token}` } : undefined });
-      if (res.ok) {
-        const data = await res.json();
-        if (Array.isArray(data)) {
-          const normalized = data.map((d: any) => ({
-            antenne: d.antenne || d.province || "",
-            students: d.students ?? d.etudiants ?? 0,
-            admins: d.admins ?? 0,
-          }));
-          setAntenneStats(normalized);
-          setLoadingAntenneStats(false);
-          return;
-        }
-      }
-    } catch (err) {
-      // ignore and fallback to local aggregation
-      // console.warn(err);
-    }
-
-    // fallback local: agrégation depuis `admins`
-    const map = new Map<string, { students: number; admins: number }>();
-    admins.forEach(a => {
-      const key = a.antenne || "Inconnue";
-      const cur = map.get(key) ?? { students: 0, admins: 0 };
-      cur.students += a.etudiants ?? 0;
-      cur.admins += 1;
-      map.set(key, cur);
-    });
-    const local = Array.from(map.entries()).map(([antenne, v]) => ({ antenne, students: v.students, admins: v.admins }));
-    setAntenneStats(local);
-    setLoadingAntenneStats(false);
-  };
-
-  // Ouvre la popup d'étudiants pour un admin donné
   const handleVoirEtudiants = async (admin: AdminLocal) => {
-
     setModalAdmin({ ...admin, students: admin.students ?? [] });
     setOpenStudentsModal(true);
     const students = await fetchStudents(admin.antenne);
@@ -231,7 +303,6 @@ export default function ListeAdminsLocaux({ darkMode }: Props) {
   const downloadStudentsPdf = (admin: AdminLocal | null) => {
     if (!admin) return;
     const students = admin.students ?? [];
-
     const w = window.open("", "_blank", "width=900,height=700");
     if (!w) return;
     const style = `
@@ -259,17 +330,14 @@ export default function ListeAdminsLocaux({ darkMode }: Props) {
     `;
     w.document.write(html);
     w.document.close();
-
-    // ouvre le dialogue d'impression (l'utilisateur peut sauver en PDF)
     w.focus();
-    setTimeout(() => {
-      w.print();
-    }, 500);
+    setTimeout(() => { w.print(); }, 500);
   };
 
   return (
     <div className={`p-6 rounded-lg ${darkMode ? "bg-gray-900 text-white" : "bg-gray-50 text-gray-900"}`}>
-      {/* Header top : stats + search + sort */}
+      
+      {/* --- HEADER --- */}
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6">
         <div className="flex items-center gap-4">
           <Users size={28} className="text-[#17f]" />
@@ -280,7 +348,6 @@ export default function ListeAdminsLocaux({ darkMode }: Props) {
             </div>
           </div>
         </div>
-
         <div className="flex items-center gap-3 w-full md:w-auto">
           <div className="relative flex-1 md:flex-none">
             <Search className={`absolute left-3 top-1/2 -translate-y-1/2 ${darkMode ? "text-gray-400" : "text-gray-500"}`} size={18} />
@@ -291,11 +358,9 @@ export default function ListeAdminsLocaux({ darkMode }: Props) {
               className={`pl-10 pr-4 py-2 rounded-full text-sm w-full md:w-72 focus:outline-none transition border ${darkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}`}
             />
           </div>
-
           <button
             onClick={() => setSortBy((s) => (s === "az" ? "recent" : "az"))}
             className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm border transition ${darkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}`}
-            title={sortBy === "az" ? "Trier récents" : "Trier A–Z"}
           >
             {sortBy === "az" ? <ArrowDownWideNarrow size={16} /> : <ArrowUpNarrowWide size={16} />}
             <span className="whitespace-nowrap">{sortBy === "az" ? "Trier récents" : "Trier A–Z"}</span>
@@ -304,8 +369,7 @@ export default function ListeAdminsLocaux({ darkMode }: Props) {
       </div>
 
       <div className="lg:flex gap-6">
-        {/* LEFT: liste */}
-
+        {/* --- LEFT: LISTE ADMINS --- */}
         <div className="flex-1 lg:w-1/2 flex flex-col gap-3">
           <div className={`p-3 rounded-xl ${darkMode ? "bg-gray-800 border border-gray-700" : "bg-white border border-gray-200"} shadow-sm`}>
             <div className="flex flex-col gap-2">
@@ -320,19 +384,16 @@ export default function ListeAdminsLocaux({ darkMode }: Props) {
                   <div className="w-12 h-12 rounded-full bg-gray-300 flex items-center justify-center text-xl font-bold text-gray-800">
                     {(a.prenom?.[0] || "U") + (a.nom?.[0] || "")}
                   </div>
-
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2">
                       <div className="truncate">
                         <div className="font-semibold">{a.prenom} {a.nom}</div>
                         <div className="text-xs opacity-70 truncate">{a.email}</div>
                       </div>
-
                       <div className="text-right">
                         <div className="text-sm font-bold">{a.etudiants} <span className="text-xs opacity-60">étudiant(s)</span></div>
                       </div>
                     </div>
-
                     <div className="mt-2 flex items-center gap-3">
                       <MapPin size={14} className="text-orange-400" />
                       <div className="text-xs font-medium text-orange-500">{a.antenne}</div>
@@ -343,11 +404,8 @@ export default function ListeAdminsLocaux({ darkMode }: Props) {
                       </div>
                     </div>
                   </div>
-
                   <div className="flex flex-col items-end gap-2">
                     <MoreHorizontal size={18} className={`${darkMode ? "text-gray-300" : "text-gray-600"}`} />
-                    <div className="flex gap-2">
-                    </div>
                   </div>
                 </div>
               ))}
@@ -355,91 +413,169 @@ export default function ListeAdminsLocaux({ darkMode }: Props) {
           </div>
         </div>
 
-        {/* RIGHT: panel détail */}
-        <aside className="flex-1 lg:w-1/2">
-          <div className={`p-5 rounded-xl ${darkMode ? "bg-gray-800 border border-gray-700" : "bg-white border border-gray-200"} shadow-md`}>
-            <div className="flex items-start gap-4">
-              <div className="w-20 h-20 rounded-full bg-[#17f] flex items-center justify-center text-2xl font-bold">
-                {selectedAdmin ? (selectedAdmin.prenom?.[0] + selectedAdmin.nom?.[0]) : "NA"}
-              </div>
-
-              <div className="flex-1">
-                <div className="flex items-center justify-between gap-4">
-                  <div>
-                    <h2 className="text-xl font-bold">{selectedAdmin ? `${selectedAdmin.prenom} ${selectedAdmin.nom}` : "Sélectionnez un admin"}</h2>
-                    <p className="text-sm opacity-70">{selectedAdmin?.email}</p>
-                  </div>
-
-                  <div className="text-right">
-                    <div className="text-xs opacity-70">Antenne</div>
-                    <div className="font-semibold text-orange-500">{selectedAdmin?.antenne}</div>
-                  </div>
+        {/* --- RIGHT: DETAIL & ANTENNES --- */}
+        <div className="flex-1 lg:w-1/2 flex flex-col gap-6">
+          
+          {/* PANEL DÉTAIL ADMIN */}
+          <aside>
+            <div className={`p-5 rounded-xl ${darkMode ? "bg-gray-800 border border-gray-700" : "bg-white border border-purple-200"} shadow-md`}>
+              <div className="flex items-start gap-4">
+                <div className="w-20 h-20 rounded-full bg-[#17f] flex items-center justify-center text-2xl font-bold">
+                  {selectedAdmin ? (selectedAdmin.prenom?.[0] + selectedAdmin.nom?.[0]) : "NA"}
                 </div>
-
-                <div className="mt-4 flex items-center gap-6">
-                  <div>
-                    <div className="text-xs opacity-70">Étudiants gérés</div>
-                    <div className="text-2xl font-bold text-[#00db1d]">{selectedAdmin?.etudiants ?? "-"}</div>
-                  </div>
-                  <div className="ml-auto">
-                    <span className={`px-3 py-1 rounded-full text-sm font-semibold ${selectedAdmin?.statut === "Actif" ? "bg-green-100 text-green-800" : selectedAdmin?.statut === "Suspendu" ? "bg-red-100 text-red-700" : "bg-yellow-100 text-yellow-800"}`}>
-                      {selectedAdmin?.statut}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="mt-6 flex gap-3 flex-wrap">
-                  <button
-                    onClick={() => selectedAdmin && toggleStatus(selectedAdmin.id)}
-                    className="flex-1 min-w-[140px] px-4 py-2 rounded-lg border hover:shadow-sm transition flex items-center justify-center gap-2"
-                  >
-                    {selectedAdmin?.statut === "Actif" ? <Trash2 size={16} className="text-red-600" /> : <CheckCircle size={16} className="text-green-600" />}
-                    <span className="font-medium">{selectedAdmin?.statut === "Actif" ? "Suspendre" : "Réactiver"}</span>
-                  </button>
-
-                  <button
-                    onClick={() => selectedAdmin && handleVoirEtudiants(selectedAdmin)}
-                    className="flex-1 min-w-[140px] px-4 py-2 rounded-lg bg-[#17f] text-white hover:opacity-95 transition flex items-center justify-center gap-2"
-                  >
-                    <User size={16} /> Voir étudiants
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* vue rapide par antenne */}
-          <div className={`mt-6 p-5 rounded-xl ${darkMode ? "bg-gray-800 border border-gray-700" : "bg-white border border-purple-200"} shadow-md`}>
-            <div className="flex items-center justify-between mb-3">
-              <h4 className="text-lg font-semibold">Vue rapide par antenne</h4>
-              <div className="text-sm opacity-70">Mise à jour en temps réel</div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {/* petits cards */}
-              {/** On calcule des stats simples depuis admins */}
-              {loadingAntenneStats ? (
-                <div className="col-span-full p-4 text-center text-gray-400">Chargement des statistiques...</div>
-              ) : antenneStats.length === 0 ? (
-                <div className="col-span-full p-4 text-center text-gray-400">Aucune donnée pour les antennes.</div>
-              ) : (
-                antenneStats.map((s) => (
-                  <div key={s.antenne} className="p-3 rounded-lg border-1 flex items-center gap-3">
-                    <MapPin size={20} className="text-orange-400" />
+                <div className="flex-1">
+                  <div className="flex items-center justify-between gap-4">
                     <div>
-                      <div className="text-sm opacity-70">{s.antenne}</div>
-                      <div className="font-bold text-xl text-[#17f]">{s.students} étudiants</div>
-                      <div className="text-xs opacity-70">{s.admins} admin(s)</div>
+                      <h2 className="text-xl font-bold">{selectedAdmin ? `${selectedAdmin.prenom} ${selectedAdmin.nom}` : "Sélectionnez un admin"}</h2>
+                      <p className="text-sm opacity-70">{selectedAdmin?.email}</p>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-xs opacity-70">Antenne</div>
+                      <div className="font-semibold text-orange-500">{selectedAdmin?.antenne}</div>
                     </div>
                   </div>
-                ))
-              )}
+                  <div className="mt-4 flex items-center gap-6">
+                    <div>
+                      <div className="text-xs opacity-70">Étudiants gérés</div>
+                      <div className="text-2xl font-bold text-[#00db1d]">{selectedAdmin?.etudiants ?? "-"}</div>
+                    </div>
+                    <div className="ml-auto">
+                      <span className={`px-3 py-1 rounded-full text-sm font-semibold ${selectedAdmin?.statut === "Actif" ? "bg-green-100 text-green-800" : selectedAdmin?.statut === "Suspendu" ? "bg-red-100 text-red-700" : "bg-yellow-100 text-yellow-800"}`}>
+                        {selectedAdmin?.statut}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="mt-6 flex gap-3 flex-wrap">
+                    <button
+                      onClick={() => selectedAdmin && toggleStatus(selectedAdmin.id)}
+                      className="flex-1 min-w-[140px] px-4 py-2 rounded-lg border hover:shadow-sm transition flex items-center justify-center gap-2"
+                    >
+                      {selectedAdmin?.statut === "Actif" ? <Trash2 size={16} className="text-red-600" /> : <CheckCircle size={16} className="text-green-600" />}
+                      <span className="font-medium">{selectedAdmin?.statut === "Actif" ? "Suspendre" : "Réactiver"}</span>
+                    </button>
+                    <button
+                      onClick={() => selectedAdmin && handleVoirEtudiants(selectedAdmin)}
+                      className="flex-1 min-w-[140px] px-4 py-2 rounded-lg bg-[#17f] text-white hover:opacity-95 transition flex items-center justify-center gap-2"
+                    >
+                      <User size={16} /> Voir étudiants
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </aside>
+
+          {/* LISTE DES ANTENNES */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {antenneStats.map((s) => {
+              const isEditing = editingAntenne?.id === s.id;
+
+              return (
+                <div
+                  key={s.id}
+                  className={`p-3 rounded-lg border flex items-center justify-between gap-3 ${
+                    darkMode ? "border-gray-700 bg-gray-800" : "border-gray-300 bg-white"
+                  }`}
+                >
+                  {isEditing ? (
+                    // ---- MODE ÉDITION ----
+                    <>
+                      <Edit size={20} className="text-blue-500" />
+                      <input
+                          type="text"
+                          // Correction: Assurez-vous que la valeur est toujours une chaîne de caractères
+                          value={editName || ""} 
+                          onChange={(e) => setEditName(e.target.value)}
+                          className={`flex-1 px-2 py-1 outline-none bg-transparent border border-transparent 
+                          focus:border-blue-500 rounded text-sm ${
+                            darkMode ? "text-gray-200" : "text-gray-700"
+                          }`}
+                          autoFocus
+                      />
+                      <button
+                        onClick={() => {
+                          if(editingAntenne) {
+                             onUpdateAntenne(editingAntenne, editName);
+                             setEditingAntenne(null);
+                          }
+                        }}
+                        className="p-1 rounded hover:bg-green-200 dark:hover:bg-gray-700"
+                      >
+                        <CheckCircle size={20} className="text-green-500" />
+                      </button>
+                      <button
+                        onClick={() => setEditingAntenne(null)}
+                        className="p-1 rounded hover:bg-red-200 dark:hover:bg-gray-700"
+                      >
+                         <X size={20} className="text-red-500" />
+                      </button>
+                    </>
+                  ) : (
+                    // ---- MODE NORMAL ----
+                    <>
+                      <div className="flex items-center gap-3">
+                        <MapPin size={20} className="text-orange-400" />
+                        <div>
+                          <div className="text-sm opacity-70">{s.antenne}</div>
+                          <div className="font-bold text-xl text-[#17f]">{s.students} étudiants</div>
+                          <div className="text-xs opacity-70">{s.admins} admin(s)</div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => {
+                            setEditingAntenne(s);
+                            setEditName(s.antenne);
+                          }}
+                          className="p-1 rounded hover:bg-blue-200 dark:hover:bg-gray-700"
+                        >
+                          <Edit size={18} className="text-blue-500" />
+                        </button>
+                        <button
+                          onClick={() => onDeleteAntenneClick(s)}
+                          className="p-1 rounded hover:bg-red-200 dark:hover:bg-gray-700"
+                        >
+                          <Trash2 size={18} className="text-red-500" />
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              );
+            })}
+
+            {/* Bouton Ajouter une antenne */}
+            <div className={`p-3 rounded-lg border flex items-center gap-3 col-span-1 sm:col-span-2 ${
+              darkMode ? "border-gray-700 bg-gray-800" : "border-gray-300 bg-white"
+            }`}>
+              <Plus size={20} className="text-[#17f]" />
+              <input
+                type="text"
+                placeholder="Nom de la province / antenne"
+                value={newAntenneName}
+                onChange={(e) => setNewAntenneName(e.target.value)}
+                className={`flex-1 px-2 py-1 outline-none bg-transparent border border-transparent focus:border-[#17f] rounded text-sm ${
+                  darkMode ? "text-gray-200 placeholder-gray-500" : "text-gray-700 placeholder-gray-400"
+                }`}
+              />
+              <button
+                onClick={() => {
+                  if (newAntenneName.trim() !== "") {
+                    onCreateAntenne(newAntenneName);
+                    setNewAntenneName("");
+                  }
+                }}
+                className="p-1 rounded hover:bg-green-200 dark:hover:bg-gray-700"
+                title="Valider"
+              >
+                <CheckCircle size={20} className="text-green-500" />
+              </button>
             </div>
           </div>
-        </aside>
+        </div>
       </div>
 
-      {/* STUDENTS MODAL */}
+      {/* --- STUDENTS MODAL --- */}
       {openStudentsModal && modalAdmin && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div className="absolute inset-0 bg-black/40" onClick={() => { setOpenStudentsModal(false); setModalAdmin(prev => ({ ...prev, students: [] })); }} />
@@ -481,7 +617,6 @@ export default function ListeAdminsLocaux({ darkMode }: Props) {
                 </tbody>
               </table>
             </div>
-
             <div className="mt-4 flex justify-end gap-12">
               <button onClick={() => { setOpenStudentsModal(false); setModalAdmin(prev => ({ ...prev, students: [] })); }} className="px-4 py-2 rounded-md bg-red-600 text-white">
                 Annuler
@@ -493,6 +628,40 @@ export default function ListeAdminsLocaux({ darkMode }: Props) {
           </div>
         </div>
       )}
+
+      {/* --- POPUP SUPPRESSION ANTENNE --- */}
+      {deleteAntenne && (
+        <div className="fixed inset-0 flex items-center justify-center z-50">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setDeleteAntenne(null)} />
+          <div
+            className={`relative w-[90%] max-w-sm p-6 rounded-xl shadow-2xl ${
+              darkMode ? "bg-gray-900 text-white" : "bg-white text-gray-900"
+            }`}
+          >
+            <h2 className="text-lg font-bold mb-4 text-center">
+              Confirmer la suppression
+            </h2>
+            <p className="mb-6 text-center">
+              Voulez-vous vraiment supprimer l'antenne{" "}
+              <span className="font-semibold text-orange-500">{deleteAntenne.antenne}</span> ?
+            </p>
+            <div className="flex justify-center gap-4">
+              <button
+                onClick={() => setDeleteAntenne(null)}
+                className="px-5 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg transition"
+              >
+                Non
+              </button>
+              <button
+                onClick={confirmDelete}
+                className="px-5 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition"
+              >
+                Oui, supprimer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
-};
+}

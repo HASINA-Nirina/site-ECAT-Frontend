@@ -142,9 +142,16 @@ const renderCustomLabel = ({
 
 export default function MainContent({ darkMode, lang }: MainContentProps) {
   const [showMessage, setShowMessage] = useState(false);
-    // Afficher l'heure uniquement après montage pour éviter les erreurs d'hydration
+  // Afficher l'heure uniquement après montage pour éviter les erreurs d'hydration
   const [time, setTime] = useState<Date | null>(null);
   const [mounted, setMounted] = useState(false);
+
+  // Données dynamiques récupérées depuis le backend
+  const [statEtudiants, setStatEtudiants] = useState<number>(0);
+  const [statFormations, setStatFormations] = useState<number>(0);
+  const [statAdmins, setStatAdmins] = useState<number>(0);
+  const [statPaiements, setStatPaiements] = useState<number>(0);
+  const [inscriptionData, setInscriptionData] = useState<{ antenne: string; inscrits: number }[]>([]);
 
   useEffect(() => {
     // Ne pas exécuter côté serveur : on initialise seulement après montage
@@ -171,12 +178,81 @@ export default function MainContent({ darkMode, lang }: MainContentProps) {
   }`;
 
   // --------------------------
-  // Données
+  // Récupération des données backend
   // --------------------------
-  const statEtudiants = 40;
-  const statFormations = 20;
-  const statAdmins = 8;
-  const statPaiements = 3500000;
+  useEffect(() => {
+    // Fetch étudiants -> nombre et répartition par antenne
+    const fetchEtudiants = async () => {
+      try {
+        const res = await fetch("http://localhost:8000/auth/ReadEtudiantAll");
+        if (!res.ok) return;
+        const data = await res.json();
+        const list = Array.isArray(data) ? data : [];
+        setStatEtudiants(list.length);
+
+        // compter par province/antenne
+        const counts: Record<string, number> = {};
+        list.forEach((e: any) => {
+          const key = (e.province || e.antenne || "Inconnue").toString().trim();
+          counts[key] = (counts[key] || 0) + 1;
+        });
+        const arr = Object.entries(counts)
+          .map(([antenne, inscrits]) => ({ antenne, inscrits }))
+          .sort((a, b) => b.inscrits - a.inscrits)
+          .slice(0, 8); // limiter pour le graphe
+        setInscriptionData(arr);
+      } catch (e) {
+        console.warn("Erreur fetch étudiants:", e);
+      }
+    };
+
+    // Fetch formations
+    const fetchFormations = async () => {
+      try {
+        const res = await fetch("http://localhost:8000/formation/ReadFormation");
+        if (!res.ok) return;
+        const data = await res.json();
+        setStatFormations(Array.isArray(data) ? data.length : 0);
+      } catch (e) {
+        console.warn("Erreur fetch formations:", e);
+      }
+    };
+
+    // Fetch admins locaux
+    const fetchAdmins = async () => {
+      try {
+        const res = await fetch("http://localhost:8000/auth/GetAdminLocaux");
+        if (!res.ok) return;
+        const data = await res.json();
+        setStatAdmins(Array.isArray(data) ? data.length : 0);
+      } catch (e) {
+        console.warn("Erreur fetch admins:", e);
+      }
+    };
+
+    // Fetch paiements -> somme des montants validés
+    const fetchPaiements = async () => {
+      try {
+        const res = await fetch("http://localhost:8000/paiement/ReadPaiement/");
+        if (!res.ok) return;
+        const data = await res.json();
+        const list = Array.isArray(data) ? data : [];
+        // Somme des montants (on essaie de détecter le champ montant)
+        const sum = list.reduce((acc: number, p: any) => {
+          const montant = Number(p.montant ?? p.montant_ar ?? p.montant_en_ar ?? 0);
+          return acc + (isNaN(montant) ? 0 : montant);
+        }, 0);
+        setStatPaiements(sum);
+      } catch (e) {
+        console.warn("Erreur fetch paiements:", e);
+      }
+    };
+
+    fetchEtudiants();
+    fetchFormations();
+    fetchAdmins();
+    fetchPaiements();
+  }, []);
 
   // Utilisation de useMemo pour s'assurer que les données du PieChart ne changent que si les stats changent
   const { pieData, pieColors } = useMemo(() => {
@@ -195,12 +271,6 @@ export default function MainContent({ darkMode, lang }: MainContentProps) {
   // --------------------------
   // Histogramme (inscriptions par antenne)
   // --------------------------
-  const inscriptionData = [
-    { antenne: "Antananarivo", inscrits: 245 },
-    { antenne: "Fianarantsoa", inscrits: 180 },
-    { antenne: "Toamasina", inscrits: 130 },
-    { antenne: "Toliara", inscrits: 75 },
-  ];
   const barColors = rankToColors(inscriptionData.map((d) => d.inscrits));
 
   return (

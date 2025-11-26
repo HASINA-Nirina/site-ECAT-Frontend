@@ -24,18 +24,10 @@ export default function ListeEtudiants({ darkMode }: ListeEtudiantsProps) {
     email?: string;
   }
 
-  // sample fallback data used until backend responds or when offline
-  const sampleEtudiants: Student[] = [
-    { id: 1, nom: "Rakoto", prenom: "Jean", antenne: "Fianarantsoa", dateInscription: "2025-10-15" },
-    { id: 2, nom: "Rasoa", prenom: "Marie", antenne: "Toliara", dateInscription: "2025-10-25" },
-    { id: 3, nom: "Randria", prenom: "Paul", antenne: "Antananarivo", dateInscription: "2025-09-20" },
-    { id: 4, nom: "Rabe", prenom: "Luc", antenne: "Fianarantsoa", dateInscription: "2025-08-30" },
-    { id: 5, nom: "Andry", prenom: "Lina", antenne: "Antananarivo", dateInscription: "2025-10-10" },
-    { id: 6, nom: "Nomena", prenom: "Sara", antenne: "Toliara", dateInscription: "2025-09-22" },
-  ];
-
-  const [students, setStudents] = useState<Student[]>(sampleEtudiants);
-  const [loading, setLoading] = useState<boolean>(false);
+  // students will be loaded from backend
+  const [students, setStudents] = useState<Student[]>([]);
+  // start in loading state until fetch completes
+  const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
   // Fetch students from backend on mount (adjust endpoint if needed)
@@ -56,13 +48,16 @@ export default function ListeEtudiants({ darkMode }: ListeEtudiantsProps) {
           id: Number(s.id),
           prenom: s.prenom || s.firstName || "",
           nom: s.nom || s.lastName || "",
-          antenne: s.antenne || s.province || "",
+          // normalize antenna source: prefer s.antenne then province
+          antenne: (s.antenne || s.province || "").toString(),
           dateInscription: s.date_inscription || s.inscrit || s.dateInscription || "",
           email: s.email || "",
         }));
 
         if (Array.isArray(normalized) && normalized.length > 0) {
           setStudents(normalized);
+          // debug: afficher les antennes reçues pour vérifier les clefs
+          console.log("[students] normalized:", normalized.map((x) => ({ id: x.id, antenne: x.antenne })));
         } else {
           // si backend renvoie vide, garder le fallback sample
         }
@@ -94,10 +89,15 @@ export default function ListeEtudiants({ darkMode }: ListeEtudiantsProps) {
   const statsAntenne = useMemo(() => {
     const counts: Record<string, number> = {};
     students.forEach((e) => {
-      const key = e.antenne || "Inconnue";
+      
+      const raw = e.antenne || "Inconnue";
+      const key = raw.toString().trim().replace(/\s+/g, " ");
       counts[key] = (counts[key] || 0) + 1;
     });
-    return Object.entries(counts);
+    const entries = Object.entries(counts);
+    
+    entries.sort((a, b) => b[1] - a[1]);
+    return entries;
   }, [students]);
 
   return (
@@ -213,7 +213,6 @@ export default function ListeEtudiants({ darkMode }: ListeEtudiantsProps) {
                 <th className="p-3 font-semibold">Nom</th>
                 <th className="p-3 font-semibold">Prénom</th>
                 <th className="p-3 font-semibold">Antenne</th>
-                <th className="p-3 font-semibold">Date d’inscription</th>
               </tr>
             </thead>
             <tbody>

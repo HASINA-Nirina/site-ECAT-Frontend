@@ -15,6 +15,7 @@ interface MainContentProps {
 
 export default function MainContent({ darkMode, lang }: MainContentProps) {
   const [profile, setProfile] = useState({
+    id: null as number | null,
     nom: "",
     prenom: "",
     email: "",
@@ -32,8 +33,9 @@ export default function MainContent({ darkMode, lang }: MainContentProps) {
   
         const data = await res.json();
         const province = data.province ;
-
+        localStorage.setItem("id", data.id);
         setProfile({
+          id: data.id ?? null,
           nom: data.nom,
           prenom: data.prenom,
           email: data.email,
@@ -61,43 +63,48 @@ export default function MainContent({ darkMode, lang }: MainContentProps) {
   });
 
   const verifyOldPassword = async () => {
-    const email = localStorage.getItem("email");
-  const res = await fetch("http://127.0.0.1:8000/auth/verifyPassword", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-   body: JSON.stringify({
-  mot_de_passe: passwordData.current
-}),
- credentials: "include"
+    
+    const meRes = await fetch("http://localhost:8000/auth/me", { credentials: "include" });
+    if (!meRes.ok) throw new Error("Impossible de récupérer l'utilisateur courant");
+    const me = await meRes.json();
+    const userId = me.id;
+    const Id = localStorage.getItem("id");
+    const res = await fetch("http://localhost:8000/auth/verifyOldPassword", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: Id,
+         mot_de_passe: passwordData.current }),
+    });
 
-  });
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({}));
+      throw new Error(error.detail || "Erreur lors de la vérification du mot de passe");
+    }
 
-  if (!res.ok) {
-    const error = await res.json();
-    throw new Error(error.detail || "Erreur lors de la vérification du mot de passe");
-  }
-
-  return await res.json();
+    return await res.json();
 };
 
 const updatePassword = async () => {
-  const email = localStorage.getItem("email");
-  const res = await fetch("http://127.0.0.1:8000/auth/modifPassword", {
-    method: "GET",
+  
+  const userId = profile.id ?? (await fetch("http://localhost:8000/auth/me", { credentials: "include" }).then(r => r.ok ? r.json().then(d => d.id) : null));
+  if (!userId) throw new Error("Impossible d'identifier l'utilisateur pour la mise à jour du mot de passe");
+
+  const res = await fetch("http://localhost:8000/auth/modifPassword", {
+    method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      email: email,
-      mot_de_passe: passwordData.new
-    }),
+    body: JSON.stringify({ id: userId, mot_de_passe: passwordData.new }),
   });
 
   if (!res.ok) {
-    const error = await res.json();
+    const error = await res.json().catch(() => ({}));
     throw new Error(error.detail || "Erreur lors de la modification du mot de passe");
   }
 
   return await res.json();
 };
+
+
+
 const handlePasswordChange = async () => {
   if (passwordData.new !== passwordData.confirm) {
     alert("Les nouveaux mots de passe ne correspondent pas !");
@@ -107,15 +114,27 @@ const handlePasswordChange = async () => {
   try {
     // 1️ Vérifier l'ancien mot de passe
     await verifyOldPassword();
-
+    
     // 2️ Modifier le mot de passe
     const result = await updatePassword();
     console.log("Résultat du backend:", result);
 
     alert("Mot de passe modifié avec succès !");
     handleCancel(); // réinitialiser les champs
-  } catch  {
-    alert("err");
+  } catch (err: unknown) {
+    // Afficher un message plus explicite si l'ancien mot de passe est incorrect
+    let msg = "";
+    if (err instanceof Error) {
+      msg = err.message;
+    } else {
+      msg = String(err);
+    }
+
+    if (msg.includes("Mot de passe incorrect") || msg.toLowerCase().includes("incorrect")) {
+      alert("Ancien mot de passe incorrect !");
+    } else {
+      alert(msg || "Erreur lors de la modification du mot de passe");
+    }
   }
 };
 
@@ -156,7 +175,7 @@ const handlePasswordChange = async () => {
 
 </div>
 
-      {/* Profil étudiant */}
+      {/* Profil  */}
       <div
         className={`p-6 rounded-xl border ${borderClass} ${cardClass} shadow-sm hover:shadow-lg transition mb-8`}
       >

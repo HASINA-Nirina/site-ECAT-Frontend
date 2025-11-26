@@ -24,6 +24,8 @@ export default function Header({ darkMode, setDarkMode,sidebarOpen, setSidebarOp
   const [showNotifications, setShowNotifications] = useState(false);
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [profileImageFile, setProfileImageFile] = useState<File | null>(null);
+  const [activeChatId, setActiveChatId] = useState<number | null>(null);
+
 
   const router = useRouter();
   const iconColor = darkMode ? "white" : "#7c3aed";
@@ -53,7 +55,9 @@ export default function Header({ darkMode, setDarkMode,sidebarOpen, setSidebarOp
         setNom(data.nom || "");
         setAdminName(`${data.prenom} ${data.nom}`);
         setProfileImage(data.image || null);
-
+        localStorage.setItem("idUser", data.id.toString());
+        localStorage.setItem("userNom", data.Nom);
+        localStorage.setItem("userPrenom", data.prenom);
       //Appliquer le thème sauvegardé
       if (data.theme === "dark") {
         setDarkMode(true);
@@ -189,6 +193,9 @@ export default function Header({ darkMode, setDarkMode,sidebarOpen, setSidebarOp
       // Nettoyage automatique quand le composant se démonte
       return () => clearInterval(interval);
     }, []);
+
+    const [ws, setWs] = useState<WebSocket | null>(null);
+
 
   // Marquer comme lu quand le popup notifications s’ouvre
   useEffect(() => {

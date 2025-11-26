@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState,useEffect } from "react";
 import { User, Lock, Save, Eye, EyeOff, X, XIcon } from "lucide-react";
 import Image from "next/image";
+import { image } from "framer-motion/client";
+
 
 
 interface MainContentProps {
@@ -10,13 +12,42 @@ interface MainContentProps {
   readonly lang: string;
 }
 
+
 export default function MainContent({ darkMode, lang }: MainContentProps) {
   const [profile, setProfile] = useState({
-    nom: "Rakoto",
-    prenom: "Hasina",
-    email: "hasina@example.com",
-    universite: "Université ECAT Taratra",
+    id: null as number | null,
+    nom: "",
+    prenom: "",
+    email: "",
+    universite: "",
+    image:  "",
   });
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const res = await fetch("http://localhost:8000/auth/me", {
+          credentials: "include",
+        });
+        if (!res.ok) throw new Error("Non autorisé");
+  
+        const data = await res.json();
+        localStorage.setItem("id", data.id);
+        setProfile({
+          id: data.id ?? null,
+          nom: data.nom,
+          prenom: data.prenom,
+          email: data.email,
+          universite:  `Université ECAT Taratra ${data.province}`,
+          image: data.image,
+        });
+      } catch  {
+        console.error("Utilisateur inconnu");  
+      }
+    };
+
+    fetchProfile();
+  }, []);
 
   const [passwordData, setPasswordData] = useState({
     current: "",
@@ -30,13 +61,82 @@ export default function MainContent({ darkMode, lang }: MainContentProps) {
     confirm: false,
   });
 
-  const handlePasswordChange = () => {
-    if (passwordData.new !== passwordData.confirm) {
-      alert("Les nouveaux mots de passe ne correspondent pas !");
-      return;
+  const verifyOldPassword = async () => {
+    
+    const meRes = await fetch("http://localhost:8000/auth/me", { credentials: "include" });
+    if (!meRes.ok) throw new Error("Impossible de récupérer l'utilisateur courant");
+    const me = await meRes.json();
+    const userId = me.id;
+    const Id = localStorage.getItem("id");
+    const res = await fetch("http://localhost:8000/auth/verifyOldPassword", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: Id,
+         mot_de_passe: passwordData.current }),
+    });
+
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({}));
+      throw new Error(error.detail || "Erreur lors de la vérification du mot de passe");
     }
+
+    return await res.json();
+};
+
+const updatePassword = async () => {
+  
+  const userId = profile.id ?? (await fetch("http://localhost:8000/auth/me", { credentials: "include" }).then(r => r.ok ? r.json().then(d => d.id) : null));
+  if (!userId) throw new Error("Impossible d'identifier l'utilisateur pour la mise à jour du mot de passe");
+
+  const res = await fetch("http://localhost:8000/auth/modifPassword", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id: userId, mot_de_passe: passwordData.new }),
+  });
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.detail || "Erreur lors de la modification du mot de passe");
+  }
+
+  return await res.json();
+};
+
+
+
+const handlePasswordChange = async () => {
+  if (passwordData.new !== passwordData.confirm) {
+    alert("Les nouveaux mots de passe ne correspondent pas !");
+    return;
+  }
+
+  try {
+    // 1️ Vérifier l'ancien mot de passe
+    await verifyOldPassword();
+    
+    // 2️ Modifier le mot de passe
+    const result = await updatePassword();
+    console.log("Résultat du backend:", result);
+
     alert("Mot de passe modifié avec succès !");
-  };
+    handleCancel(); // réinitialiser les champs
+  } catch (err: unknown) {
+    // Afficher un message plus explicite si l'ancien mot de passe est incorrect
+    let msg = "";
+    if (err instanceof Error) {
+      msg = err.message;
+    } else {
+      msg = String(err);
+    }
+
+    if (msg.includes("Mot de passe incorrect") || msg.toLowerCase().includes("incorrect")) {
+      alert("Ancien mot de passe incorrect !");
+    } else {
+      alert(msg || "Erreur lors de la modification du mot de passe");
+    }
+  }
+};
+
 
   const handleCancel = () => {
     setPasswordData({ current: "", new: "", confirm: "" });
@@ -57,17 +157,24 @@ export default function MainContent({ darkMode, lang }: MainContentProps) {
   </h1>
 
   {/* Image de profil centrée avec espace responsive */}
-  <div className="flex justify-center">
-    <div className="w-20 h-20 sm:w-28 sm:h-28 rounded-full border-4 border-blue-400 shadow-md flex items-center justify-center mt-1 sm:-mt-10">
-      {/* Cercle vide avec icône utilisateur */}
-      <User size={36} className="text-blue-400" />
-    </div>
+<div className="flex justify-center">
+  <div className="w-10 h-10 sm:w-28 sm:h-28 rounded-full border-4 border-blue-400 shadow-md flex items-center justify-center mt-1 sm:-mt-10 bg-gray-100 sm:text-5xl font-bold">
+    {profile.image ? (
+      // Si image existe
+      <img src={profile.image}alt="Profil" className="w-full h-full rounded-full object-cover"/>
+    ) : (
+      // Sinon afficher le premièr lettres du prénom
+      <span className="text-blue-400 text-xl sm:text-2xl font-bold">
+        
+        {profile.prenom?.substring(0, 1).toUpperCase()}
+      </span>
+    )}
   </div>
 </div>
 
+</div>
 
-
-      {/* Profil étudiant */}
+      {/* Profil  */}
       <div
         className={`p-6 rounded-xl border ${borderClass} ${cardClass} shadow-sm hover:shadow-lg transition mb-8`}
       >
@@ -79,7 +186,8 @@ export default function MainContent({ darkMode, lang }: MainContentProps) {
             <label className="block text-sm opacity-80 mb-1">Nom</label>
             <input
               type="text"
-              value={profile.nom}
+
+              value={profile.nom|| ""}
               readOnly
               className={`w-full p-2 rounded-lg border ${borderClass} ${
                 darkMode ? "bg-gray-700" : "bg-gray-100"
@@ -90,7 +198,7 @@ export default function MainContent({ darkMode, lang }: MainContentProps) {
             <label className="block text-sm opacity-80 mb-1">Prénom</label>
             <input
               type="text"
-              value={profile.prenom}
+              value={profile.prenom|| ""}
               readOnly
               className={`w-full p-2 rounded-lg border ${borderClass} ${
                 darkMode ? "bg-gray-700" : "bg-gray-100"
@@ -101,7 +209,7 @@ export default function MainContent({ darkMode, lang }: MainContentProps) {
             <label className="block text-sm opacity-80 mb-1">Email</label>
             <input
               type="email"
-              value={profile.email}
+              value={profile.email|| ""}
               readOnly
               className={`w-full p-2 rounded-lg border ${borderClass} ${
                 darkMode ? "bg-gray-700" : "bg-gray-100"
@@ -112,7 +220,7 @@ export default function MainContent({ darkMode, lang }: MainContentProps) {
             <label className="block text-sm opacity-80 mb-1">Université</label>
             <input
               type="text"
-              value={profile.universite}
+              value={profile.universite|| ""}
               readOnly
               className={`w-full p-2 rounded-lg border ${borderClass} ${
                 darkMode ? "bg-gray-700" : "bg-gray-100"

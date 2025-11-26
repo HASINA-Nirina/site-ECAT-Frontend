@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { CreditCard, Search, Calendar, ArrowUpDown, ChevronUp, ChevronDown } from "lucide-react";
 
 interface MainContentProps {
@@ -19,15 +19,43 @@ export default function MainContentPaiements({ darkMode, lang }: MainContentProp
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState<"nom" | "date" | null>(null);
   const [sortAsc, setSortAsc] = useState(true);
+  const [paiements, setPaiements] = useState<Paiement[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const paiements: Paiement[] = [
-    { id: 1, nom: "Rakoto Jean", montant: "50 000 Ar", methode: "Mobile Money", date: "2025-10-27" },
-    { id: 2, nom: "Rabe Alice", montant: "70 000 Ar", methode: "Carte Bancaire", date: "2025-10-20" },
-    { id: 3, nom: "Andry Paul", montant: "45 000 Ar", methode: "Espèces", date: "2025-09-12" },
-  ];
+  // Récupération dynamique des paiements depuis FastAPI
+  useEffect(() => {
+    const fetchPaiements = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const res = await fetch("http://localhost:8000/paiement/par_province", {
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        });
+        if (!res.ok) throw new Error("Erreur de chargement des paiements");
+        const data = await res.json();
+        // Le backend retourne { province, total, paiements: [...] }
+        if (data.paiements && Array.isArray(data.paiements)) {
+          setPaiements(data.paiements);
+        } else if (data.message) {
+          
+          console.log(data.message);
+          setPaiements([]);
+        } else {
+          
+          setPaiements(Array.isArray(data) ? data : []);
+        }
+      } catch (error) {
+        console.error("Erreur :", error);
+        setPaiements([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPaiements();
+  }, []);
 
   const filtered = paiements.filter((p) =>
-    p.nom.toLowerCase().includes(search.toLowerCase())
+    p.nom?.toLowerCase().includes(search.toLowerCase())
   );
 
   const sorted = [...filtered].sort((a, b) => {
@@ -47,16 +75,25 @@ export default function MainContentPaiements({ darkMode, lang }: MainContentProp
     }
   };
 
+  if (loading) {
+    return (
+      <main className="flex-1 p-6 text-center text-gray-500">
+        {lang === "fr" ? "Chargement des paiements..." : "Loading payments..."}
+      </main>
+    );
+  }
+
   return (
     <main className="flex-1 p-6">
-      {/* Titre + Recherche */}
+      {/* ---- Titre + Recherche ---- */}
       <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
         <h1
           className={`text-2xl font-bold flex items-center gap-2 ${
             darkMode ? "text-white" : "text-gray-900"
           }`}
         >
-          <CreditCard size={26} className={darkMode ? "text-[#17f]" : "text-[#17f]"}/> {lang === "fr" ? "Liste des Paiements" : "Payments List"}
+          <CreditCard size={26} className="text-[#17f]" />
+          {lang === "fr" ? "Liste des Paiements" : "Payments List"}
         </h1>
 
         <div className="flex items-center gap-2 w-full sm:w-auto">
@@ -73,10 +110,7 @@ export default function MainContentPaiements({ darkMode, lang }: MainContentProp
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
-            <Search
-              size={18}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-purple-400"
-            />
+            <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-purple-400" />
           </div>
 
           {/* Icônes de tri */}
@@ -105,7 +139,7 @@ export default function MainContentPaiements({ darkMode, lang }: MainContentProp
         </div>
       </div>
 
-      {/* Tableau stylé */}
+      {/* ---- Tableau stylé ---- */}
       <div
         className={`overflow-x-auto mx-auto max-w-8xl rounded-2xl shadow-lg mt-12 ${
           darkMode ? "bg-gray-900 text-white" : "bg-white"
@@ -119,10 +153,7 @@ export default function MainContentPaiements({ darkMode, lang }: MainContentProp
               }`}
             >
               <th className="p-5">ID</th>
-              <th
-                className="p-5 cursor-pointer"
-                onClick={() => toggleSort("nom")}
-              >
+              <th className="p-5 cursor-pointer" onClick={() => toggleSort("nom")}>
                 Nom{" "}
                 {sortBy === "nom" &&
                   (sortAsc ? (
@@ -133,10 +164,7 @@ export default function MainContentPaiements({ darkMode, lang }: MainContentProp
               </th>
               <th className="p-5">Montant</th>
               <th className="p-5">Méthode</th>
-              <th
-                className="p-4 cursor-pointer"
-                onClick={() => toggleSort("date")}
-              >
+              <th className="p-4 cursor-pointer" onClick={() => toggleSort("date")}>
                 Date{" "}
                 {sortBy === "date" &&
                   (sortAsc ? (

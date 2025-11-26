@@ -34,22 +34,29 @@ const handleSubmit = async (e: React.FormEvent) => {
   }
 
   try {
+    // Récupérer l'id utilisateur correspondant à l'email via l'API des étudiants
+    const etuRes = await fetch(`http://127.0.0.1:8000/auth/ReadUser?email=${email}`);
+
+
+    const etuList = await etuRes.json();
+    
+
     const res = await fetch("http://127.0.0.1:8000/auth/modifPassword", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        email: email,
-        mot_de_passe: password, // ✅ envoyer le vrai mot de passe
+        id: etuList.id,
+        mot_de_passe: password,
       }),
     });
 
     const data = await res.json();
 
     if (res.ok) {
-      alert(`✅ ${data.message}`);
+      alert(`✅ ${data.message || data.success || 'Mot de passe modifié'}`);
       window.location.href = "/login";
     } else {
-      alert(`❌ ${data.detail || "Erreur inconnue"}`);
+      alert(`❌ ${data.detail || data.error || JSON.stringify(data)}`);
     }
   } catch (err) {
     console.error(err);
@@ -117,7 +124,6 @@ const handleSubmit = async (e: React.FormEvent) => {
           {error && (
             <p className="text-red-600 text-sm text-center">{error}</p>
           )}
-s
           {/* Bouton Confirmer */}
           <button
             type="submit"

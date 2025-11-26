@@ -28,31 +28,47 @@ interface Props {
 
 export default function GererFormation({ darkMode }: Props) {
   const [formations, setFormations] = useState<Formation[]>([]);
+  const ListeFormation = async () => {
+    try {
+      const res = await fetch("http://localhost:8000/formation/ReadFormation");
+      const data = await res.json();
+      const arr = Array.isArray(data) ? data : data.formations || [];
+      const formatted = arr.map((f: any) => {
+        let imageUrl = "";
+        try {
+          if (f && f.image) {
+            const raw = String(f.image);
+            if (raw.startsWith("http://") || raw.startsWith("https://")) {
+              imageUrl = raw;
+            } else if (raw.startsWith("/")) {
+              imageUrl = `http://localhost:8000${raw}`;
+            } else {
+              // valeur inattendue, ignorer
+              imageUrl = "";
+            }
+          }
+        } catch {
+          imageUrl = "";
+        }
+
+        return {
+          id: f.idFormation,
+          titre: f.titre,
+          description: f.description,
+          image: imageUrl,
+          filename: f.filename || "",
+        };
+      });
+      setFormations(formatted);
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   // Recuperer les formations
   useEffect(() => {
     ListeFormation();
   }, []);
-
-  const ListeFormation = () => {
-    fetch("http://localhost:8000/formation/ReadFormation")
-      .then((res) => res.json())
-      .then((data) => {
-        const formatted = (Array.isArray(data) ? data : data.formations || []).map(
-          (f) => ({
-            id: f.idFormation,
-            titre: f.titre,
-            description: f.description,
-            image: f.image ? `http://localhost:8000${f.image}` : "", 
-            filename: f.filename || "",
-          })
-        );
-        setFormations(formatted);
-        
-      })
-      
-      .catch((err) => console.error(err));
-  };
 
 
   const [isPopupOpen, setIsPopupOpen] = useState(false);
@@ -76,10 +92,10 @@ export default function GererFormation({ darkMode }: Props) {
 
   const handleAddOrEditFormation = async () => {
     if (!newFormation.titre) return;
-
+  
     try {
+      // ---- MODIFICATION ----
       if (editFormation) {
-        // Modifier (PUT)
         const res = await fetch(
           `http://localhost:8000/formation/UpdateFormation/${editFormation.id}`,
           {
@@ -88,59 +104,54 @@ export default function GererFormation({ darkMode }: Props) {
             body: JSON.stringify({
               titre: newFormation.titre,
               description: newFormation.description,
-              image: newFormation.image,
+              image: newFormation.image, // pour JSON, pas d'imageFile
             }),
           }
         );
-        const updated = await res.json();
-        setFormations((prev) =>
-          prev.map((f) => (f.id === updated.id ? updated : f))
-        );
-        ListeFormation();
+        await res.json();
+        await ListeFormation();
       } else {
-        // Ajouter Formation
-       let headers: Record<string, string> = { "Content-Type": "application/json" };
-      
-       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      let body: any;
+       // ---- AJOUT ----
+        const formData = new FormData();
+        formData.append("titre", newFormation.titre);
+        formData.append("description", newFormation.description);
+        if (newFormation.imageFile) {
+          formData.append("image", newFormation.imageFile);
+        }
 
-      if (newFormation.imageFile) {
-        body = new FormData();
-        body.append("titre", newFormation.titre);
-        body.append("description", newFormation.description);
-        body.append("image", newFormation.imageFile);
-
-        headers = {}; // ok, Record<string,string> peut être vide
-      } else {
-        body = JSON.stringify(newFormation);
-      }
-
-
+        // fetch directement avec formData
         const res = await fetch("http://localhost:8000/formation/NewFormation", {
           method: "POST",
-          headers,
-          body,
+          body: formData, // pas besoin de Content-Type ici
         });
-        const added = await res.json();
 
-        const newFormationItem = {
+        const added = await res.json();
+  
+        // Créer l’objet formation pour l’état
+        const newFormationItem: Formation = {
           id: added.idFormation,
           titre: added.titre,
           description: added.description,
           image: added.image ? `http://localhost:8000${added.image}` : "",
           filename: added.filename || "",
         };
-
-        setFormations((prev) => [newFormationItem, ...prev]);
       }
-
+  
+      // Réinitialiser popup et formulaire
       setIsPopupOpen(false);
-      setNewFormation({ titre: "", description: "", image: "", filename: "", imageFile: null });
+      setNewFormation({
+        titre: "",
+        description: "",
+        image: "",
+        filename: "",
+        imageFile: null,
+      });
+      await ListeFormation();
     } catch (error) {
-      console.error(error);
+      console.error("Erreur ajout/modification formation :", error);
     }
   };
-
+  
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
@@ -176,6 +187,7 @@ export default function GererFormation({ darkMode }: Props) {
       );
       setFormations((prev) => prev.filter((f) => f.id !== deleteFormation.id));
       setDeleteFormation(null);
+      ListeFormation();
     } catch (error) {
       console.error(error);
     }
@@ -226,9 +238,10 @@ export default function GererFormation({ darkMode }: Props) {
               />
           ) : (
             <div className="w-full h-full bg-blue-200 flex items-center justify-center text-white font-bold text-2xl">
-              {formation.titre.charAt(0).toUpperCase()}
+            {formation.titre ? formation.titre.charAt(0).toUpperCase() : ""}
+
             </div>
-          )}           {/* Modifier / Supprimer overlay */}
+          )}         {/* Modifier / Supprimer overlay */}
 
                 <div className="absolute top-2 right-2 flex gap-2">
                   <button
@@ -272,6 +285,11 @@ export default function GererFormation({ darkMode }: Props) {
       {/* Popup ajout / modification */}
       {isPopupOpen && (
         <div className="fixed inset-0 flex items-center justify-center z-50">
+          <div
+            // Ajout du flou ici
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={() => setIsPopupOpen(false)}
+          />
           <div
             className={`relative w-[95%] max-w-lg p-6 rounded-xl shadow-2xl ${
               darkMode ? "bg-gray-900 text-white" : "bg-white text-gray-900"
@@ -346,10 +364,11 @@ export default function GererFormation({ darkMode }: Props) {
                 />
               </div>
 
-              <div className="flex justify-end gap-68 mt-4">
+              {/* Boutons Annuler / Ajouter Modifier */}
+              <div className="flex justify-end gap-4 mt-4"> {/* Ajustement du gap et inversion des boutons */}
                 <button
                   onClick={() => setIsPopupOpen(false)}
-                  className="px-5 py-2 hover:bg-red-700 text-white rounded-lg transition bg-red-600"
+                  className="px-5 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition" // Pas besoin de hover:bg-red-700 si bg-red-600 est déjà là
                 >
                   Annuler
                 </button>
@@ -368,7 +387,11 @@ export default function GererFormation({ darkMode }: Props) {
       {/* Popup suppression */}
       {deleteFormation && (
         <div className="fixed inset-0 flex items-center justify-center z-50">
-          <div className="absolute inset-0 bg-black/50" />
+          <div 
+            // Ajout du flou ici
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={() => setDeleteFormation(null)} 
+          />
           <div
             className={`relative w-[90%] max-w-sm p-6 rounded-xl shadow-2xl ${
               darkMode ? "bg-gray-900 text-white" : "bg-white text-gray-900"

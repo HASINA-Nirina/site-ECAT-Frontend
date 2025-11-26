@@ -1,5 +1,4 @@
 "use client";
-
 import { useEffect, useState, useMemo } from "react";
 // Le composant MessagePopup est retiré pour assurer la compilation dans l'environnement actuel.
 // import MessagePopup from "./Message/MessagePopup"; 
@@ -25,6 +24,7 @@ import {
   CartesianGrid, // Grille de fond
   ResponsiveContainer // Conteneur réactif
 } from "recharts";
+import MessagePopup from "@/app/admin/super/dashboard/Message/MessagePopup";
 
 interface MainContentProps {
   readonly darkMode: boolean;
@@ -158,6 +158,7 @@ const renderCustomLabel = ({
 export default function MainContent({ darkMode, lang }: MainContentProps) {
   // Remplacement de showMessage/MessagePopup par un simple état pour le message
   const [messageNotification, setMessageNotification] = useState(false);
+  const [showMessage, setShowMessage] = useState(false);
   const [time, setTime] = useState<Date | null>(null);
   const [mounted, setMounted] = useState(false);
 
@@ -417,21 +418,21 @@ export default function MainContent({ darkMode, lang }: MainContentProps) {
         </div>
       </div>
 
-      {/* === Bouton messages (flottant) - Simplifié === */}
       <button
-        className="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-purple-600 hover:bg-purple-700 text-white flex items-center justify-center shadow-xl transition-transform transform hover:scale-110 group"
+        className="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-purple-600 hover:bg-purple-700 text-white flex items-center justify-center shadow-xl transition-all duration-300 hover:scale-105"
         title="Messages"
-        onClick={() => setMessageNotification(true)} 
-        onBlur={() => setTimeout(() => setMessageNotification(false), 500)} // Masquer après un court délai
+        onClick={() => setShowMessage(true)}
       >
         <MessageCircle size={28} />
-        {/* Simple bulle d'information pour remplacer le popup non résolu */}
-        {messageNotification && (
-          <div className="absolute bottom-full mb-2 w-48 p-2 text-xs rounded-lg shadow-md bg-yellow-400 text-gray-900 pointer-events-none opacity-100 transition-opacity duration-300">
-            {lang === "fr" ? "Fonctionnalité de messagerie désactivée pour la compilation." : "Messaging feature disabled for compilation."}
-          </div>
-        )}
       </button>
+
+      {/* Utilisation du composant MessagePopup simulé localement */}
+      {showMessage && (
+        <MessagePopup
+          darkMode={darkMode}
+          onClose={() => setShowMessage(false)}
+        />
+      )}
     </main>
   );
 }
