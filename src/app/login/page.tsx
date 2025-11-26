@@ -86,11 +86,13 @@ const LoginPage = () => {
 
       setSuccess(true);
       setMessage("Connexion réussie !");
-      setIsLoading(false);
+      //setIsLoading(false);
 
       // Redirection selon le rôle
       
       setTimeout(() => {
+        setIsLoading(false); // blur + barre disparaissent
+        //redirection Immediate
         if (role === "admin") {
           router.push("/admin/super/dashboard");
         } else if (role === "Admin Local") {
@@ -102,7 +104,7 @@ const LoginPage = () => {
           setMessage("Rôle inconnu !");
           setSuccess(false);
         }
-      }, 1500);
+      }, 200);
     } catch (err) {
       console.error("Erreur réseau :", err);
       setIsLoading(false);
@@ -119,25 +121,24 @@ const LoginPage = () => {
       {/* Overlay */}
       <div className="absolute inset-0 bg-white/10 backdrop-blur-sm"></div>
 
-      {/* ✅ Barre de progression */}
-      {isLoading && (
-        <div className="absolute top-4 right-4 w-32 h-2 bg-gray-200 rounded-full overflow-hidden shadow-md animate-pulse">
-          <div className="bg-purple-600 h-full rounded-full animate-[progress_5s_linear_forwards]"></div>
-          <style jsx>{`
-            @keyframes progress {
-              from {
-                width: 0%;
-              }
-              to {
-                width: 100%;
-              }
-            }
-          `}</style>
-        </div>
-      )}
-
       {/* Formulaire */}
-      <div className="relative z-10 w-full max-w-md bg-white/90 p-8 rounded-2xl shadow-lg mx-4">
+      <div className="relative z-10 w-full max-w-md bg-white/90 p-8 rounded-2xl shadow-lg mx-4 overflow-hidden">
+      {/* ✅ Barre de progression violette */}
+        {isLoading && (
+          <div className="absolute top-0 left-0 w-full h-1 bg-purple-200 overflow-hidden rounded-t-2xl">
+            <div className="h-1 w-1/3 bg-purple-600 animate-slide"></div>
+          </div>
+        )}
+
+        {/* ✅ Contenu avec effet de flou quand isLoading */}
+        <div
+          className={`${isLoading ? "pointer-events-none select-none" : ""}`}
+          style={{
+            filter: isLoading ? "blur(1px)" : "none",
+            transition: "filter 0.3s ease",
+          }}
+        >
+
         <h1 className="text-3xl font-bold mb-6 text-center text-black">
           Connexion
         </h1>
@@ -228,6 +229,7 @@ const LoginPage = () => {
             S&apos;inscrire
           </button>
         </p>
+        </div>
       </div>
 
       {showRegisterChoice && (
@@ -261,6 +263,22 @@ const LoginPage = () => {
           </div>
         </div>
       )}
+      <style jsx>{`
+      @keyframes slide {
+        0% {
+          transform: translateX(-100%);
+        }
+        50% {
+          transform: translateX(100%);
+        }
+        100% {
+          transform: translateX(-100%);
+        }
+      }
+      .animate-slide {
+        animation: slide 1.8s ease-in-out infinite;
+      }
+    `}</style>
     </section>
   );
 };

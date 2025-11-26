@@ -4,6 +4,7 @@ import { useState } from "react";
 import { BookOpen, CreditCard, MessageCircle, FileText, BarChart3, Clock } from "lucide-react";
 import MessagePopup from "@/app/admin/super/dashboard/Message/MessagePopup";
 
+
 interface MainContentProps {
   readonly darkMode: boolean;
   readonly lang: string;
@@ -201,5 +202,5 @@ export default function MainContent({ darkMode, lang }: MainContentProps) {
         />
       )}
     </main>
-  );
-}
+   );
+ }

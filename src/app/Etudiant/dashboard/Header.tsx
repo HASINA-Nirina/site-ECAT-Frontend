@@ -2,11 +2,10 @@
 import Image from "next/image";
 import { useState, useEffect } from "react";
 import logo from "@/app/assets/logo.jpeg";
-import { LogOut, Sun, Moon, Bell, Menu, Settings, Pencil, X, UserRoundPenIcon } from "lucide-react";
+import { LogOut, Sun, Moon, Bell, Menu, Settings, Pencil, X, UserRoundPenIcon, UserRoundPen } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
 import Link from "next/link";
-
 
 interface HeaderProps {
   readonly darkMode: boolean;
@@ -40,8 +39,6 @@ export default function Header({ darkMode, setDarkMode,sidebarOpen, setSidebarOp
     setTimeout(() => setShowNotifications(false), 500); // attend la transition avant de démonter le composant
   };
 
-
-
   // Charger les données utilisateur
   useEffect(() => {
     async function fetchUser() {
@@ -51,14 +48,19 @@ export default function Header({ darkMode, setDarkMode,sidebarOpen, setSidebarOp
         });
         if (!res.ok) throw new Error("Non autorisé");
         const data = await res.json();
-        localStorage.setItem("iduser", data.id);
-        localStorage.setItem("email", data.email);
 
         setPrenom(data.prenom || "");
         setNom(data.nom || "");
-        setAdminName(`${data.prenom}  ${data.nom}`);
+        setAdminName(`${data.prenom} ${data.nom}`);
         setProfileImage(data.image || null);
         localStorage.setItem("idUser", data.id.toString());
+
+      //Appliquer le thème sauvegardé
+      if (data.theme === "dark") {
+        setDarkMode(true);
+      } else {
+        setDarkMode(false);
+      }
 
         const initials =
           (data.prenom?.[0] || "").toUpperCase() +
@@ -120,6 +122,32 @@ export default function Header({ darkMode, setDarkMode,sidebarOpen, setSidebarOp
     }
   };
 
+  const handleThemeToggle = async () => {
+  const newMode = !darkMode;
+  setDarkMode(newMode);
+
+  if (newMode) {
+    document.documentElement.classList.add('dark');
+    localStorage.setItem('theme', 'dark');
+  } else {
+    document.documentElement.classList.remove('dark');
+    localStorage.setItem('theme', 'light');
+  }
+
+  try {
+    const formData = new FormData();
+    formData.append("theme", newMode ? "dark" : "light");
+
+    await fetch("http://localhost:8000/auth/me/theme", {
+      method: "PUT",
+      body: formData,
+      credentials: "include",
+    });
+     } catch (error) {
+    console.error(error);
+     }
+  };
+
   return (
     <header
       className={`px-4 py-3 shadow-md bg-opacity-90 backdrop-blur-md ${
@@ -129,7 +157,7 @@ export default function Header({ darkMode, setDarkMode,sidebarOpen, setSidebarOp
       {/* ============== Ligne 1 mobile ============== */}
       <div className="flex md:hidden justify-start items-start mb-2 px-4">
         <Link
-            href="/Etudiant/dashboard"
+            href="/admin/local/dashboard"
             className="flex items-center gap-2 no-underline cursor-pointer"
             style={{ color: 'inherit', textDecoration: 'none' }}
           >
@@ -144,7 +172,7 @@ export default function Header({ darkMode, setDarkMode,sidebarOpen, setSidebarOp
       <div className="hidden md:flex justify-between items-center">
         <div className="flex items-center gap-3">
           <Link
-              href="/Etudiant/dashboard"
+              href="/admin/local/dashboard"
               className="flex items-center gap-3 no-underline cursor-pointer"
               style={{ color: 'inherit', textDecoration: 'none' }}
             >
@@ -152,6 +180,7 @@ export default function Header({ darkMode, setDarkMode,sidebarOpen, setSidebarOp
               <span className="text-[#17f] font-bold text-lg">Université ECAT TARATRA</span>
           </Link>
         </div>
+
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
             <div
@@ -191,7 +220,7 @@ export default function Header({ darkMode, setDarkMode,sidebarOpen, setSidebarOp
           </button>
 
           <button
-            onClick={() => setDarkMode(!darkMode)}
+            onClick={handleThemeToggle}
             className="p-2 rounded-full border border-purple-500 hover:bg-purple-100 dark:hover:bg-gray-700 transition"
           >
             {darkMode ? <Sun size={20} color={iconColor} /> : <Moon size={20} color={iconColor} />}
@@ -211,6 +240,7 @@ export default function Header({ darkMode, setDarkMode,sidebarOpen, setSidebarOp
         <button onClick={() => setSidebarOpen(!sidebarOpen)}>
           <Menu color={iconColor} size={26} />
         </button>
+
         <div className="flex items-center gap-3">
           <div
             className={`w-10 h-10 rounded-full flex items-center justify-center text-lg font-extrabold border-2 border-purple-600 shadow-sm overflow-hidden ${
@@ -246,11 +276,12 @@ export default function Header({ darkMode, setDarkMode,sidebarOpen, setSidebarOp
           </button>
 
           <button
-            onClick={() => setDarkMode(!darkMode)}
+            onClick={handleThemeToggle}
             className="p-2 rounded-full border border-purple-500 hover:bg-purple-100 dark:hover:bg-gray-700 transition"
           >
             {darkMode ? <Sun size={20} color={iconColor} /> : <Moon size={20} color={iconColor} />}
           </button>
+
 
           <button
             onClick={() => setShowLogoutConfirm(true)}
@@ -329,11 +360,8 @@ export default function Header({ darkMode, setDarkMode,sidebarOpen, setSidebarOp
        </div>
      </div>
    </div>,
-   document.getElementById("portal-root") as HTMLElement
- )}
-
-
-
+    document.getElementById("portal-root") as HTMLElement
+  )}
       {/* ====== POPUP LOGOUT ====== */}
       {showLogoutConfirm &&
         typeof window !== "undefined" &&
@@ -353,7 +381,7 @@ export default function Header({ darkMode, setDarkMode,sidebarOpen, setSidebarOp
                   className={`px-4 py-2 rounded-lg font-semibold ${
                     darkMode
                       ? "bg-red-700 hover:bg-red-600"
-                      : "bg-red-500 hover:bg-red-600"
+                      : "bg-red-500 hover:bg-red-700"
                   } transition`}
                 >
                   Non

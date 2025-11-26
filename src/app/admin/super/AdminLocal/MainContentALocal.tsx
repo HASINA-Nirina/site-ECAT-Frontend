@@ -167,7 +167,6 @@ const fetchAntenneStats = async () => {
         body: JSON.stringify({ province: nom }), // Correspond à AntenneCreate
       });
       if (!res.ok) throw new Error("Erreur lors de la création");
-      // const data = await res.json(); 
       fetchAntenneStats(); 
     } catch (err) {
       console.error(err);
