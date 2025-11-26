@@ -13,7 +13,10 @@ import {
     Loader2,
     FileText,
     UserPlus,
-    SquarePlus
+    SquarePlus,
+    MessageCircle,
+    Inbox,
+    Mail
 } from 'lucide-react';
 import {  Image as ImageIcon } from "lucide-react";
 
@@ -625,9 +628,31 @@ export default function MessagePopup({ onClose, darkMode }: MessagePopupProps) {
                         <Loader2 className="w-6 h-6 animate-spin text-indigo-600" />
                     </div>
                 ) : messages.length === 0 ? (
-                    <div className={`text-center py-8 ${subtleText} text-sm`}>
-                        Aucun message pour le moment. Soyez le premier à écrire !
-                    </div>
+<div className="flex flex-col items-center justify-center py-70">
+  {/* Icône Lucide animée */}
+  <Mail 
+    className="w-20 h-20 mb-4 text-purple-800"
+    style={{
+      animation: "swing 1.5s ease-in-out infinite"
+    }}
+  />
+
+  {/* Texte */}
+  <div className={`text-center text-sm ${subtleText}`}>
+    Aucun message pour le moment. Soyez le premier à écrire !
+  </div>
+
+  {/* Ajout des keyframes dans le style global ou dans un fichier CSS */}
+  <style jsx>{`
+    @keyframes swing {
+      0% { transform: rotate(-15deg); }
+      50% { transform: rotate(15deg); }
+      100% { transform: rotate(-15deg); }
+    }
+  `}</style>
+</div>
+
+
                 ) : (
                     messages.map((message) => {
                         const isSent = message.idSender === idUser; 
