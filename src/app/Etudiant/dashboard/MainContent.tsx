@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { BookOpen, CreditCard, MessageCircle, FileText, BarChart3, Clock } from "lucide-react";
+import MessagePopup from "@/app/Etudiant/dashboard/Message/MessagePopup";
 
 interface MainContentProps {
   readonly darkMode: boolean;
@@ -10,6 +11,8 @@ interface MainContentProps {
 
 export default function MainContent({ darkMode, lang }: MainContentProps) {
   const [activeSection, setActiveSection] = useState("dashboard");
+  const [showMessage, setShowMessage] = useState(false);
+
 
   const bgClass = darkMode ? "bg-gray-900 text-white" : "bg-gray-50 text-black";
   const cardClass = darkMode ? "bg-gray-800 text-white" : "bg-white text-black";
@@ -183,6 +186,22 @@ export default function MainContent({ darkMode, lang }: MainContentProps) {
           </div>
         )}
       </section>
+        {/* Bouton flottant Message */}
+          <button
+            className="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-purple-600 hover:bg-purple-700 text-white flex items-center justify-center shadow-xl transition-all duration-300 hover:scale-105"
+            title="Messages"
+            onClick={() => setShowMessage(true)}
+          >
+            <MessageCircle size={28} />
+          </button>
+
+          {/* Popup Message */}
+          {showMessage && (
+            <MessagePopup
+              darkMode={darkMode}
+              onClose={() => setShowMessage(false)}
+            />
+          )}
     </main>
-  );
-}
+   );
+ }
