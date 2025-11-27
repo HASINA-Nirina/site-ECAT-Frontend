@@ -192,7 +192,6 @@ const LoginPage = () => {
         <h2 className="text-3xl font-bold mb-6 text-center text-black mt-7">
           Connexion
         </h2>
-
         <form onSubmit={handleSubmit} className="flex flex-col">
           <input
             type="email"
