@@ -44,13 +44,17 @@ const imageInputRef = useRef<HTMLInputElement | null>(null);
 
 
   // Helper to normalize image paths coming from backend
-  const normalizeImage = (raw: any) => {
+  const normalizeImage = (raw: any): string => {
     try {
       if (!raw) return "";
-      const s = String(raw);
+  
+      const s = String(raw).trim();
+      if (s.startsWith("blob:")) return s;
       if (s.startsWith("http://") || s.startsWith("https://")) return s;
+  
       if (s.startsWith("/")) return `http://localhost:8000${s}`;
       return `http://localhost:8000/${s}`;
+  
     } catch {
       return "";
     }

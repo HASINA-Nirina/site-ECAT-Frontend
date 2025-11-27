@@ -58,14 +58,19 @@ export default function MainContentAchat({ darkMode, lang }: MainContentProps) {
   const normalizeImage = (raw: any): string => {
     try {
       if (!raw) return "";
-      const s = String(raw);
+  
+      const s = String(raw).trim();
+      if (s.startsWith("blob:")) return s;
       if (s.startsWith("http://") || s.startsWith("https://")) return s;
+  
       if (s.startsWith("/")) return `http://localhost:8000${s}`;
       return `http://localhost:8000/${s}`;
+  
     } catch {
       return "";
     }
   };
+  
 
   // Récupérer l'ID utilisateur
   useEffect(() => {
@@ -226,9 +231,9 @@ export default function MainContentAchat({ darkMode, lang }: MainContentProps) {
   const handleLivreClick = (livre: Livre) => {
     if (livre.access) {
       // Si le livre est débloqué, ouvrir directement le PDF
-      window.open(`http://localhost:8000${livre.pdf}`, "_blank");
-    } else {
+      window.open(`http://localhost:8000/${livre.pdf}`, "_blank");
       // Sinon, afficher le formulaire de paiement
+    } else {
       setSelectedLivre(livre);
     }
   };
@@ -363,15 +368,7 @@ export default function MainContentAchat({ darkMode, lang }: MainContentProps) {
                   >
                     <div className="relative w-full h-48 overflow-hidden">
                       {livre.image ? (
-                        <img
-                          src={livre.image}
-                          alt={livre.title}
-                          className="object-cover w-full h-full"
-                          onError={(e) => {
-                            console.error("Erreur chargement image:", livre.image);
-                            e.currentTarget.style.display = "none";
-                          }}
-                        />
+                       <Image src={livre.image} alt= "LIVRE" fill className="object-cover w-full h-full" />
                       ) : (
                         <div className="w-full h-full bg-blue-200 flex items-center justify-center text-white font-bold text-2xl">
                           {livre.title.charAt(0).toUpperCase()}
@@ -409,7 +406,11 @@ export default function MainContentAchat({ darkMode, lang }: MainContentProps) {
                       </p>
 
                       <button
-                        onClick={() => handleLivreClick(livre)}
+                        onClick={() => {
+                        
+                        window.open(`http://127.0.0.1:8000/forum/filesdownload/${encodeURIComponent(livre.pdf)}`, "_blank");
+
+                      }}                   
                         className={`w-full flex items-center justify-center gap-2 py-2 rounded-lg font-medium transition ${
                           livre.access
                             ? "bg-[#17f] hover:bg-[#0f0fcf] text-white"

@@ -4,14 +4,15 @@ import { useState, useEffect } from "react";
 import { BookOpen, Search, Eye } from "lucide-react";
 // Remplacement de next/image par une balise <img> standard pour la compatibilité de l'environnement
 // import Image from "next/image"; 
+import Image from "next/image";
 
 // Définition de l'interface Book
 interface Book {
   id: number;
   title: string;
   author: string;
-  image: string;
-  urlPdf: string; // Chemin du fichier PDF, ex: static/uploads/mon_livre.pdf
+  image?: string;
+  pdf: string; // Chemin du fichier PDF, ex: static/uploads/mon_livre.pdf
 }
 
 interface MainContentProps {
@@ -25,56 +26,60 @@ export default function MainContent({ darkMode, lang }: MainContentProps) {
   const [loading, setLoading] = useState(true);
   
   // Récupération de l'ID utilisateur
-  const idUser = typeof window !== "undefined" ? localStorage.getItem("iduser") : null;
-
-  // Fonction pour gérer le téléchargement/ouverture du livre
-  const handleReadNow = (urlPdf: string) => {
-    // Extraire uniquement le nom du fichier à partir du chemin complet (ex: static/uploads/filename.pdf -> filename.pdf)
-    const parts = urlPdf.split('/');
-    const filename = parts[parts.length - 1];
-    
-    // Construire l'URL de l'API en utilisant l'endpoint /filesdownload
-    const downloadUrl = `http://127.0.0.1:8000/filesdownload/${encodeURIComponent(filename)}`;
-    
-    // Ouvrir le fichier dans un nouvel onglet
-    window.open(downloadUrl, "_blank");
+  const normalizeImage = (raw: any): string => {
+    try {
+      if (!raw) return "";
+  
+      const s = String(raw).trim();
+      if (s.startsWith("blob:")) return s;
+      if (s.startsWith("http://") || s.startsWith("https://")) return s;
+  
+      if (s.startsWith("/")) return `http://localhost:8000${s}`;
+      return `http://localhost:8000/${s}`;
+  
+    } catch {
+      return "";
+    }
   };
-
+  const idUser = typeof window !== "undefined" ? localStorage.getItem("iduser") : null;
   useEffect(() => {
+    let isMounted = true;
+  
     const fetchBooks = async () => {
-      if (!idUser) {
-        setLoading(false);
-        setBooks([]);
-        return;
-      }
-      
+      if (!idUser) return;
+  
       setLoading(true);
       try {
         const res = await fetch(`http://127.0.0.1:8000/livre/livreDebloqueEtudiant/${idUser}`, {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
         });
-
-        if (!res.ok) {
-          console.error("Erreur fetch:", res.status, await res.text());
-          setBooks([]);
-          return;
+        
+        const json = await res.json();
+        if (isMounted) {
+          const data: Book[] = (json.livres ?? json).map((b: any) => ({
+            id: b.id,
+            title: b.title,
+            author: b.author,
+            image:normalizeImage(b.image ?? b.cover ?? ""),
+            pdf: b.pdf, 
+          }));
+          setBooks(data);
         }
-
-        const data: Book[] = await res.json();
-        setBooks(data);
+  
       } catch (err) {
-        console.error("Erreur réseau :", err);
-        setBooks([]);
+        if (isMounted) setBooks([]);
+        console.error("Erreur fetch livres :", err);
       } finally {
-        setLoading(false);
+        if (isMounted) setLoading(false);
       }
     };
-
+  
     fetchBooks();
+    return () => { isMounted = false; };
   }, [idUser]);
+  
+
 
   const bgClass = darkMode ? "bg-gray-900 text-white" : "bg-gray-50 text-black";
   const cardClass = darkMode ? "bg-gray-800 text-white" : "bg-white text-black";
@@ -126,21 +131,30 @@ export default function MainContent({ darkMode, lang }: MainContentProps) {
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
         {filteredBooks.length > 0 ? (
           filteredBooks.map((book) => {
+            const imageUrl = book.image
+  ? (book.image.startsWith("/") ? book.image : "/" + book.image)
+  : null;
+
             return (
               <div
                 key={book.id}
                 className={`rounded-xl shadow-lg border ${borderClass} ${cardClass} overflow-hidden flex flex-col hover:scale-[1.02] hover:shadow-2xl transition-transform duration-300`}
               >
                 {/* Image de couverture - Utilisation de <img> à la place de <Image> */}
-                <div className="relative w-full h-40 md:h-56 overflow-hidden bg-gray-200 dark:bg-gray-700">
-                  <img
-                    src={`http://localhost:8000/${book.image}`}
-                    alt={book.title}
-                    // Pour simuler layout="fill" et objectFit="cover"
-                    className="w-full h-full object-cover transition duration-300 hover:opacity-90"
-                  />
-                </div>
-
+              
+                <div className="relative w-full h-48 overflow-hidden">
+                {imageUrl ? (
+                  <Image
+                    src={book.image}
+                    alt={book.title || "LIVRE"}
+                    fill
+                    className="object-cover w-full h-full"
+                  /> ) : (
+                        <div className="w-full h-full bg-blue-200 flex items-center justify-center text-white font-bold text-2xl">
+                          {book.title.charAt(0).toUpperCase()}
+                        </div>
+                      )}
+                  </div>
                 <div className="p-3 flex flex-col flex-grow justify-between gap-2">
                   {/* Titre et Auteur */}
                   <div>
@@ -152,7 +166,9 @@ export default function MainContent({ darkMode, lang }: MainContentProps) {
 
                   {/* Bouton Lire maintenant - Lié à l'endpoint de téléchargement */}
                   <button
-                    onClick={() => handleReadNow(book.urlPdf)}
+                     onClick={() => {   
+                      window.open(`http://127.0.0.1:8000/forum/filesdownload/${encodeURIComponent(book.pdf)}`, "_blank");
+                    }}
                     className="mt-2 flex items-center justify-center gap-2 bg-[#17f] hover:bg-[#0f0fcf] text-white py-2 rounded-lg font-medium transition duration-200 shadow-md shadow-[#17f]/50"
                   >
                     <Eye size={18} /> Lire maintenant

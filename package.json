@@ -10,7 +10,7 @@
     "analyze": "ANALYZE=true next build"
   },
   "dependencies": {
-    "@next/bundle-analyzer": "^16.0.4",
+    "@next/bundle-analyzer": "^16.0.5",
     "framer-motion": "^12.23.22",
     "libphonenumber-js": "^1.12.25",
     "lucide-react": "^0.545.0",
