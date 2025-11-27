@@ -35,7 +35,7 @@ export default function Sidebar({ darkMode, sidebarOpen, setSidebarOpen }: Sideb
         <div
           className={`p-4 rounded-lg shadow-md ${
             darkMode ? "bg-gray-900" : "bg-white"
-          } flex flex-col gap-3 w-full h-full`}
+          } flex flex-col gap-5 w-full h-full`}
         >
           {menuItems.map((item) => {
             const isActive = pathname === item.href;

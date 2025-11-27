@@ -659,19 +659,19 @@ const fetchAntenneStats = async () => {
               Confirmer la suppression
             </h2>
             <p className="mb-6 text-center">
-              Voulez-vous vraiment supprimer l'antenne{" "}
-              <span className="font-semibold text-orange-500">{deleteAntenne.antenne}</span> ?
+              Voulez-vous vraiment supprimer l&apos;antenne{" "}
+              <span className="font-semibold text-orange-500">{deleteAntenne.antenne}</span>?
             </p>
             <div className="flex justify-center gap-4">
               <button
                 onClick={() => setDeleteAntenne(null)}
-                className="px-5 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg transition"
+                className="px-5 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition"
               >
-                Non
+                Non, retour
               </button>
               <button
                 onClick={confirmDelete}
-                className="px-5 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition"
+                className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition"
               >
                 Oui, supprimer
               </button>

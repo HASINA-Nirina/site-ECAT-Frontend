@@ -36,7 +36,7 @@ export default function Sidebar({ darkMode, sidebarOpen, setSidebarOpen }: Sideb
       <aside
         className={`w-64 p-6 h-screen fixed top-0 left-0 ${
           darkMode ? "bg-gray-800" : "bg-gray-100"
-        } hidden md:flex flex-col gap-4`}
+        } hidden md:flex flex-col gap-5`}
       >
         <div
           className={`p-5 rounded-lg shadow-md flex flex-col gap-3 w-full h-full ${

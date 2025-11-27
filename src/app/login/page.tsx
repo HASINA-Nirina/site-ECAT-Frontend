@@ -2,8 +2,10 @@
 
 import React, { useState } from "react";
 import background from "@/app/assets/background.png";
-import { Eye, EyeOff, Loader2, CheckCircle, XCircle } from "lucide-react";
+import { Eye, EyeOff, Loader2, CheckCircle, XCircle} from "lucide-react";
 import { useRouter } from "next/navigation";
+import logo from "../assets/logo.jpeg";
+import Image from "next/image";
 
 const LoginPage = () => {
   const [email, setEmail] = useState("");
@@ -86,7 +88,7 @@ const LoginPage = () => {
 
       setSuccess(true);
       setMessage("Connexion réussie !");
-      //setIsLoading(false);
+      
 
       // Redirection selon le rôle
       
@@ -138,10 +140,42 @@ const LoginPage = () => {
             transition: "filter 0.3s ease",
           }}
         >
+          
+      {/* HEADER RELOOKÉ (au-dessus de Connexion) */}
+      <div className="w-full overflow-hidden">
 
-        <h1 className="text-3xl font-bold mb-6 text-center text-black">
+        {/* Bloc bleu avec arrondis parfaits */}
+        <div
+          className="w-full px-5 py-6 text-center rounded-t-2xl"
+          style={{
+            background: "linear-gradient(to bottom, #004aad, #0d6efd)",
+          }}
+        >
+          {/* Texte principal */}
+          <h1 className="text-2xl font-extrabold text-white drop-shadow-md">
+            Bienvenue à l&apos;Université ECAT TARATRA
+          </h1>
+
+          {/* Logo centré */}
+          <div className="flex justify-center mt-4">
+            <Image
+              src={logo}
+              alt="Logo ECAT"
+              width={95}
+              height={95}
+              className="rounded-full border-4 border-white shadow-lg"
+            />
+          </div>
+        </div>
+
+        {/* Ligne séparatrice */}
+        <div className="w-full h-1 bg-gray-300/60 backdrop-blur-sm"></div>
+
+      </div>
+
+        <h2 className="text-3xl font-bold mb-6 text-center text-black mt-7">
           Connexion
-        </h1>
+        </h2>
 
         <form onSubmit={handleSubmit} className="flex flex-col">
           <input
