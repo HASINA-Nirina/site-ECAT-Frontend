@@ -1,0 +1,81 @@
+pipeline {
+    agent any
+
+    environment {
+        CONTAINER_NAME           = 'gesco-front'
+        IMAGE_NAME               = 'gesco-front'
+        IMAGE_TAG                = "${BUILD_NUMBER}"
+        NEXT_PORT                = '3149'
+        NEXT_PUBLIC_BASE_URL     = 'https://ecat-api.itdcmada.mg'
+        OLD_IMAGE_TAG            = ''
+    }
+
+    stages {
+        stage('Get Previous Image Tag') {
+            steps {
+                script {
+                    def previousTag = sh(script: "docker ps -a --format '{{.Image}}' | grep '${IMAGE_NAME}:' | head -1 | awk -F':' '{print \$2}'", returnStdout: true).trim()
+                    env.OLD_IMAGE_TAG = previousTag ?: ''
+                }
+            }
+        }
+
+        stage('Build & Push') {
+            steps {
+                sh '''
+                    docker build \
+                      --build-arg NEXT_PUBLIC_BASE_URL=${NEXT_PUBLIC_BASE_URL} \
+                      --build-arg NEXT_PORT=${NEXT_PORT} \
+                      -t ${IMAGE_NAME}:${IMAGE_TAG} .
+                '''
+            }
+        }
+
+        stage('Deploy the container') {
+            steps {
+                sh '''
+                    # Vérifier si un conteneur avec le même nom existe
+                    if [ "$(docker ps -aq -f name=${CONTAINER_NAME})" ]; then
+                        echo "🛑 Un conteneur ${CONTAINER_NAME} existe déjà. Suppression..."
+                        docker stop ${CONTAINER_NAME} || true
+                        docker rm ${CONTAINER_NAME} || true
+                    fi
+
+                    echo "🚀 Démarrage du nouveau conteneur..."
+                    docker run -d \
+                        --name ${CONTAINER_NAME} \
+                        -p ${NEXT_PORT}:${NEXT_PORT} \
+                        --restart unless-stopped \
+                        -e NEXT_PUBLIC_BASE_URL=${NEXT_PUBLIC_BASE_URL} \
+                        -e NEXT_PORT=${NEXT_PORT} \
+                        ${IMAGE_NAME}:${IMAGE_TAG}
+                '''
+            }
+        }
+    }
+
+    post {
+        failure {
+            script {
+                if (env.OLD_IMAGE_TAG) {
+                    echo "⏪ Rollback : redeployment de l'image précédente : ${IMAGE_NAME}:${env.OLD_IMAGE_TAG}"
+                    sh '''
+                        docker rm -f ${CONTAINER_NAME} || true
+                        docker run -d \
+                            --name ${CONTAINER_NAME} \
+                            -p ${NEXT_PORT}:${NEXT_PORT} \
+                            --restart unless-stopped \
+                            -e NEXT_PUBLIC_BASE_URL=${NEXT_PUBLIC_BASE_URL} \
+                            -e NEXT_PORT=${NEXT_PORT} \
+                            ${IMAGE_NAME}:${OLD_IMAGE_TAG}
+                    '''
+                } else {
+                    echo "Aucun tag précédent trouvé pour rollback."
+                }
+            }
+        }
+        always {
+            cleanWs()
+        }
+    }
+}
