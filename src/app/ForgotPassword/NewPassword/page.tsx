@@ -2,8 +2,9 @@
 
 import React, { useState } from "react";
 import background from "@/app/assets/background.png";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, CheckCircle, XCircle } from "lucide-react";
 import {useSearchParams} from "next/navigation";
+
 
 const NewPasswordPage = () => {
   const [password, setPassword] = useState("");
@@ -13,6 +14,69 @@ const NewPasswordPage = () => {
   const [error, setError] = useState("");
   const searchParams = useSearchParams(); 
   const email = searchParams.get("email");
+
+  const [popup, setPopup] = useState<{ type: "success" | "error" | null; message: string }>({
+  type: null,
+  message: "",
+});
+
+const Popup = ({
+  type,
+  message,
+  onClose,
+}: {
+  type: "success" | "error";
+  message: string;
+  onClose: () => void;
+}) => {
+  const handleClose = () => {
+    onClose();
+    if (type === "success") {
+      window.location.href = "/login"; // redirection automatique après succès
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-[9999]">
+      <div
+        className={`w-[16%] max-w-sm rounded-lg shadow-lg p-5 flex flex-col items-center animate-popup 
+          ${type === "success" ? "bg-green-600" : "bg-red-600"} text-white`}
+      >
+        <div className="flex items-center gap-2 mb-2">
+          {type === "success" ? (
+            <CheckCircle size={24} className="text-white" />
+          ) : (
+            <XCircle size={24} className="text-white" />
+          )}
+          <h2 className="text-lg font-bold">{type === "success" ? "Succès" : "Erreur"}</h2>
+        </div>
+        <p className="text-center mb-4">{message}</p>
+        <button
+          onClick={handleClose}
+          className="px-6 py-2 bg-white text-black font-semibold rounded-lg hover:bg-gray-200"
+        >
+          OK
+        </button>
+      </div>
+
+      <style jsx>{`
+        @keyframes popup {
+          from {
+            transform: scale(0.8);
+            opacity: 0;
+          }
+          to {
+            transform: scale(1);
+            opacity: 1;
+          }
+        }
+        .animate-popup {
+          animation: popup 0.25s ease-out;
+        }
+      `}</style>
+    </div>
+  );
+};
 
 const handleSubmit = async (e: React.FormEvent) => {
   e.preventDefault();
@@ -53,10 +117,9 @@ const handleSubmit = async (e: React.FormEvent) => {
     const data = await res.json();
 
     if (res.ok) {
-      alert(`✅ ${data.message || data.success || 'Mot de passe modifié'}`);
-      window.location.href = "/login";
+      setPopup({ type: "success", message: data.message || data.success || "Mot de passe modifié" });
     } else {
-      alert(`❌ ${data.detail || data.error || JSON.stringify(data)}`);
+      setPopup({ type: "error", message: data.detail || data.error || JSON.stringify(data) });
     }
   } catch (err) {
     console.error(err);
@@ -74,7 +137,7 @@ const handleSubmit = async (e: React.FormEvent) => {
       <div className="absolute inset-0 bg-white/10 backdrop-blur-sm"></div>
 
       {/* Contenu principal */}
-      <div className="relative z-10 w-full max-w-md bg-white/90 p-8 rounded-2xl shadow-lg mx-4">
+      <div className={`relative z-10 w-full max-w-md bg-white/90 p-8 rounded-2xl shadow-lg mx-4 transition-all duration-300 ${popup.type ? "blur-sm pointer-events-none" : ""}`}>
         <h1 className="text-3xl font-bold mb-6 text-center text-black">
           Entrez votre nouveau mot de passe
         </h1>
@@ -143,6 +206,13 @@ const handleSubmit = async (e: React.FormEvent) => {
           </button>
         </p>
       </div>
+      {popup.type && (
+      <Popup
+        type={popup.type}
+        message={popup.message}
+        onClose={() => setPopup({ type: null, message: "" })}
+      />
+    )}
     </section>
   );
 };

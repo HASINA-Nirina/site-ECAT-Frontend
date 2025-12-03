@@ -1,10 +1,7 @@
 "use client";
 
 import { useState,useEffect } from "react";
-import { User, Lock, Save, Eye, EyeOff, X, XIcon } from "lucide-react";
-import Image from "next/image";
-import { image } from "framer-motion/client";
-
+import { User, Lock, Save, Eye, EyeOff,XIcon, CheckCircle, XCircle } from "lucide-react";
 
 
 interface MainContentProps {
@@ -32,14 +29,13 @@ export default function MainContent({ darkMode, lang }: MainContentProps) {
         if (!res.ok) throw new Error("Non autorisé");
   
         const data = await res.json();
-        const province = data.province ;
         localStorage.setItem("id", data.id);
         setProfile({
           id: data.id ?? null,
           nom: data.nom,
           prenom: data.prenom,
           email: data.email,
-          universite: `Université ECAT Taratra `,
+          universite:  `Université ECAT Taratra ${data.province}`,
           image: data.image,
         });
       } catch  {
@@ -107,7 +103,7 @@ const updatePassword = async () => {
 
 const handlePasswordChange = async () => {
   if (passwordData.new !== passwordData.confirm) {
-    alert("Les nouveaux mots de passe ne correspondent pas !");
+    setPopup({ type: "error", message: "Les nouveaux mots de passe ne correspondent pas !" });
     return;
   }
 
@@ -119,7 +115,7 @@ const handlePasswordChange = async () => {
     const result = await updatePassword();
     console.log("Résultat du backend:", result);
 
-    alert("Mot de passe modifié avec succès !");
+    setPopup({ type: "success", message: "Mot de passe modifié avec succès !" });
     handleCancel(); // réinitialiser les champs
   } catch (err: unknown) {
     // Afficher un message plus explicite si l'ancien mot de passe est incorrect
@@ -131,12 +127,76 @@ const handlePasswordChange = async () => {
     }
 
     if (msg.includes("Mot de passe incorrect") || msg.toLowerCase().includes("incorrect")) {
-      alert("Ancien mot de passe incorrect !");
+      setPopup({ type: "error", message: "Ancien mot de passe incorrect !" });
     } else {
-      alert(msg || "Erreur lors de la modification du mot de passe");
+      setPopup({ type: "error", message: msg || "Erreur lors de la modification du mot de passe" });
     }
   }
 };
+
+// 🔔 Popup Notification avec bouton OK
+const Popup = ({
+  type,
+  message,
+  onClose,
+}: {
+  type: "success" | "error";
+  message: string;
+  onClose: () => void;
+}) => {
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999]">
+      <div
+        className={`w-[20%] max-w-md rounded-lg shadow-lg p-5 animate-popup 
+          ${type === "success" ? "bg-green-600" : "bg-red-600"} text-white`}
+      >
+
+        {/* Bloc icône + texte sur la même ligne */}
+        <div className="flex items-center justify-center gap-3 mb-3">
+          {type === "success" ? (
+            <CheckCircle size={32} />
+          ) : (
+            <XCircle size={32} />
+          )}
+          <h2 className="text-xl font-bold">{type === "success" ? "Succès" : "Erreur"}</h2>
+        </div>
+
+        {/* Message centré */}
+        <p className="mb-4 text-center">{message}</p>
+
+        {/* Bouton OK */}
+        <button
+          onClick={onClose}
+          className="px-10 py-2 mx-auto block bg-white text-black font-semibold rounded-lg hover:bg-gray-200"
+        >
+          OK
+        </button>
+      </div>
+
+      <style jsx>{`
+        @keyframes popup {
+          from {
+            transform: scale(0.8);
+            opacity: 0;
+          }
+          to {
+            transform: scale(1);
+            opacity: 1;
+          }
+        }
+        .animate-popup {
+          animation: popup 0.25s ease-out;
+        }
+      `}</style>
+    </div>
+  );
+};
+
+const [popup, setPopup] = useState<{
+  type: "success" | "error" | null;
+  message: string;
+}>({ type: null, message: "" });
+
 
 
   const handleCancel = () => {
@@ -306,6 +366,14 @@ const handlePasswordChange = async () => {
           </button>
         </div>
       </div>
+      {popup.type && (
+      <Popup
+        type={popup.type}
+        message={popup.message}
+        onClose={() => setPopup({ type: null, message: "" })}
+      />
+    )}
+
     </main>
   );
 }
