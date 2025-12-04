@@ -374,7 +374,6 @@ export default function MessagePopup({ onClose, darkMode }: MessagePopupProps) {
         }
     };
     
-    
 
     const handleSujetClick = (id: number) => {
         setActiveChatId(id);
@@ -498,7 +497,7 @@ export default function MessagePopup({ onClose, darkMode }: MessagePopupProps) {
                             <div className="relative w-10 h-10 mr-3 shrink-0">
                                     {sujet.image ? (
                                         <img
-                                            src={`${API_URL}/upload/forum/${sujet.image}`}
+                                            src={`${API_URL}/uploads/sujet/${sujet.image}`}
                                             alt={sujet.titre}
                                             className="w-full h-full rounded-full object-cover"
                                         />
@@ -598,10 +597,11 @@ export default function MessagePopup({ onClose, darkMode }: MessagePopupProps) {
                 <div className="relative w-10 h-10 shrink-0 flex-col-reverse">
                     {activeChat?.image ? (
                         <img
-                            src={`${API_URL}/upload/forum/${activeChat.image}`}
+                            src={`${API_URL}/uploads/sujet/${activeChat.image}`}
                             alt={activeChat.titre}
                             className="w-full h-full rounded-full object-cover"
                         />
+
                     ) : (
                         <div className={`w-full h-full ${activeChat ? getAvatarColor(activeChat.idSujet) : 'bg-indigo-200'} rounded-full flex items-center justify-center font-semibold ${generalText}`}>
                             {activeChat ? getInitials(activeChat.titre) : '?'}
@@ -882,7 +882,7 @@ export default function MessagePopup({ onClose, darkMode }: MessagePopupProps) {
 
             {/* Popup de création de sujet  */}
             {showCreatePopup && (
-                <div className="fixed inset-0 flex items-center justify-center z-50">
+                <div className="fixed inset-0 flex items-center justify-center z-50 backdrop-blur-sm">
                     <div className={`relative w-[95%] max-w-lg p-6 rounded-xl shadow-2xl ${darkMode ? 'bg-gray-800 text-white' : 'bg-white text-gray-900'}`}>
                         <h2 className={`text-xl font-bold mb-4 text-center ${generalText}`}>Créer un nouveau groupe</h2>
                         <div className="space-y-4">
