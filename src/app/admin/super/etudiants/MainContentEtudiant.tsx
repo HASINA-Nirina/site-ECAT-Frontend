@@ -198,7 +198,7 @@ export default function ListeEtudiants({ darkMode }: ListeEtudiantsProps) {
 
         {/* Tableau stylisé */}
         <div
-          className={`rounded-xl border shadow-md overflow-hidden ${
+          className={`rounded-xl border shadow-md max-h-[50vh] lg:max-h-[70vh] overflow-y-auto ${
             darkMode ? "border-gray-700 bg-gray-800 text-white" : "border-gray-200 bg-white text-gray-900"
           }`}
         >

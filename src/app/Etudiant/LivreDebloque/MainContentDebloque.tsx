@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { BookOpen, Search, Eye } from "lucide-react";
+import { BookOpen, Search, Eye, FileX } from "lucide-react";
 // Remplacement de next/image par une balise <img> standard pour la compatibilité de l'environnement
 // import Image from "next/image"; 
 import Image from "next/image";
@@ -178,9 +178,12 @@ export default function MainContent({ darkMode, lang }: MainContentProps) {
             );
           })
         ) : (
-          <p className="col-span-full text-center opacity-70 mt-8">
-            Aucun livre débloqué trouvé pour “{search}”
-          </p>
+          <div className="col-span-full flex flex-col items-center justify-center mt-30">
+            <FileX className="w-20 h-20 text-red-500 mb-4" />
+            <p className="text-center opacity-70 text-lg">
+              Aucun livre débloqué {search} trouvé
+            </p>
+          </div>
         )}
       </div>
     </main>

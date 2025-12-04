@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from "react";
 import background from "@/app/assets/background.png";
 import { useRouter } from "next/navigation";
-import { Plus } from "lucide-react";
 
 interface Antenne {
   id: number;

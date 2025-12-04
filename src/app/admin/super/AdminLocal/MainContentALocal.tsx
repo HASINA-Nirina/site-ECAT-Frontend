@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useMemo, useState, useEffect } from "react";
+import logo from "@/app/assets/logo.jpeg"; 
 import {
   Search,
   ArrowDownWideNarrow,
@@ -306,29 +307,125 @@ const fetchAntenneStats = async () => {
     const students = admin.students ?? [];
     const w = window.open("", "_blank", "width=900,height=700");
     if (!w) return;
-    const style = `
-      <style>
-        body { font-family: Arial, Helvetica, sans-serif; padding: 20px; color: #111; }
-        h1 { color: #0b6df0; font-size: 20px; margin-bottom: 8px; }
-        table { width:100%; border-collapse: collapse; margin-top:12px; }
-        th, td { border:1px solid #ddd; padding:8px; text-align:left; font-size:13px; }
-        th { background: #f3f6ff; color:#0b6df0; }
-        .meta { margin-top:8px; font-size:13px; color:#555; }
-      </style>
-    `;
-    const html = `
-      <html><head><title>Liste étudiants - ${admin.prenom} ${admin.nom}</title>${style}</head>
+
+ // On récupère le chemin du logo (public ou import selon Next.js)
+  const logoPath = "/assets/logo.jpeg"; // si le dossier /public, sinon import directement
+
+  const logoBase64 = logo.src;
+
+const style = `
+  <style>
+    body { font-family: "Times New Roman", serif; padding: 30px; color: #111; }
+    
+    /* LOGO */
+    .logo-container {
+      text-align: center;
+      margin-bottom: 10px;
+    }
+    .logo-container img {
+      width: 120px;
+      height: 120px;
+      border-radius: 50%; /* Cercle parfait */
+      object-fit: cover;
+      border: 2px solid #17f; /* Bordure autour du logo */
+    }
+
+    /* INTRO */
+    .intro {
+      text-align: center;
+      margin-top: 40px;
+      font-size: 14px;
+      margin-bottom: 20px;
+    }
+
+    /* TABLEAU */
+    table { 
+      width: 100%; 
+      border-collapse: collapse; 
+      margin-top: 10px; 
+      margin-bottom: 10px;
+    }
+    th, td { 
+      border: 1px solid #ddd; 
+      padding: 8px; 
+      text-align: left; 
+      font-size: 13px; 
+    }
+    th { 
+      background: #a6dd25; 
+      color: #000; 
+      font-weight: bold; 
+    }
+    tr:nth-child(even) { background-color: #f9f9f9; }
+
+    /* TOTAL SOUS TABLEAU */
+    .total-students {
+      text-align: right;
+      font-weight: bold;
+      margin-top: 10px;
+      margin-bottom: 30px;
+      font-size: 14px;
+    }
+
+    /* header */
+    .header {
+      text-align: center;
+      font-weight: bold;
+      font-size: 25px;
+      color: #000;
+      margin-top: 10px;
+    }
+  </style>
+`;
+
+const html = `
+    <html>
+      <head>
+        <title>Liste étudiants - ${admin.prenom} ${admin.nom}</title>
+        ${style}
+      </head>
       <body>
-        <h1>Étudiants gérés par ${admin.prenom} ${admin.nom} — ${admin.antenne}</h1>
-        <div class="meta">Total : ${students.length} — généré le ${new Date().toLocaleString()}</div>
+        <!-- LOGO -->
+        <div class="logo-container">
+          <img src="${logoBase64}" alt="Logo Université" />
+        </div>
+        <div class="header">
+          UNIVERSITE ECAT TARATRA ANTANANARIVO
+        </div>
+        <!-- TEXTE INTRO -->
+        <div class="intro">
+          📋Liste des étudiants gérés par <strong> ${admin.nom} ${admin.prenom}</strong> — 📌Antenne : <strong>${admin.antenne}</strong>
+        </div>
+
+        <!-- TABLEAU -->
         <table>
-          <thead><tr><th>#</th><th>Prénom</th><th>Nom</th><th>Email</th><th>Date inscription</th></tr></thead>
+          <thead>
+            <tr>
+              <th>NUMERO</th>
+              <th>NOM</th>
+              <th>PRENOM</th>
+              <th>E-MAIL</th>
+            </tr>
+          </thead>
           <tbody>
-            ${students.map((s, i) => `<tr><td>${i + 1}</td><td>${s.prenom}</td><td>${s.nom}</td><td>${s.email}</td><td>${s.inscrit || ''}</td></tr>`).join("")}
+            ${students.map((s, i) => `
+              <tr>
+                <td>${i + 1}</td>
+                <td>${s.nom}</td>
+                <td>${s.prenom}</td>
+                <td>${s.email}</td>
+              </tr>
+            `).join("")}
           </tbody>
         </table>
-      </body></html>
-    `;
+
+        <!-- TOTAL ÉTUDIANTS -->
+        <div class="total-students">
+          Total étudiants : ${students.length}
+        </div>
+      </body>
+    </html>
+`;
     w.document.write(html);
     w.document.close();
     w.focus();
@@ -372,7 +469,10 @@ const fetchAntenneStats = async () => {
       <div className="lg:flex gap-6">
         {/* --- LEFT: LISTE ADMINS --- */}
         <div className="flex-1 lg:w-1/2 flex flex-col gap-3">
-          <div className={`p-3 rounded-xl ${darkMode ? "bg-gray-800 border border-gray-700" : "bg-white border border-gray-200"} shadow-sm`}>
+          <div className={`p-3 rounded-xl 
+                          ${darkMode ? "bg-gray-800 border border-gray-700" : "bg-white border border-gray-200"}
+                          shadow-sm
+                          max-h-[50vh] lg:max-h-[70vh] overflow-y-auto `}>
             <div className="flex flex-col gap-2">
               {filtered.length === 0 && (
                 <div className="text-center py-6 text-gray-400">Aucun admin trouvé</div>
@@ -578,7 +678,7 @@ const fetchAntenneStats = async () => {
 
       {/* --- STUDENTS MODAL --- */}
       {openStudentsModal && modalAdmin && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
+        <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm">
           <div className="absolute inset-0 bg-black/40" onClick={() => { setOpenStudentsModal(false); setModalAdmin(prev => ({ ...prev, students: [] })); }} />
           <div className={`relative w-[95%] max-w-3xl mx-auto p-4 rounded-xl ${darkMode ? "bg-gray-900 text-white" : "bg-white text-gray-900"} shadow-2xl z-50`}>
             <div className="flex items-center justify-between mb-3">
@@ -592,7 +692,7 @@ const fetchAntenneStats = async () => {
                 </div>
               </div>
             </div>
-            <div className="max-h-[50vh] overflow-auto rounded-xl">
+            <div className="max-h-[50vh] rounded-xl lg:max-h-[70vh] overflow-y-auto">
               <table className="w-full text-left border-collapse">
                 <thead className={`${darkMode ? "bg-gray-800 text-purple-400" : "bg-gray-50 text-purple-700"}`}>
                   <tr>

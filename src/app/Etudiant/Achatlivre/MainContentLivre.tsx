@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { BookOpen, ChevronLeft, ShoppingCart, Lock, Unlock, Eye } from "lucide-react";
+import { BookOpen, ChevronLeft, ShoppingCart, Lock, Unlock, Eye, Mail, FileX } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import PhoneInput, { CountryData } from "react-phone-input-2";
 import "react-phone-input-2/lib/style.css";
@@ -351,9 +351,19 @@ export default function MainContentAchat({ darkMode, lang }: MainContentProps) {
                 </p>
               </div>
             ) : livres.length === 0 ? (
-              <p className={`text-center text-gray-500 italic ${darkMode ? "text-gray-400" : "text-gray-600"}`}>
-                {lang === "fr" ? "Aucun livre disponible pour cette formation." : "No books available for this formation."}
+              <p className={`flex flex-col items-center justify-center text-center py-40 
+                ${darkMode ? "text-gray-400" : "text-gray-600"}`}>
+                
+                <FileX 
+                  className="w-20 h-20 mb-4 text-red-500"
+                />
+
+                {lang === "fr" 
+                  ? "Aucun livre disponible pour cette formation." 
+                  : "No books available for this formation."
+                }
               </p>
+
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {livres.map((livre, i) => (
