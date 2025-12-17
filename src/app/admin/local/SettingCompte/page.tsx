@@ -9,7 +9,6 @@ import MainContent from "@/app/admin/local/SettingCompte/MainContentSetting";
 export default function AdminLocalDashboard() {
   useAuth("Admin Local"); // 🔒 Protège cette page
   const [darkMode, setDarkMode] = useState(false);
-  const [lang] = useState("fr");
 
   // State pour le sidebar mobile
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -36,7 +35,7 @@ export default function AdminLocalDashboard() {
         />
 
         {/* MainContent */}
-        <MainContent darkMode={darkMode} lang={lang} />
+        <MainContent darkMode={darkMode}/>
       </div>
     </div>
   );
