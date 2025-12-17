@@ -3,16 +3,19 @@
 import React, { useState, useEffect } from "react";
 import background from "@/app/assets/background.png";
 import { useRouter } from "next/navigation";
+import { Eye, EyeOff } from "lucide-react";
 
 interface Antenne {
   id: number;
-  antenne: string; 
+  antenne: string;
+  province: string;
 }
 
 const RegisterPage = () => {
   const [message, setMessage] = useState("");
   // État pour stocker la liste des provinces/antennes
   const [antennes, setAntennes] = useState<Antenne[]>([]);
+  const [showPassword, setShowPassword] = useState(false);
   const [form, setForm] = useState({
     firstName: "",
     lastName: "",
@@ -21,6 +24,7 @@ const RegisterPage = () => {
     // 'city' est le choix du select 
     city: "",  
     paymentMethod: "",
+    customCity: "",
   });
   const router = useRouter();
 
@@ -43,7 +47,6 @@ const RegisterPage = () => {
     fetchAntennes();
   }, []);
   
-
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -91,7 +94,7 @@ const RegisterPage = () => {
     const { name, value } = e.target;
 
     setForm((prevForm) => {
-      let newForm = { ...prevForm, [name]: value };
+      const newForm = { ...prevForm, [name]: value };
       return newForm;
     });
   };
@@ -141,15 +144,25 @@ const RegisterPage = () => {
             className="w-full p-3 mb-4 border border-gray-300 rounded-lg text-black focus:outline-none focus:ring-2 focus:ring-purple-500"
             required
           />
-          <input
-            type="password"
-            name="password"
-            placeholder="Mot de passe"
-            value={form.password}
-            onChange={handleChange}
-            className="w-full p-3 mb-4 border border-gray-300 rounded-lg text-black focus:outline-none focus:ring-2 focus:ring-purple-500"
-            required
-          />
+          <div className="relative ">
+            <input
+              type={showPassword ? "text" : "password"}
+              name="password"
+              placeholder="Mot de passe"
+              value={form.password}
+              onChange={handleChange}
+              className="w-full p-3 mb-4 border border-gray-300 rounded-lg text-black focus:outline-none focus:ring-2 focus:ring-purple-500"
+              required
+            />
+            <button
+                type="button" // Important pour éviter de soumettre le formulaire
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-6 -translate-y-1/2 text-purple-600 cursor-pointer"
+                aria-label={showPassword ? "Cacher le mot de passe" : "Afficher le mot de passe"}
+              >
+                {showPassword ? <Eye size={20} /> : <EyeOff size={20} />}
+              </button>
+          </div>
 
           {/* SÉLECTION  DES PROVINCES */}
           <select

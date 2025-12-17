@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
-import { FileText, Download, BarChart3, BookOpen, Clock, Calendar, ArrowUpDown, ChevronUp, ChevronDown } from "lucide-react";
+import { FileText, BarChart3, BookOpen, Clock, Calendar, ArrowUpDown, ChevronUp, ChevronDown, MessageCircle } from "lucide-react";
+import MessagePopup from "@/app/admin/super/dashboard/Message/MessagePopup";
 
 interface MainContentProps {
   readonly darkMode: boolean;
@@ -20,6 +21,8 @@ export default function MainContent({ darkMode, lang }: MainContentProps) {
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState<"title" | "date" | null>(null);
   const [sortAsc, setSortAsc] = useState(true);
+  const [showMessage, setShowMessage] = useState(false);
+
 
   const [reports] = useState<Rapport[]>([
     { id: 1, title: "Rapport - Janvier 2025", booksRead: 5, avgProgress: 87, timeSpent: "12h 30min", date: "2025-01-31" },
@@ -156,6 +159,19 @@ export default function MainContent({ darkMode, lang }: MainContentProps) {
           </tbody>
         </table>
       </div>
+      <button
+          className="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-purple-600 hover:bg-purple-700 text-white flex items-center justify-center shadow-xl transition-all duration-300 hover:scale-105 z-50"
+          title="Messages"
+          onClick={() => setShowMessage(true)}
+        >
+          <MessageCircle size={28} />
+      </button>
+            {showMessage && (
+              <MessagePopup
+                darkMode={darkMode}
+                onClose={() => setShowMessage(false)}
+              />
+            )}
     </main>
   );
 }

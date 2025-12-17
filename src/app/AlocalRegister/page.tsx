@@ -1,13 +1,13 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-// import { useRouter } from "next/navigation"; // L'importation n'est pas utilisée et peut être supprimée
 import background from "@/app/assets/background.png";
 import { Eye, EyeOff } from "lucide-react";
 
 interface Antenne {
   id: number;
   antenne: string;
+  province: string;
 }
 
 const InscriptionAdminLocal = () => {
@@ -187,7 +187,7 @@ const InscriptionAdminLocal = () => {
               className="absolute right-3 top-1/2 -translate-y-1/2 text-purple-600 cursor-pointer"
               aria-label={showPassword ? "Cacher le mot de passe" : "Afficher le mot de passe"}
             >
-              {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              {showPassword ? <Eye size={20} /> : <EyeOff size={20} />}
             </button>
           </div>
 
@@ -207,7 +207,7 @@ const InscriptionAdminLocal = () => {
               className="absolute right-3 top-1/2 -translate-y-1/2 text-purple-600 cursor-pointer"
               aria-label={showConfirmPassword ? "Cacher le mot de passe" : "Afficher le mot de passe"}
             >
-              {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              {showConfirmPassword ? <Eye size={20} /> : <EyeOff size={20} />}
             </button>
           </div>
 

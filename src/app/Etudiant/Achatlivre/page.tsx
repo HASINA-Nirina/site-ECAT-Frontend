@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import { useAuth } from "@/hooks/useAuth";
 import Header from "@/app/Etudiant/dashboard/Header";
 import Sidebar from "@/app/Etudiant/dashboard/Sidebar";
 import MainContentLivre from "@/app/Etudiant/Achatlivre/MainContentLivre";
 
 export default function StudentDashboardPage() {
+  useAuth("etudiante"); // 🔒 Protège cette page
   const [darkMode, setDarkMode] = useState(false);
   const [lang] = useState("fr");
 

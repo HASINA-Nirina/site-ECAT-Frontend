@@ -3,9 +3,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import {
   PlusCircle,
-  X,
   ImageIcon,
-  BookOpen,
   Edit,
   Trash2,
   ClipboardList,
@@ -106,7 +104,7 @@ export default function GererFormation({ darkMode }: Props) {
           formData.append("image", newFormation.imageFile);
         }
 
-        const res = await fetch(
+        await fetch(
           `http://localhost:8000/formation/UpdateFormation/${editFormation.id}`,
           {
             method: "PUT",
@@ -125,21 +123,12 @@ export default function GererFormation({ darkMode }: Props) {
         }
 
         // fetch directement avec formData
-        const res = await fetch("http://localhost:8000/formation/NewFormation", {
+        await fetch("http://localhost:8000/formation/NewFormation", {
           method: "POST",
           body: formData, // pas besoin de Content-Type ici
         });
 
-        const added = await res.json();
-  
-        // Créer l’objet formation pour l’état
-        const newFormationItem: Formation = {
-          id: added.idFormation,
-          titre: added.titre,
-          description: added.description,
-          image: added.image ? added.image : "",
-          filename: added.filename || "",
-        };
+        // Réinitialiser après création
       }
   
       // Réinitialiser popup et formulaire

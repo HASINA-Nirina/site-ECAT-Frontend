@@ -1,7 +1,9 @@
 "use client";
 
 import { useState,useEffect } from "react";
-import { User, Lock, Save, Eye, EyeOff,XIcon, CheckCircle, XCircle } from "lucide-react";
+import Image from "next/image";
+import { User, Lock, Save, Eye, EyeOff,XIcon, CheckCircle, XCircle, MessageCircle } from "lucide-react";
+import MessagePopup from "@/app/admin/super/dashboard/Message/MessagePopup";
 
 
 interface MainContentProps {
@@ -10,7 +12,7 @@ interface MainContentProps {
 }
 
 
-export default function MainContent({ darkMode, lang }: MainContentProps) {
+export default function MainContent({ darkMode }: MainContentProps) {
   const [profile, setProfile] = useState({
     id: null as number | null,
     nom: "",
@@ -19,6 +21,8 @@ export default function MainContent({ darkMode, lang }: MainContentProps) {
     universite: "",
     image:  "",
   });
+  const [showMessage, setShowMessage] = useState(false);
+
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -59,11 +63,6 @@ export default function MainContent({ darkMode, lang }: MainContentProps) {
   });
 
   const verifyOldPassword = async () => {
-    
-    const meRes = await fetch("http://localhost:8000/auth/me", { credentials: "include" });
-    if (!meRes.ok) throw new Error("Impossible de récupérer l'utilisateur courant");
-    const me = await meRes.json();
-    const userId = me.id;
     const Id = localStorage.getItem("id");
     const res = await fetch("http://localhost:8000/auth/verifyOldPassword", {
       method: "POST",
@@ -219,10 +218,10 @@ const [popup, setPopup] = useState<{
 
   {/* Image de profil centrée avec espace responsive */}
 <div className="flex justify-center">
-  <div className="w-10 h-10 sm:w-28 sm:h-28 rounded-full border-4 border-blue-400 shadow-md flex items-center justify-center mt-1 sm:-mt-10 bg-gray-100 sm:text-5xl font-bold">
-    {profile.image ? (
+  <div className=" relative overflow-hidden w-10 h-10 sm:w-28 sm:h-28 rounded-full border-4 border-blue-400 shadow-md flex items-center justify-center mt-1 sm:-mt-10 bg-gray-100 sm:text-5xl font-bold">
+      {profile.image ? (
       // Si image existe
-      <img src={profile.image}alt="Profil" className="w-full h-full rounded-full object-cover"/>
+      <Image src={profile.image} alt="Profil" fill className="rounded-full object-cover" />
     ) : (
       // Sinon afficher le premièr lettres du prénom
       <span className="text-blue-400 text-xl sm:text-2xl font-bold">
@@ -340,9 +339,9 @@ const [popup, setPopup] = useState<{
                     }
                   >
                     {showPassword[field as keyof typeof showPassword] ? (
-                      <EyeOff size={18} />
-                    ) : (
                       <Eye size={18} />
+                    ) : (
+                      <EyeOff size={18} />
                     )}
                   </button>
                 </div>
@@ -373,6 +372,19 @@ const [popup, setPopup] = useState<{
         onClose={() => setPopup({ type: null, message: "" })}
       />
     )}
+    <button
+          className="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-purple-600 hover:bg-purple-700 text-white flex items-center justify-center shadow-xl transition-all duration-300 hover:scale-105 z-50"
+          title="Messages"
+          onClick={() => setShowMessage(true)}
+        >
+          <MessageCircle size={28} />
+      </button>
+            {showMessage && (
+              <MessagePopup
+                darkMode={darkMode}
+                onClose={() => setShowMessage(false)}
+              />
+            )}
     </main>
   );
 }

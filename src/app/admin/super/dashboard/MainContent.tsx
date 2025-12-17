@@ -23,6 +23,7 @@ import {
   Pie,
   Legend,
 } from "recharts";
+import { useRouter } from "next/navigation";
 
 interface MainContentProps {
   readonly darkMode: boolean;
@@ -145,13 +146,24 @@ export default function MainContent({ darkMode, lang }: MainContentProps) {
   // Afficher l'heure uniquement après montage pour éviter les erreurs d'hydration
   const [time, setTime] = useState<Date | null>(null);
   const [mounted, setMounted] = useState(false);
-
+  //autre
+  const router = useRouter();
   // Données dynamiques récupérées depuis le backend
   const [statEtudiants, setStatEtudiants] = useState<number>(0);
   const [statFormations, setStatFormations] = useState<number>(0);
   const [statAdmins, setStatAdmins] = useState<number>(0);
   const [statPaiements, setStatPaiements] = useState<number>(0);
   const [inscriptionData, setInscriptionData] = useState<{ antenne: string; inscrits: number }[]>([]);
+
+  // ------------------------
+  // PROTECTION DE PAGE
+  // ------------------------
+  useEffect(() => {
+    const idUser = localStorage.getItem("idUser"); // ou le token
+    if (!idUser) {
+      router.replace("/login"); // redirige vers login si non connecté
+    }
+  }, [router]);
 
   useEffect(() => {
     // Ne pas exécuter côté serveur : on initialise seulement après montage
@@ -181,77 +193,73 @@ export default function MainContent({ darkMode, lang }: MainContentProps) {
   // Récupération des données backend
   // --------------------------
   useEffect(() => {
-    // Fetch étudiants -> nombre et répartition par antenne
-    const fetchEtudiants = async () => {
-      try {
-        const res = await fetch("http://localhost:8000/auth/ReadEtudiantAll");
-        if (!res.ok) return;
-        const data = await res.json();
-        const list = Array.isArray(data) ? data : [];
-        setStatEtudiants(list.length);
+    // ⚡ PARALLÉLISER toutes les requêtes API au lieu de les faire séquentiellement
+    const loadAllData = async () => {
+      const [etudiantsRes, formationsRes, adminsRes, paiementsRes] = await Promise.all([
+        fetch("http://localhost:8000/auth/ReadEtudiantAll").catch(() => null),
+        fetch("http://localhost:8000/formation/ReadFormation").catch(() => null),
+        fetch("http://localhost:8000/auth/GetAdminLocaux").catch(() => null),
+        fetch("http://localhost:8000/paiement/ReadPaiement/").catch(() => null),
+      ]);
 
-        // compter par province/antenne
-        const counts: Record<string, number> = {};
-        list.forEach((e: any) => {
-          const key = (e.province || e.antenne || "Inconnue").toString().trim();
-          counts[key] = (counts[key] || 0) + 1;
-        });
-        const arr = Object.entries(counts)
-          .map(([antenne, inscrits]) => ({ antenne, inscrits }))
-          .sort((a, b) => b.inscrits - a.inscrits)
-          .slice(0, 8); // limiter pour le graphe
-        setInscriptionData(arr);
-      } catch (e) {
-        console.warn("Erreur fetch étudiants:", e);
+      // Traiter les étudiants
+      if (etudiantsRes?.ok) {
+        try {
+          const data = await etudiantsRes.json();
+          const list = Array.isArray(data) ? data : [];
+          setStatEtudiants(list.length);
+          const counts: Record<string, number> = {};
+          list.forEach((e: any) => {
+            const key = (e.province || e.antenne || "Inconnue").toString().trim();
+            counts[key] = (counts[key] || 0) + 1;
+          });
+          const arr = Object.entries(counts)
+            .map(([antenne, inscrits]) => ({ antenne, inscrits }))
+            .sort((a, b) => b.inscrits - a.inscrits)
+            .slice(0, 8);
+          setInscriptionData(arr);
+        } catch (e) {
+          console.warn("Erreur fetch étudiants:", e);
+        }
+      }
+
+      // Traiter les formations
+      if (formationsRes?.ok) {
+        try {
+          const data = await formationsRes.json();
+          setStatFormations(Array.isArray(data) ? data.length : 0);
+        } catch (e) {
+          console.warn("Erreur fetch formations:", e);
+        }
+      }
+
+      // Traiter les admins
+      if (adminsRes?.ok) {
+        try {
+          const data = await adminsRes.json();
+          setStatAdmins(Array.isArray(data) ? data.length : 0);
+        } catch (e) {
+          console.warn("Erreur fetch admins:", e);
+        }
+      }
+
+      // Traiter les paiements
+      if (paiementsRes?.ok) {
+        try {
+          const data = await paiementsRes.json();
+          const list = Array.isArray(data) ? data : [];
+          const sum = list.reduce((acc: number, p: any) => {
+            const montant = Number(p.montant ?? p.montant_ar ?? p.montant_en_ar ?? 0);
+            return acc + (isNaN(montant) ? 0 : montant);
+          }, 0);
+          setStatPaiements(sum);
+        } catch (e) {
+          console.warn("Erreur fetch paiements:", e);
+        }
       }
     };
 
-    // Fetch formations
-    const fetchFormations = async () => {
-      try {
-        const res = await fetch("http://localhost:8000/formation/ReadFormation");
-        if (!res.ok) return;
-        const data = await res.json();
-        setStatFormations(Array.isArray(data) ? data.length : 0);
-      } catch (e) {
-        console.warn("Erreur fetch formations:", e);
-      }
-    };
-
-    // Fetch admins locaux
-    const fetchAdmins = async () => {
-      try {
-        const res = await fetch("http://localhost:8000/auth/GetAdminLocaux");
-        if (!res.ok) return;
-        const data = await res.json();
-        setStatAdmins(Array.isArray(data) ? data.length : 0);
-      } catch (e) {
-        console.warn("Erreur fetch admins:", e);
-      }
-    };
-
-    // Fetch paiements -> somme des montants validés
-    const fetchPaiements = async () => {
-      try {
-        const res = await fetch("http://localhost:8000/paiement/ReadPaiement/");
-        if (!res.ok) return;
-        const data = await res.json();
-        const list = Array.isArray(data) ? data : [];
-        // Somme des montants (on essaie de détecter le champ montant)
-        const sum = list.reduce((acc: number, p: any) => {
-          const montant = Number(p.montant ?? p.montant_ar ?? p.montant_en_ar ?? 0);
-          return acc + (isNaN(montant) ? 0 : montant);
-        }, 0);
-        setStatPaiements(sum);
-      } catch (e) {
-        console.warn("Erreur fetch paiements:", e);
-      }
-    };
-
-    fetchEtudiants();
-    fetchFormations();
-    fetchAdmins();
-    fetchPaiements();
+    loadAllData();
   }, []);
 
   // Utilisation de useMemo pour s'assurer que les données du PieChart ne changent que si les stats changent

@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
-import { CreditCard, Search, Calendar, ArrowUpDown, ChevronUp, ChevronDown } from "lucide-react";
+import { CreditCard, Search, Calendar, ArrowUpDown, ChevronUp, ChevronDown, MessageCircle } from "lucide-react";
+import MessagePopup from "@/app/admin/super/dashboard/Message/MessagePopup";
 
 interface MainContentProps {
   readonly darkMode: boolean;
@@ -21,6 +22,8 @@ export default function MainContentPaiements({ darkMode, lang }: MainContentProp
   const [sortAsc, setSortAsc] = useState(true);
   const [paiements, setPaiements] = useState<Paiement[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showMessage, setShowMessage] = useState(false);
+
 
   // Récupération dynamique des paiements depuis FastAPI
   useEffect(() => {
@@ -195,6 +198,19 @@ export default function MainContentPaiements({ darkMode, lang }: MainContentProp
           </tbody>
         </table>
       </div>
+      <button
+          className="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-purple-600 hover:bg-purple-700 text-white flex items-center justify-center shadow-xl transition-all duration-300 hover:scale-105 z-50"
+          title="Messages"
+          onClick={() => setShowMessage(true)}
+        >
+          <MessageCircle size={28} />
+      </button>
+            {showMessage && (
+              <MessagePopup
+                darkMode={darkMode}
+                onClose={() => setShowMessage(false)}
+              />
+            )}
     </main>
   );
 }

@@ -63,7 +63,7 @@ const OtpVerificationPage = () => {
         }
       }, 800);
     }
-  }, [otp]);
+  }, [otp, searchParams]);
 
   // ✅ Gère la saisie
   const handleChange = (value: string, index: number) => {

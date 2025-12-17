@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect, useCallback } from "react";
 import logo from "@/app/assets/logo.jpeg"; 
 import {
   Search,
@@ -68,11 +68,50 @@ export default function ListeAdminsLocaux({ darkMode }: Props) {
   const [editName, setEditName] = useState("");
   
   // Suppression (Popup)
-  const [deleteAntenne, setDeleteAntenne] = useState<Antenne | null>(null); 
+  const [deleteAntenne, setDeleteAntenne] = useState<Antenne | null>(null);
 
-  // Modals Admins
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
+  // --- 2. GESTION DES ANTENNES (Intégration Backend) ---
+  const fetchAntenneStats = useCallback(async () => {
+    try {
+      const res = await fetch("http://localhost:8000/antenne/ReadAntenne");
+      if (!res.ok) throw new Error("Erreur récupération antennes");
+      
+      const backendAntennes: { id: number; province: string }[] = await res.json();
+      
+      if (admins.length === 0) {
+          setAntenneStats(backendAntennes.map(b => ({ id: b.id, antenne: b.province, students: 0, admins: 0 })));
+          return;
+      }
+      const mergedData: Antenne[] = backendAntennes.map((b) => {
+        const antenneKey = b.province.trim().toLowerCase(); 
+
+        // Calcul local des stats pour cette antenne
+        const stats = admins.reduce(
+          (acc, admin) => {
+            if (admin.antenne && admin.antenne.trim().toLowerCase() === antenneKey) { 
+              return {
+                students: acc.students + (admin.etudiants || 0),
+                admins: acc.admins + 1,
+              };
+            }
+            return acc;
+          },
+          { students: 0, admins: 0 }
+        );
+
+        return {
+          id: b.id,
+          antenne: b.province,
+          students: stats.students,
+          admins: stats.admins,
+        };
+      });
+      
+      setAntenneStats(mergedData);
+    } catch (err: any) {
+      console.error("Erreur fetchAntenneStats:", err);
+    }
+  }, [admins]);
 
   // --- 1. CHARGEMENT DES ADMINS (Code existant conservé) ---
   useEffect(() => {
@@ -82,7 +121,6 @@ export default function ListeAdminsLocaux({ darkMode }: Props) {
   }, [admins, selectedId]);
 
   useEffect(() => {
-    setLoading(true);
     fetch("http://localhost:8000/auth/GetAdminLocaux")
       .then(async (res) => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -99,66 +137,16 @@ export default function ListeAdminsLocaux({ darkMode }: Props) {
           students: a.students || [],
         }));
         setAdmins(normalized);
-        setLoading(false);
       })
       .catch((err) => {
         console.error(err);
-        setError("Impossible de charger la liste des admins");
-        setLoading(false);
       });
   }, []);
 
   // Une fois les admins chargés, on charge les antennes
   useEffect(() => {
     fetchAntenneStats();
-  }, [admins]); // Dépendance à admins pour recalculer les stats si besoin
-
-  // --- 2. GESTION DES ANTENNES (Intégration Backend) ---
-
-// Dans ListeAdminsLocaux.tsx
-
-const fetchAntenneStats = async () => {
-  try {
-    const res = await fetch("http://localhost:8000/antenne/ReadAntenne");
-    if (!res.ok) throw new Error("Erreur récupération antennes");
-    
-    const backendAntennes: { id: number; province: string }[] = await res.json();
-    
-    if (admins.length === 0) {
-        setAntenneStats(backendAntennes.map(b => ({ id: b.id, antenne: b.province, students: 0, admins: 0 })));
-        return;
-    }
-    const mergedData: Antenne[] = backendAntennes.map((b) => {
-      const antenneKey = b.province.trim().toLowerCase(); 
-
-      // Calcul local des stats pour cette antenne
-      const stats = admins.reduce(
-        (acc, admin) => {
-          if (admin.antenne && admin.antenne.trim().toLowerCase() === antenneKey) { 
-            return {
-              students: acc.students + (admin.etudiants || 0),
-              admins: acc.admins + 1,
-            };
-          }
-          return acc;
-        },
-        { students: 0, admins: 0 }
-      );
-
-      return {
-        id: b.id,
-        antenne: b.province,
-        students: stats.students,
-        admins: stats.admins,
-      };
-    });
-
-    setAntenneStats(mergedData);
-  } catch (err) {
-    console.error("Erreur dans fetchAntenneStats:", err);
-    // Fallback silencieux ou alert
-  }
-};
+  }, [admins, fetchAntenneStats]); // Dépendance à admins pour recalculer les stats si besoin
 
      
   const onCreateAntenne = async (nom: string) => {
@@ -308,9 +296,6 @@ const fetchAntenneStats = async () => {
     const w = window.open("", "_blank", "width=900,height=700");
     if (!w) return;
 
- // On récupère le chemin du logo (public ou import selon Next.js)
-  const logoPath = "/assets/logo.jpeg"; // si le dossier /public, sinon import directement
-
   const logoBase64 = logo.src;
 
 const style = `
@@ -390,7 +375,7 @@ const html = `
           <img src="${logoBase64}" alt="Logo Université" />
         </div>
         <div class="header">
-          UNIVERSITE ECAT TARATRA ANTANANARIVO
+          UNIVERSITE ECAT TARATRA <span style = "text-transform: uppercase;">${admin.antenne}</span>
         </div>
         <!-- TEXTE INTRO -->
         <div class="intro">

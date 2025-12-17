@@ -1,15 +1,15 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import background from "@/app/assets/background.png";
-import { useRouter } from "next/navigation";
+// router not required here
 
 const ForgotPasswordPage = () => {
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPopup, setShowPopup] = useState(false);
-  const router = useRouter();
+  // router not required here
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,7 +39,7 @@ const ForgotPasswordPage = () => {
       } else {
         setMessage("Erreur inconnue");
       }
-    } catch (err) {
+    } catch {
       setMessage("Erreur d'envoi");
     } finally {
       setLoading(false);

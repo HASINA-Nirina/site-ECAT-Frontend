@@ -1,24 +1,20 @@
 "use client";
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import {
     MessageSquare,
     Search,
-    LogOut,
     Send,
     ArrowLeft,
     X,
     Paperclip,
-    Plus,
     Loader2,
     FileText,
-    UserPlus,
     SquarePlus,
-    MessageCircle,
-    Inbox,
     Mail
 } from 'lucide-react';
-import {  Image as ImageIcon } from "lucide-react";
+import Image from 'next/image';
+
 
 // Types pour les données du backend
 interface Sujet {
@@ -31,13 +27,7 @@ interface Sujet {
 }
 
 // Interface pour les données de l'expéditeur
-interface Sender {
-    id: number;
-    nom: string;
-    prenom: string;
-    email: string;
-    image?: string | null;
-}
+// `Sender` interface removed (inlined in `Message`) because it wasn't used separately
 
 // Interface pour le message complet
 interface Message {
@@ -112,7 +102,7 @@ export default function MessagePopup({ onClose, darkMode }: MessagePopupProps) {
     const [messages, setMessages] = useState<Message[]>([]);
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
     const [loadingSujets, setLoadingSujets] = useState(true);
-    const [loadingMessages, setLoadingMessages] = useState(false);
+    const [loadingMessages] = useState(false);
     const [sendingMessage, setSendingMessage] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [showCreatePopup, setShowCreatePopup] = useState(false);
@@ -144,48 +134,48 @@ export default function MessagePopup({ onClose, darkMode }: MessagePopupProps) {
     }, [sujets, activeChatId, loadingSujets, error, idUser]);
 
     // Récupérer les sujets 
-    const fetchSujets = async () => {
-        const idUser = localStorage.getItem("idUser");
+    const fetchSujets = useCallback(async () => {
+        const storedId = localStorage.getItem("idUser");
         try {
             setLoadingSujets(true);
             setError(null);
-            const url = `${API_URL}/forum/ReadSujet/${idUser}`;
+            const url = `${API_URL}/forum/ReadSujet/${storedId}`;
             console.log(' Fetch sujets:', url);
-            
+
             const response = await fetch(url, {
                 credentials: "include",
             });
-            
+
             console.log(' Response status:', response.status, response.statusText);
-            
+
             if (!response.ok) {
                 const errorText = await response.text();
                 console.error(' Erreur response:', errorText);
                 throw new Error(`Erreur ${response.status}: ${errorText}`);
             }
-            
+
             const data: Sujet[] = await response.json();
             console.log('Sujets reçus:', data);
             console.log(' Nombre de sujets:', data.length);
-            
-            setSujets(data); 
-            if (data.length > 0 && !activeChatId) {
-                setActiveChatId(data[0].idSujet);
+
+            setSujets(data);
+            if (data.length > 0) {
+                setActiveChatId(prev => prev ?? data[0].idSujet);
             }
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : 'Erreur inconnue';
             setError(`Impossible de charger les sujets: ${errorMessage}`);
-            alert(' Erreur fetch sujets:' +err);
+            alert(' Erreur fetch sujets:' + err);
         } finally {
             setLoadingSujets(false);
         }
-    };
+    }, []);
 
    
     // Récupérer les messages d'un sujet
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     
-    const [ws, setWs] = useState<WebSocket | null>(null);
+    const wsRef = useRef<WebSocket | null>(null);
 
     const setupWebSocket = (idSujet: number) => {
         // Réinitialiser les messages
@@ -229,9 +219,16 @@ export default function MessagePopup({ onClose, darkMode }: MessagePopupProps) {
         websocket.onclose = () => console.log('WebSocket déconnecté');
         websocket.onerror = (err) => console.error('WebSocket error:', err);
     
-        setWs(websocket);
-    
-        return () => websocket.close();
+        wsRef.current = websocket;
+
+        return () => {
+            try {
+                websocket.close();
+            } catch (e) {
+                console.warn('Erreur closing websocket', e);
+            }
+            wsRef.current = null;
+        };
     };
     const [user, setUser] = useState<{nom: string; prenom: string} | null>(null);
     useEffect(() => {
@@ -366,7 +363,7 @@ export default function MessagePopup({ onClose, darkMode }: MessagePopupProps) {
         } else {
             console.warn('idUser est null dans localStorage');
         }
-    }, [idUser]);    // Logique d'upload de fichier pour les messages (pour l'instant juste un placeholder)
+    }, [idUser, fetchSujets]);    // Logique d'upload de fichier pour les messages (pour l'instant juste un placeholder)
     const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         if (event.target.files && event.target.files.length > 0) {
             const file = event.target.files[0];
@@ -496,10 +493,11 @@ export default function MessagePopup({ onClose, darkMode }: MessagePopupProps) {
                         >
                             <div className="relative w-10 h-10 mr-3 shrink-0">
                                     {sujet.image ? (
-                                        <img
+                                        <Image
                                             src={`${API_URL}/uploads/sujet/${sujet.image}`}
                                             alt={sujet.titre}
-                                            className="w-full h-full rounded-full object-cover"
+                                            fill
+                                            className="rounded-full object-cover"
                                         />
                                     ) : (
                                     <div className={`w-full h-full ${avatarColor} rounded-full flex items-center justify-center font-semibold text-sm ${isActive ? 'text-white' : generalText}`}>
@@ -524,34 +522,9 @@ export default function MessagePopup({ onClose, darkMode }: MessagePopupProps) {
                 )}
                 
                 {/* Bouton pour créer un nouveau sujet */}
-        <button
+                <button
             onClick={() => setShowCreatePopup(true)}
-            className={`
-                // --- BASE : Forme et Disposition ---
-                w-full flex items-center justify-center p-3 rounded-xl
-                shadow-lg transition-all duration-300 ease-in-out
-                font-semibold text-sm tracking-wide 
-                
-                // --- MODE CLAIR (Light Mode) : Vert-Jaune (Chartreuse) ---
-                // Couleur par défaut
-                bg-yellow-500 text-gray-900 border-b-2 border-yellow-600 // Texte sombre sur fond clair
-                
-                // États interactifs
-                hover:bg-yellow-400 hover:shadow-xl hover:scale-[1.01]
-                active:bg-yellow-400 active:border-b-2 active:translate-y-px 
-                focus:outline-none focus:ring-4 focus:ring-yellow-300
-                
-                // État désactivé (optionnel)
-                disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none
-                
-                // --- MODE SOMBRE (Dark Mode) : Vert-Jaune (Chartreuse) ---
-                dark:bg-amber-400 dark:text-gray-900 dark:border-amber-700 // Utilisation d'Amber pour plus de contraste en sombre
-                
-                // États interactifs en mode sombre
-                dark:hover:bg-amber-400 dark:hover:shadow-xl 
-                dark:active:bg-amber-400 dark:active:border-b-2
-                dark:focus:ring-amber-400
-            `}
+            className={"w-full flex items-center justify-center p-3 rounded-xl shadow-lg transition-all duration-300 ease-in-out font-semibold text-sm tracking-wide bg-yellow-500 text-gray-900 border-b-2 border-yellow-600 hover:bg-yellow-400 hover:shadow-xl hover:scale-[1.01] active:bg-yellow-400 active:border-b-2 active:translate-y-px focus:outline-none focus:ring-4 focus:ring-yellow-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none dark:bg-amber-400 dark:text-gray-900 dark:border-amber-700 dark:hover:bg-amber-400 dark:hover:shadow-xl dark:active:bg-amber-400 dark:active:border-b-2 dark:focus:ring-amber-400"}
             title="Créer un nouveau groupe"
         >
             {/* Remplacer 'Plus' par votre icône de création */}
@@ -596,10 +569,11 @@ export default function MessagePopup({ onClose, darkMode }: MessagePopupProps) {
 
                 <div className="relative w-10 h-10 shrink-0 flex-col-reverse">
                     {activeChat?.image ? (
-                        <img
+                        <Image
                             src={`${API_URL}/uploads/sujet/${activeChat.image}`}
                             alt={activeChat.titre}
-                            className="w-full h-full rounded-full object-cover"
+                            fill
+                            className="rounded-full object-cover"
                         />
 
                     ) : (
@@ -622,7 +596,7 @@ export default function MessagePopup({ onClose, darkMode }: MessagePopupProps) {
                 </button>
             </header>
 
-            <div className="flex-1 overflow-y-auto p-4 space-y-4 flex-1 overflow-y-auto p-4 space-y-4 flex flex-col-reverse">
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 flex flex-col-reverse">
                 {loadingMessages ? (
                     <div className="flex items-center justify-center py-8">
                         <Loader2 className="w-6 h-6 animate-spin text-indigo-600" />
@@ -672,10 +646,11 @@ export default function MessagePopup({ onClose, darkMode }: MessagePopupProps) {
                                     <div className="relative w-8 h-8 mr-2 shrink-0">
                                      {/* Si l'utilisateur a une image de profil */}
                                      {message.sender?.image ? (
-                                            <img
+                                            <Image
                                                 src={`${API_URL}${message.sender.image}`}
                                                 alt={`${prenom} ${nom}`}
-                                                className="w-full h-full rounded-full object-cover"
+                                                fill
+                                                className="rounded-full object-cover"
                                             />
                                     ) : (
                                             /* Sinon, avatar avec initiales */

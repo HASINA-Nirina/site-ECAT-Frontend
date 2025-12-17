@@ -1,13 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import { useAuth } from "@/hooks/useAuth";
 import Header from "@/app/admin/super/dashboard/Header";
 import Sidebar from "@/app/admin/super/dashboard/Sidebar";
 import MainContentRapport from "@/app/admin/super/rapports/MainContentRapport";
 
 export default function AdminLocalDashboard() {
+  useAuth("admin"); // 🔒 Protège cette page
   const [darkMode, setDarkMode] = useState(false);
-  const [lang] = useState("fr");
 
   // State pour le sidebar mobile
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -34,7 +35,7 @@ export default function AdminLocalDashboard() {
         />
 
         {/* MainContent */}
-        <MainContentRapport darkMode={darkMode} lang={lang} />
+        <MainContentRapport darkMode={darkMode}/>
       </div>
     </div>
   );

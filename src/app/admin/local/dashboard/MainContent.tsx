@@ -157,7 +157,6 @@ const renderCustomLabel = ({
 
 export default function MainContent({ darkMode, lang }: MainContentProps) {
   // Remplacement de showMessage/MessagePopup par un simple état pour le message
-  const [messageNotification, setMessageNotification] = useState(false);
   const [showMessage, setShowMessage] = useState(false);
   const [time, setTime] = useState<Date | null>(null);
   const [mounted, setMounted] = useState(false);
@@ -256,7 +255,7 @@ export default function MainContent({ darkMode, lang }: MainContentProps) {
         </div>
 
         {/* Bloc Horloge et Date */}
-        <div className="flex flex-col items-end bg-gradient-to-r from-purple-600 to-blue-500 text-white rounded-xl px-4 py-3 shadow-lg hidden sm:flex">
+        <div className="hidden sm:flex flex-col items-end bg-gradient-to-r from-purple-600 to-blue-500 text-white rounded-xl px-4 py-3 shadow-lg">
           <div className="flex items-center gap-2">
             <Clock size={22} />
             <span className="text-xl font-semibold">

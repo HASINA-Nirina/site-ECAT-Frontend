@@ -1,8 +1,8 @@
 "use client";
 import Image from "next/image";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import logo from "@/app/assets/logo.jpeg";
-import { LogOut, Sun, Moon, Bell, Menu, Settings, Pencil, X, UserRoundPenIcon } from "lucide-react";
+import { Sun, Moon, Bell, Menu, Pencil, X, LogOut } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
 import Link from "next/link";
@@ -14,7 +14,7 @@ interface HeaderProps {
   readonly setSidebarOpen: (open: boolean) => void;
 }
 
-export default function Header({ darkMode, setDarkMode,sidebarOpen, setSidebarOpen }: HeaderProps) {
+export default function Header({ darkMode, setDarkMode, sidebarOpen, setSidebarOpen }: HeaderProps) {
   const [adminName, setAdminName] = useState<string>("Chargement...");
   const [prenom, setPrenom] = useState<string>("");
   const [nom, setNom] = useState<string>("");
@@ -24,8 +24,6 @@ export default function Header({ darkMode, setDarkMode,sidebarOpen, setSidebarOp
   const [showNotifications, setShowNotifications] = useState(false);
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [profileImageFile, setProfileImageFile] = useState<File | null>(null);
-  const [activeChatId, setActiveChatId] = useState<number | null>(null);
-
 
   const router = useRouter();
   const iconColor = darkMode ? "white" : "#7c3aed";
@@ -41,47 +39,78 @@ export default function Header({ darkMode, setDarkMode,sidebarOpen, setSidebarOp
     setTimeout(() => setShowNotifications(false), 500); // attend la transition avant de démonter le composant
   };
 
+  useEffect(() => {
+  const openLogoutPopup = () => {
+    setShowLogoutConfirm(true);
+  };
+
+  document.addEventListener("open-logout-confirm", openLogoutPopup);
+
+  return () => {
+    document.removeEventListener("open-logout-confirm", openLogoutPopup);
+  };
+  }, []);
+
+
   // Charger les données utilisateur
   useEffect(() => {
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      console.warn("Token manquant : impossible de récupérer les informations utilisateur");
+      setAdminName("Utilisateur inconnu");
+      setInitials("?");
+      return;
+    }
+
     async function fetchUser() {
       try {
         const res = await fetch("http://localhost:8000/auth/me", {
           credentials: "include",
         });
-        if (!res.ok) throw new Error("Non autorisé");
+
+        if (!res.ok) {
+          console.error("Erreur lors de la récupération de l'utilisateur :", res.statusText);
+          setAdminName("Utilisateur inconnu");
+          setInitials("?");
+          return;
+        }
+
         const data = await res.json();
 
         setPrenom(data.prenom || "");
         setNom(data.nom || "");
-        setAdminName(`${data.prenom} ${data.nom}`);
+        setAdminName(`${data.prenom || ""} ${data.nom || ""}`);
         setProfileImage(data.image || null);
-        localStorage.setItem("idUser", data.id.toString());
-        localStorage.setItem("userNom", data.Nom);
-        localStorage.setItem("userPrenom", data.prenom);
-      //Appliquer le thème sauvegardé
-      if (data.theme === "dark") {
-        setDarkMode(true);
-      } else {
-        setDarkMode(false);
-      }
+
+        localStorage.setItem("idUser", data.id?.toString() || "");
+        localStorage.setItem("userNom", data.nom || "");
+        localStorage.setItem("userPrenom", data.prenom || "");
+
+        if (data.theme === "dark") setDarkMode(true);
+        else setDarkMode(false);
 
         const initials =
           (data.prenom?.[0] || "").toUpperCase() +
           (data.nom?.[0] || "").toUpperCase();
         setInitials(initials);
-      } catch {
+
+      } catch (err) {
+        console.error("Erreur réseau lors de la récupération de l'utilisateur :", err);
         setAdminName("Utilisateur inconnu");
         setInitials("?");
       }
     }
+
     fetchUser();
-  }, []);
+  }, [setDarkMode]);
 
   // Déconnexion
   const handleLogout = () => {
-    localStorage.clear();
-    document.cookie =
-      "token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT;";
+    localStorage.removeItem("token");
+    localStorage.removeItem("role");
+    localStorage.removeItem("idUser");
+    document.cookie = "token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT;";
     router.push("/login");
   };
 
@@ -125,99 +154,102 @@ export default function Header({ darkMode, setDarkMode,sidebarOpen, setSidebarOp
     }
   };
 
-      // Ajoute ces états en haut de ton composant Header
-     interface Notification {
-      id: number;
-      message: string;
-      action_status: "non_lu" | "lu" | "accepte" | "refuse" | string;
-      date: string;
-      type?: string;
-    }
+  // Ajoute ces états en haut de ton composant Header
+  interface Notification {
+    id: number;
+    message: string;
+    action_status: "non_lu" | "lu" | "accepte" | "refuse" | string;
+    date: string;
+    type?: string;
+  }
 
-    const [notifications, setNotifications] = useState<Notification[]>([]);
-    const [unreadCount, setUnreadCount] = useState<number>(0);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [unreadCount, setUnreadCount] = useState<number>(0);
 
-    useEffect(() => {
-      const count = notifications.filter((notif) => notif.action_status === "non_lu").length;
-      setUnreadCount(count);
-    }, [notifications]);
+  useEffect(() => {
+    const count = notifications.filter((notif) => notif.action_status === "non_lu").length;
+    setUnreadCount(count);
+  }, [notifications]);
 
   // Fonction pour récupérer les notifications
 
-    const fetchNotifications = async () => {
-      try {
-        const res = await fetch("http://localhost:8000/auth/notifications", {
-          credentials: "include",
-        });
+  const fetchNotifications = useCallback(async () => {
 
-        if (!res.ok) {
-          const errorData = await res.json().catch(() => null);
-          const errorMsg = errorData?.detail || "Erreur récupération notifications";
-          console.error("Notifications fetch error:", errorMsg);
-          return;
+    const token = localStorage.getItem("token");
+        if (!token) {
+          console.warn("fetchNotifications: Token manquant, abandon de la requête");
+          return; // stop la fonction si pas de token
         }
 
-        const data: Notification[] = await res.json();
+    try {
+      const res = await fetch("http://localhost:8000/auth/notifications", {
+        credentials: "include",
+      });
 
-        if (!Array.isArray(data)) {
-          console.error("Format de données inattendu pour les notifications:", data);
-          return;
-        }
-
-        // Trie par date décroissante
-        const sorted = data.sort(
-          (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-        );
-        setNotifications(sorted);
-
-        // Met à jour le compteur
-        const unread = sorted.filter((notif) => notif.action_status === "non_lu").length;
-        setUnreadCount(unread);
-
-      } catch (error) {
-        console.error("Erreur réseau lors de la récupération des notifications:", error);
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => null);
+        const errorMsg = errorData?.detail || "Erreur récupération notifications";
+        console.error("Notifications fetch error:", errorMsg);
+        return;
       }
-    };
 
-    // Charger les notifications au montage
-    useEffect(() => {
-      fetchNotifications();
-    }, []);
+      const data: Notification[] = await res.json();
 
-    // 🔁 Rafraîchissement automatique des notifications toutes les 5 secondes (polling)
-    useEffect(() => {
-      const interval = setInterval(() => {
-        fetchNotifications();
-      }, 5000); // toutes les 5 secondes
+      if (!Array.isArray(data)) {
+        console.error("Format de données inattendu pour les notifications:", data);
+        return;
+      }
 
-      // Nettoyage automatique quand le composant se démonte
-      return () => clearInterval(interval);
-    }, []);
+      // Trie par date décroissante
+      const sorted = data.sort(
+        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+      );
+      setNotifications(sorted);
 
-    const [ws, setWs] = useState<WebSocket | null>(null);
+      // Met à jour le compteur
+      const unread = sorted.filter((notif) => notif.action_status === "non_lu").length;
+      setUnreadCount(unread);
 
+    } catch (error) {
+      console.error("Erreur réseau lors de la récupération des notifications:", error);
+    }
+  }, []);
+
+  // Charger les notifications au montage
+  useEffect(() => {
+    fetchNotifications();
+  }, [fetchNotifications]);
+
+  // 🔁 Rafraîchissement automatique des notifications toutes les 5 secondes (polling)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const token = localStorage.getItem("token");
+      if (token) fetchNotifications(); // ne fetch que si token présent
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [fetchNotifications]);
 
   // Marquer comme lu quand le popup notifications s’ouvre
   useEffect(() => {
-  if (showNotifications) {
-    // Marque les notifications comme lues
-    const updated = notifications.map((notif) =>
-      notif.action_status === "non_lu" ? { ...notif, action_status: "lu" } : notif
-    );
-    setNotifications(updated);
+    if (showNotifications) {
+      // Marque les notifications comme lues
+      const updated = notifications.map((notif) =>
+        notif.action_status === "non_lu" ? { ...notif, action_status: "lu" } : notif
+      );
+      setNotifications(updated);
 
-    // recalculer compteur (non lus restants)
-    const unread = updated.filter((n) => n.action_status === "non_lu").length;
-    setUnreadCount(unread);
+      // recalculer compteur (non lus restants)
+      const unread = updated.filter((n) => n.action_status === "non_lu").length;
+      setUnreadCount(unread);
 
-    // Appel backend
-    fetch("http://localhost:8000/auth/notifications/mark_read", {
-      method: "PUT",
-      credentials: "include",
-    }).catch((err) => console.error("Erreur marque comme lu:", err));
-   }
-  }, [showNotifications]);
-
+      // Appel backend
+      fetch("http://localhost:8000/auth/notifications/mark_read", {
+        method: "PUT",
+        credentials: "include",
+      }).catch((err) => console.error("Erreur marque comme lu:", err));
+     }
+    }, [showNotifications, notifications]);
 
   const handleAccept = async (notifId: number) => {
       try {
@@ -353,14 +385,14 @@ export default function Header({ darkMode, setDarkMode,sidebarOpen, setSidebarOp
           {/* Icônes */}
           <button
             onClick={() => setShowSettings(true)}
-            className="p-2 rounded-full border border-purple-500 hover:bg-purple-100 dark:hover:bg-gray-700 transition"
+            className="p-2 rounded-full border border-purple-500 hover:bg-purple-100 dark:hover:bg-yellow-400 transition"
           >
-            <UserRoundPenIcon size={20} color={iconColor} />
+            <Pencil size={20} color={iconColor} />
           </button>
 
           <button
             onClick={() => setShowNotifications(true)}
-            className="p-2 rounded-full border border-purple-500 hover:bg-purple-100 dark:hover:bg-gray-700 transition relative"
+            className="p-2 rounded-full border border-purple-500 hover:bg-purple-100 dark:hover:bg-yellow-400 transition relative"
           >
             <Bell size={20} color={iconColor} />
             {unreadCount > 0 && (
@@ -372,17 +404,17 @@ export default function Header({ darkMode, setDarkMode,sidebarOpen, setSidebarOp
 
           <button
             onClick={handleThemeToggle}
-            className="p-2 rounded-full border border-purple-500 hover:bg-purple-100 dark:hover:bg-gray-700 transition"
+            className="p-2 rounded-full border border-purple-500 hover:bg-purple-100 dark:hover:bg-yellow-400 transition"
           >
             {darkMode ? <Sun size={20} color={iconColor} /> : <Moon size={20} color={iconColor} />}
           </button>
 
-          <button
+          {/* <button
             onClick={() => setShowLogoutConfirm(true)}
             className="p-2 rounded-full border border-purple-500 hover:bg-purple-100 dark:hover:bg-gray-700 transition"
           >
             <LogOut size={20} color={iconColor} />
-          </button>
+          </button> */}
         </div>
       </div>
 
@@ -413,14 +445,14 @@ export default function Header({ darkMode, setDarkMode,sidebarOpen, setSidebarOp
 
           <button
             onClick={() => setShowSettings(true)}
-            className="p-2 rounded-full border border-purple-500 hover:bg-purple-100 dark:hover:bg-gray-700 transition"
+            className="p-2 rounded-full border border-purple-500 hover:bg-purple-100 dark:hover:bg-yellow-400 transition"
           >
-            <UserRoundPenIcon size={20} color={iconColor} />
+            <Pencil size={20} color={iconColor} />
           </button>
 
           <button
             onClick={() => setShowNotifications(true)}
-            className="p-2 rounded-full border border-purple-500 hover:bg-purple-100 dark:hover:bg-gray-700 transition relative"
+            className="p-2 rounded-full border border-purple-500 hover:bg-purple-100 dark:hover:bg-yellow-400 transition relative"
           >
             <Bell size={20} color={iconColor} />
             {unreadCount > 0 && (
@@ -432,17 +464,17 @@ export default function Header({ darkMode, setDarkMode,sidebarOpen, setSidebarOp
 
           <button
             onClick={handleThemeToggle}
-            className="p-2 rounded-full border border-purple-500 hover:bg-purple-100 dark:hover:bg-gray-700 transition"
+            className="p-2 rounded-full border border-purple-500 hover:bg-purple-100 dark:hover:bg-yellow-400 transition"
           >
             {darkMode ? <Sun size={20} color={iconColor} /> : <Moon size={20} color={iconColor} />}
           </button>
 
-          <button
+          {/* <button
             onClick={() => setShowLogoutConfirm(true)}
             className="p-2 rounded-full border border-purple-500 hover:bg-purple-100 dark:hover:bg-gray-700 transition"
           >
             <LogOut size={20} color={iconColor} />
-          </button>
+          </button> */}
         </div>
       </div>
 
@@ -539,17 +571,32 @@ export default function Header({ darkMode, setDarkMode,sidebarOpen, setSidebarOp
         createPortal(
           <div className="fixed inset-0 flex justify-center items-center bg-black/50 backdrop-blur-sm z-[9999]">
             <div
-              className={`rounded-2xl p-6 w-80 text-center shadow-xl transition ${
+              className={`rounded-2xl p-6 w-105 text-center shadow-xl transition ${
                 darkMode ? "bg-gray-800 text-white" : "bg-white text-gray-800"
               }`}
             >
-              <h2 className="text-lg font-semibold mb-4">
+              {/* Icône Logout animée */}
+              <div className="flex justify-center mb-3">
+                <div className="p-3 rounded-full bg-red-100 dark:bg-red-300 animate-spin">
+                  <LogOut className="w-6 h-6 text-red-600 dark:text-red-500" />
+                </div>
+              </div>
+
+              {/* Titre principal */}
+              <h2 className="text-lg font-semibold mb-2">
                 Voulez-vous vraiment vous déconnecter ?
               </h2>
+
+              {/* Texte secondaire explicatif */}
+              <p className="text-sm opacity-80 mb-4">
+                Votre session sera fermée et vous devrez vous reconnecter pour continuer.
+              </p>
+
+              {/* Boutons */}
               <div className="flex justify-center gap-4 mt-4">
                 <button
                   onClick={() => setShowLogoutConfirm(false)}
-                  className={`px-4 py-2 rounded-lg font-semibold ${
+                  className={`px-4 py-2 rounded-lg font-semibold text-white ${
                     darkMode
                       ? "bg-red-700 hover:bg-red-600"
                       : "bg-red-500 hover:bg-red-700"
@@ -559,7 +606,7 @@ export default function Header({ darkMode, setDarkMode,sidebarOpen, setSidebarOp
                 </button>
                 <button
                   onClick={handleLogout}
-                  className="px-4 py-2 rounded-lg font-semibold bg-blue-600 text-white hover:bg-blue-700 transition"
+                  className="px-4 py-2 rounded-lg font-semibold bg-blue-600 text-white hover:bg-blue-700"
                 >
                   Oui
                 </button>
@@ -567,7 +614,7 @@ export default function Header({ darkMode, setDarkMode,sidebarOpen, setSidebarOp
             </div>
           </div>,
           document.getElementById("portal-root") as HTMLElement
-        )}
+      )}
 
       {/* ====== POPUP PARAMÈTRES ====== */}
       {showSettings &&

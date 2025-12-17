@@ -30,6 +30,7 @@ const LoginPage = () => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
+        credentials: "include",
       });
 
       const result = await res.json();
@@ -84,7 +85,7 @@ const LoginPage = () => {
       // ✅ Stocker le token et le rôle
       localStorage.setItem("role", role);
       localStorage.setItem("token", token);
-      document.cookie = `token=${token}; path=/; secure; samesite=strict;`;
+      document.cookie = `token=${token}; path=/; samesite=lax;`;
 
       setSuccess(true);
       setMessage("Connexion réussie !");
@@ -92,21 +93,36 @@ const LoginPage = () => {
 
       // Redirection selon le rôle
       
-      setTimeout(() => {
-        setIsLoading(false); // blur + barre disparaissent
-        //redirection Immediate
-        if (role === "admin") {
-          router.push("/admin/super/dashboard");
-        } else if (role === "Admin Local") {
-          router.push("/admin/local/dashboard");
-        } else if (role === "etudiante") {
+      // setTimeout(() => {
+      //   setIsLoading(false); // blur + barre disparaissent
+      //   //redirection Immediate
+      //   if (role === "admin") {
+      //     router.push("/admin/super/dashboard");
+      //   } else if (role === "Admin Local") {
+      //     router.push("/admin/local/dashboard");
+      //   } else if (role === "etudiante") {
           
-          router.push("/Etudiant/dashboard");
-        } else {
-          setMessage("Rôle inconnu !");
-          setSuccess(false);
-        }
-      }, 200);
+      //     router.push("/Etudiant/dashboard");
+      //   } else {
+      //     setMessage("Rôle inconnu !");
+      //     setSuccess(false);
+      //   }
+      // }, 200);
+
+      setIsLoading(false); // On enlève le blur
+
+      // Redirection propre une fois le token réellement enregistré
+      if (role === "admin") {
+        router.push("/admin/super/dashboard");
+      } else if (role === "Admin Local") {
+        router.push("/admin/local/dashboard");
+      } else if (role === "etudiante") {
+        router.push("/Etudiant/dashboard");
+      } else {
+        setMessage("Rôle inconnu !");
+        setSuccess(false);
+      }
+
     } catch (err) {
       console.error("Erreur réseau :", err);
       setIsLoading(false);
@@ -202,9 +218,9 @@ const LoginPage = () => {
               className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
             >
               {showPassword ? (
-                <EyeOff size={20} className="text-purple-600 hover:text-purple-700 transition" />
-              ) : (
                 <Eye size={20} className="text-purple-600 hover:text-purple-700 transition" />
+              ) : (
+                <EyeOff size={20} className="text-purple-600 hover:text-purple-700 transition" />
               )}
             </button>
           </div>

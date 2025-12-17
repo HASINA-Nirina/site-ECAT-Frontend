@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
-import { ArrowUpDown, Calendar, ChevronUp, ChevronDown, Users } from "lucide-react";
+import { ArrowUpDown, Calendar, ChevronUp, ChevronDown, Users,MessageCircle } from "lucide-react";
+import MessagePopup from "@/app/admin/super/dashboard/Message/MessagePopup";
 import { useEffect } from "react";
 
 interface MainContentProps {
@@ -21,8 +22,7 @@ export default function MainContentEtudiants({ darkMode, lang }: MainContentProp
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState<"nom" | "dateCreation" | null>(null);
   const [sortAsc, setSortAsc] = useState(true);
-
- 
+  const [showMessage, setShowMessage] = useState(false);
 
 const [etudiants, setEtudiants] = useState<Etudiant[]>([]);
 const [loading, setLoading] = useState(true);
@@ -187,6 +187,20 @@ const sorted = [...filtered].sort((a, b) => {
           </tbody>
         </table>
       </div>
+      <button
+          className="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-purple-600 hover:bg-purple-700 text-white flex items-center justify-center shadow-xl transition-all duration-300 hover:scale-105 z-50"
+          title="Messages"
+          onClick={() => setShowMessage(true)}
+        >
+          <MessageCircle size={28} />
+      </button>
+            {showMessage && (
+              <MessagePopup
+                darkMode={darkMode}
+                onClose={() => setShowMessage(false)}
+              />
+            )}
+
     </main>
   );
 }

@@ -1,13 +1,14 @@
-/* eslint-disable @next/next/no-img-element */
+ 
 "use client";
 
 import { useState, useEffect } from "react";
-import { BookOpen, ChevronLeft, ShoppingCart, Lock, Unlock, Eye, Mail, FileX } from "lucide-react";
+import { BookOpen, ChevronLeft, ShoppingCart, Lock, Unlock, Eye, FileX, FileText, MessageCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import PhoneInput, { CountryData } from "react-phone-input-2";
 import "react-phone-input-2/lib/style.css";
 import { parsePhoneNumberFromString } from "libphonenumber-js";
 import Image from "next/image";
+import MessagePopup from "@/app/admin/super/dashboard/Message/MessagePopup";
 
 interface MainContentProps {
   readonly darkMode: boolean;
@@ -29,6 +30,7 @@ interface Livre {
   prix: string;
   image?: string;
   access: boolean;
+  description?: string;
 }
 
 export default function MainContentAchat({ darkMode, lang }: MainContentProps) {
@@ -40,6 +42,8 @@ export default function MainContentAchat({ darkMode, lang }: MainContentProps) {
   const [loadingFormations, setLoadingFormations] = useState(true);
   const [loadingLivres, setLoadingLivres] = useState(false);
   const [userId, setUserId] = useState<number | null>(null);
+  const [showMessage, setShowMessage] = useState(false);
+
 
   const bgClass = darkMode ? "bg-gray-900 text-white" : "bg-gray-50 text-black";
   const cardClass = darkMode ? "bg-gray-800 text-white" : "bg-white text-black";
@@ -176,6 +180,7 @@ export default function MainContentAchat({ darkMode, lang }: MainContentProps) {
               prix: l.prix ?? l.price ?? "",
               image: normalizeImage(l.image ?? l.cover ?? ""),
               access: l.access ?? false,
+              description: l.description ?? l.desc ?? "",
             };
             console.log(`📖 Livre ${index}:`, livre);
             return livre;
@@ -366,82 +371,86 @@ export default function MainContentAchat({ darkMode, lang }: MainContentProps) {
 
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {livres.map((livre, i) => (
-                  <motion.div
-                    key={livre.id}
-                    className={`rounded-2xl overflow-hidden shadow-lg transform transition hover:scale-[1.02] hover:shadow-2xl relative ${
-                      darkMode ? "bg-gray-800" : "bg-gray-50"
-                    }`}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.4, delay: i * 0.08 }}
-                  >
-                    <div className="relative w-full h-48 overflow-hidden">
-                      {livre.image ? (
-                       <Image src={livre.image} alt= "LIVRE" fill className="object-cover w-full h-full" />
-                      ) : (
-                        <div className="w-full h-full bg-blue-200 flex items-center justify-center text-white font-bold text-2xl">
-                          {livre.title.charAt(0).toUpperCase()}
-                        </div>
-                      )}
+        {livres.map((livre, i) => (
+          <motion.div
+            key={livre.id}
+            className={`rounded-2xl overflow-hidden shadow-lg transform transition hover:scale-[1.02] hover:shadow-2xl relative ${
+              darkMode ? "bg-gray-800 text-white" : "bg-white text-gray-900"
+            }`}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: i * 0.08 }}
+          >
+            {/* Image du livre */}
+            <div className="relative w-full h-35 overflow-hidden">
+              {livre.image ? (
+                <Image src={livre.image} alt={livre.title} fill className="object-cover w-full h-full" />
+              ) : (
+                <div className="w-full h-full bg-blue-200 flex items-center justify-center text-white font-bold text-2xl">
+                  {livre.title.charAt(0).toUpperCase()}
+                </div>
+              )}
 
-                      {/* Cadenas avec animation */}
-                      <div className="absolute top-2 right-2">
-                        <motion.div
-                          animate={
-                            livre.access
-                              ? { scale: [1, 1.3, 1], rotate: [0, 10, -10, 0] }
-                              : { rotate: [0, 10, -10, 0] }
-                          }
-                          transition={{ duration: 0.6, repeat: livre.access ? 1 : Infinity }}
-                        >
-                          {livre.access ? (
-                            <Unlock size={20} className="text-green-500" />
-                          ) : (
-                            <Lock size={20} className="text-red-500" />
-                          )}
-                        </motion.div>
-                      </div>
-                    </div>
-
-                    <div className="p-4">
-                      <h2 className={`text-lg font-semibold mb-2 ${darkMode ? "text-[#17f]" : "text-[#17f]"}`}>
-                        {livre.title}
-                      </h2>
-                      <p className={`text-sm mb-2 ${darkMode ? "text-gray-300" : "text-gray-700"}`}>
-                        {lang === "fr" ? "Auteur" : "Author"}: {livre.author}
-                      </p>
-                      <p className={`text-sm mb-4 font-semibold ${darkMode ? "text-white" : "text-gray-900"}`}>
-                        {livre.prix} Ar
-                      </p>
-
-                      <button
-                        onClick={() => {
-                        
-                        window.open(`http://127.0.0.1:8000/forum/filesdownload/${encodeURIComponent(livre.pdf)}`, "_blank");
-
-                      }}                   
-                        className={`w-full flex items-center justify-center gap-2 py-2 rounded-lg font-medium transition ${
-                          livre.access
-                            ? "bg-[#17f] hover:bg-[#0f0fcf] text-white"
-                            : "bg-blue-600 hover:bg-blue-700 text-white"
-                        }`}
-                      >
-                        {livre.access ? (
-                          <>
-                            <Eye size={18} /> {lang === "fr" ? "Lire maintenant" : "Read now"}
-                          </>
-                        ) : (
-                          <>
-                            <ShoppingCart size={18} /> {lang === "fr" ? "Acheter" : "Buy"}
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  </motion.div>
-                ))}
+              {/* Icône d'accès */}
+              <div className="absolute top-2 right-2">
+                {livre.access ? (
+                  <Unlock size={20} className="text-green-500" />
+                ) : (
+                  <Lock size={20} className="text-red-500" />
+                )}
               </div>
-            )}
+            </div>
+
+            {/* Détails du livre */}
+            <div className="p-4 flex flex-col gap-2">
+              <h3 className="text-lg font-semibold text-[#17f]">{livre.title}</h3>
+              <p className={`text-sm ${darkMode ? "text-white" : "text-gray-900"}`}>
+                <span className="font-semibold">{lang === "fr" ? "Auteur" : "Author"}:</span> {livre.author}
+              </p>
+              <p className={`text-sm ${darkMode ? "text-white" : "text-gray-900"}`}>
+                <span className="font-semibold">{lang === "fr" ? "Prix" : "Price"}:</span> {livre.prix} Ar
+              </p>
+
+              {/* Fichier PDF */}
+              {livre.pdf && (
+                <div className="flex items-center gap-2 text-[#17f] font-semibold mt-1">
+                  <FileText size={16} /> 
+                  <span className="truncate">{livre.pdf.split("/").pop()}</span>
+                </div>
+              )}
+
+              {/* Description du livre */}
+              {livre.description && (
+                <p className={`text-sm leading-relaxed ${darkMode ? "text-gray-300" : "text-gray-700"}`}>
+                {livre.description ? (livre.description.length > 200 ? livre.description.substring(0,200)+"..." : livre.description)
+                : ""}
+              </p>
+
+              )}
+
+              {/* Bouton lire/acheter */}
+              <button
+                onClick={() => handleLivreClick(livre)}
+                className={`w-full flex items-center justify-center gap-2 py-2 rounded-lg font-medium transition ${
+                  livre.access ? "bg-[#17f] hover:bg-[#0f0fcf] text-white" : "bg-blue-600 hover:bg-blue-700 text-white"
+                }`}
+              >
+                {livre.access ? (
+                  <>
+                    <Eye size={18} /> {lang === "fr" ? "Lire maintenant" : "Read now"}
+                  </>
+                ) : (
+                  <>
+                    <ShoppingCart size={18} /> {lang === "fr" ? "Acheter" : "Buy"}
+                  </>
+                )}
+              </button>
+            </div>
+          </motion.div>
+        ))}
+      </div>
+
+          )}
           </motion.div>
         )}
 
@@ -567,11 +576,12 @@ export default function MainContentAchat({ darkMode, lang }: MainContentProps) {
                   {selectedLivre.prix} Ar
                 </p>
 
-                <div className="w-full h-48 lg:h-64 overflow-hidden rounded-xl shadow-lg">
-                  <img
+                <div className="w-full h-48 lg:h-64 overflow-hidden rounded-xl shadow-lg relative">
+                  <Image
                     src="https://images.unsplash.com/photo-1581091870625-72be1b594fa7?w=400"
                     alt="Illustration paiement"
-                    className="w-full h-full object-cover rounded-xl"
+                    fill
+                    className="object-cover rounded-xl"
                   />
                 </div>
               </div>
@@ -613,6 +623,19 @@ export default function MainContentAchat({ darkMode, lang }: MainContentProps) {
           </motion.div>
         )}
       </AnimatePresence>
+      <button
+          className="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-purple-600 hover:bg-purple-700 text-white flex items-center justify-center shadow-xl transition-all duration-300 hover:scale-105 z-50"
+          title="Messages"
+          onClick={() => setShowMessage(true)}
+        >
+          <MessageCircle size={28} />
+      </button>
+            {showMessage && (
+              <MessagePopup
+                darkMode={darkMode}
+                onClose={() => setShowMessage(false)}
+              />
+            )}
     </main>
   );
 }

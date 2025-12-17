@@ -2,7 +2,7 @@
 import Image from "next/image";
 import { useState, useEffect } from "react";
 import logo from "@/app/assets/logo.jpeg";
-import { LogOut, Sun, Moon, Bell, Menu, Settings, Pencil, X, UserRoundPenIcon, UserRoundPen } from "lucide-react";
+import { Sun, Moon, Bell, Menu, Pencil, X, LogOut } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
 import Link from "next/link";
@@ -39,6 +39,16 @@ export default function Header({ darkMode, setDarkMode,sidebarOpen, setSidebarOp
     setTimeout(() => setShowNotifications(false), 500); // attend la transition avant de démonter le composant
   };
 
+  useEffect(() => {
+  const openLogout = () => setShowLogoutConfirm(true);
+
+  document.addEventListener("open-logout-confirm", openLogout);
+
+  return () => {
+    document.removeEventListener("open-logout-confirm", openLogout);
+  };
+  }, []);
+
   // Charger les données utilisateur
   useEffect(() => {
     async function fetchUser() {
@@ -72,7 +82,7 @@ export default function Header({ darkMode, setDarkMode,sidebarOpen, setSidebarOp
       }
     }
     fetchUser();
-  }, []);
+  }, [setDarkMode]);
 
   // Déconnexion
   const handleLogout = () => {
@@ -206,14 +216,14 @@ export default function Header({ darkMode, setDarkMode,sidebarOpen, setSidebarOp
           {/* Icônes */}
           <button
             onClick={() => setShowSettings(true)}
-            className="p-2 rounded-full border border-purple-500 hover:bg-purple-100 dark:hover:bg-gray-700 transition"
+            className="p-2 rounded-full border border-purple-500 hover:bg-purple-100 dark:hover:bg-yellow-400 transition"
           >
-            <UserRoundPenIcon size={20} color={iconColor} />
+            <Pencil size={20} color={iconColor} />
           </button>
 
           <button
             onClick={() => setShowNotifications(true)}
-            className="p-2 rounded-full border border-purple-500 hover:bg-purple-100 dark:hover:bg-gray-700 transition relative"
+            className="p-2 rounded-full border border-purple-500 hover:bg-purple-100 dark:hover:bg-yellow-400 transition relative"
           >
             <Bell size={20} color={iconColor} />
             <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
@@ -221,17 +231,11 @@ export default function Header({ darkMode, setDarkMode,sidebarOpen, setSidebarOp
 
           <button
             onClick={handleThemeToggle}
-            className="p-2 rounded-full border border-purple-500 hover:bg-purple-100 dark:hover:bg-gray-700 transition"
+            className="p-2 rounded-full border border-purple-500 hover:bg-purple-100 dark:hover:bg-yellow-400 transition"
           >
             {darkMode ? <Sun size={20} color={iconColor} /> : <Moon size={20} color={iconColor} />}
           </button>
 
-          <button
-            onClick={() => setShowLogoutConfirm(true)}
-            className="p-2 rounded-full border border-purple-500 hover:bg-purple-100 dark:hover:bg-gray-700 transition"
-          >
-            <LogOut size={20} color={iconColor} />
-          </button>
         </div>
       </div>
 
@@ -262,14 +266,14 @@ export default function Header({ darkMode, setDarkMode,sidebarOpen, setSidebarOp
 
           <button
             onClick={() => setShowSettings(true)}
-            className="p-2 rounded-full border border-purple-500 hover:bg-purple-100 dark:hover:bg-gray-700 transition"
+            className="p-2 rounded-full border border-purple-500 hover:bg-purple-100 dark:hover:bg-yellow-400 transition"
           >
-            <UserRoundPenIcon size={20} color={iconColor} />
+            <Pencil size={20} color={iconColor} />
           </button>
 
           <button
             onClick={() => setShowNotifications(true)}
-            className="p-2 rounded-full border border-purple-500 hover:bg-purple-100 dark:hover:bg-gray-700 transition relative"
+            className="p-2 rounded-full border border-purple-500 hover:bg-purple-100 dark:hover:bg-yellow-400 transition relative"
           >
             <Bell size={20} color={iconColor} />
             <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
@@ -277,25 +281,18 @@ export default function Header({ darkMode, setDarkMode,sidebarOpen, setSidebarOp
 
           <button
             onClick={handleThemeToggle}
-            className="p-2 rounded-full border border-purple-500 hover:bg-purple-100 dark:hover:bg-gray-700 transition"
+            className="p-2 rounded-full border border-purple-500 hover:bg-purple-100 dark:hover:bg-yellow-400 transition"
           >
             {darkMode ? <Sun size={20} color={iconColor} /> : <Moon size={20} color={iconColor} />}
           </button>
 
-
-          <button
-            onClick={() => setShowLogoutConfirm(true)}
-            className="p-2 rounded-full border border-purple-500 hover:bg-purple-100 dark:hover:bg-gray-700 transition"
-          >
-            <LogOut size={20} color={iconColor} />
-          </button>
         </div>
       </div>
 
        {/* ====== POPUP NOTIFICATIONS ====== */}
-{(showNotifications || isVisible) &&
- typeof window !== "undefined" &&
- createPortal(
+    {(showNotifications || isVisible) &&
+    typeof window !== "undefined" &&
+    createPortal(
    <div className="fixed inset-0 flex justify-end z-[9999]">
      {/* Fond semi-transparent pour fermer au clic */}
      <div
@@ -368,17 +365,32 @@ export default function Header({ darkMode, setDarkMode,sidebarOpen, setSidebarOp
         createPortal(
           <div className="fixed inset-0 flex justify-center items-center bg-black/50 backdrop-blur-sm z-[9999]">
             <div
-              className={`rounded-2xl p-6 w-80 text-center shadow-xl transition ${
+              className={`rounded-2xl p-6 w-105 text-center shadow-xl transition ${
                 darkMode ? "bg-gray-800 text-white" : "bg-white text-gray-800"
               }`}
             >
-              <h2 className="text-lg font-semibold mb-4">
+              {/* Icône Logout animée */}
+              <div className="flex justify-center mb-3">
+                <div className="p-3 rounded-full bg-red-100 dark:bg-red-300 animate-spin">
+                  <LogOut className="w-6 h-6 text-red-600 dark:text-red-500" />
+                </div>
+              </div>
+
+              {/* Titre principal */}
+              <h2 className="text-lg font-semibold mb-2">
                 Voulez-vous vraiment vous déconnecter ?
               </h2>
+
+              {/* Texte secondaire explicatif */}
+              <p className="text-sm opacity-80 mb-4">
+                Votre session sera fermée et vous devrez vous reconnecter pour continuer.
+              </p>
+
+              {/* Boutons */}
               <div className="flex justify-center gap-4 mt-4">
                 <button
                   onClick={() => setShowLogoutConfirm(false)}
-                  className={`px-4 py-2 rounded-lg font-semibold ${
+                  className={`px-4 py-2 rounded-lg font-semibold text-white ${
                     darkMode
                       ? "bg-red-700 hover:bg-red-600"
                       : "bg-red-500 hover:bg-red-700"
@@ -396,7 +408,7 @@ export default function Header({ darkMode, setDarkMode,sidebarOpen, setSidebarOp
             </div>
           </div>,
           document.getElementById("portal-root") as HTMLElement
-        )}
+      )}
 
       {/* ====== POPUP PARAMÈTRES ====== */}
       {showSettings &&

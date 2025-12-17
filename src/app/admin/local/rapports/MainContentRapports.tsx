@@ -1,5 +1,7 @@
 "use client";
-import { BarChart3, Users, CreditCard } from "lucide-react";
+import { BarChart3, Users, CreditCard, MessageCircle } from "lucide-react";
+import MessagePopup from "@/app/admin/super/dashboard/Message/MessagePopup";
+import { useState } from "react";
 
 interface MainContentProps {
   readonly darkMode: boolean;
@@ -11,6 +13,8 @@ export default function MainContentRapports({ darkMode, lang }: MainContentProps
   const cardClass = darkMode
     ? "bg-gray-800 hover:bg-gray-700 border-gray-700"
     : "bg-white hover:bg-purple-50 border-gray-200";
+  const [showMessage, setShowMessage] = useState(false);
+
 
   return (
     <main className={`flex-1 p-6 transition-colors duration-300 ${bgClass}`}>
@@ -89,6 +93,19 @@ export default function MainContentRapports({ darkMode, lang }: MainContentProps
           </div>
         </div>
       </div>
+      <button
+          className="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-purple-600 hover:bg-purple-700 text-white flex items-center justify-center shadow-xl transition-all duration-300 hover:scale-105 z-50"
+          title="Messages"
+          onClick={() => setShowMessage(true)}
+        >
+          <MessageCircle size={28} />
+      </button>
+            {showMessage && (
+              <MessagePopup
+                darkMode={darkMode}
+                onClose={() => setShowMessage(false)}
+              />
+            )}
     </main>
   );
 }

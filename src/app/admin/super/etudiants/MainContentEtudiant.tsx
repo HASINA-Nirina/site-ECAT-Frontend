@@ -107,40 +107,37 @@ export default function ListeEtudiants({ darkMode }: ListeEtudiantsProps) {
       }`}
     >
       {/* ====================== STATISTIQUES ====================== */}
-      <div className="mb-10">
-        <div className="flex items-center gap-2 mb-5">
-          <MapPin className="text-[#17f]" size={26} />
-          <h2 className="text-2xl font-bold">Statistiques des étudiants par antenne</h2>
+     <div className="mb-10 px-2 sm:px-4">
+        <div className="flex items-center gap-2 mb-3">
+          <MapPin className="text-[#17f]" size={20} />
+          <h2 className="text-lg font-bold">Statistiques des étudiants par antenne</h2>
         </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        {/* Grid compacte et largeur maximale utilisée */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 justify-center w-full">
           {loading ? (
-            <div className="col-span-full p-4 text-center text-gray-400">Chargement des données...</div>
+            <div className="col-span-full p-3 text-center text-gray-400">
+              Chargement des données...
+            </div>
           ) : (
             statsAntenne.map(([antenne, count]) => (
-            <div
-              key={antenne}
-              className={`relative p-6 rounded-xl shadow-md border-l-4 ${
-                darkMode
-                  ? "bg-gray-800 border-blue-400"
-                  : "bg-gray-50 border-[#17f]"
-              } hover:shadow-lg transform transition-all hover:scale-[1.02]`}
-            >
-              <p className="text-lg font-semibold mb-2 text-orange-400">
-                {antenne}
-              </p>
-              <p className="text-4xl font-bold text-[#00db1d]">{count}</p>
-              <p
-                className={`text-sm mt-2 ${
-                  darkMode ? "text-gray-400" : "text-gray-600"
-                }`}
+              <div
+                key={antenne}
+                className={`relative p-5 rounded-xl shadow-md border-l-4 w-full ${
+                  darkMode
+                    ? "bg-gray-800 border-blue-400"
+                    : "bg-gray-50 border-[#17f]"
+                } hover:shadow-lg transform transition-all hover:scale-[1.02]`}
               >
-                Étudiants inscrits
-              </p>
-              <div className="absolute top-3 right-3 opacity-20">
-                <Users size={36} />
+                <p className="text-sm font-semibold mb-1 text-orange-400">{antenne}</p>
+                <p className="text-2xl font-bold text-[#00db1d]">{count}</p>
+                <p className={`text-xs mt-1 ${darkMode ? "text-gray-400" : "text-gray-600"}`}>
+                  Étudiants inscrits
+                </p>
+                <div className="absolute top-2 right-2 opacity-20">
+                  <Users size={24} />
+                </div>
               </div>
-            </div>
             ))
           )}
         </div>

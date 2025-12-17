@@ -7,6 +7,10 @@ const roleProtectedRoutes: Record<string, string> = {
   "/admin/super": "admin",
   "/admin/local": "Admin Local",
   "/Etudiant/dashboard": "etudiante",
+  "/Etudiant/Achatlivre": "etudiante",
+  "/Etudiant/LivreDebloque": "etudiante",
+  "/Etudiant/rapports": "etudiante",
+  "/Etudiant/SettingCompte": "etudiante",
 };
 
 export function middleware(req: NextRequest) {
@@ -18,7 +22,13 @@ export function middleware(req: NextRequest) {
   // 🚫 Si pas de token -> rediriger vers login
   if (!token) {
     url.pathname = "/login";
-    return NextResponse.redirect(url);
+    const response = NextResponse.redirect(url);
+    // 🔒 Headers anti-cache pour empêcher le bouton retour de montrer la page protégée
+    response.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0");
+    response.headers.set("Pragma", "no-cache");
+    response.headers.set("Expires", "0");
+    response.headers.set("Surrogate-Control", "no-store");
+    return response;
   }
 
   // ✅ Décoder le rôle depuis le token JWT
@@ -26,9 +36,14 @@ export function middleware(req: NextRequest) {
 
   // 🚫 Si le token est invalide ou corrompu -> rediriger vers login
   if (!userRole) {
-    req.cookies.delete("token"); // Supprime le token invalide
-    url.pathname = "/login";
-    return NextResponse.redirect(url);
+    const response = NextResponse.redirect(new URL("/login", req.url));
+    // Supprimer le token invalide en réponse
+    response.cookies.delete("token");
+    // 🔒 Headers anti-cache
+    response.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0");
+    response.headers.set("Pragma", "no-cache");
+    response.headers.set("Expires", "0");
+    return response;
   }
 
   // 🔒 Vérifier si la route est protégée et si le rôle correspond
@@ -36,14 +51,23 @@ export function middleware(req: NextRequest) {
     if (req.nextUrl.pathname.startsWith(path)) {
       const requiredRole = roleProtectedRoutes[path];
       if (userRole !== requiredRole) {
-        url.pathname = "/login";
-        return NextResponse.redirect(url);
+        const response = NextResponse.redirect(new URL("/login", req.url));
+        // 🔒 Headers anti-cache
+        response.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0");
+        response.headers.set("Pragma", "no-cache");
+        response.headers.set("Expires", "0");
+        return response;
       }
     }
   }
 
-  // ✅ Si tout va bien, autoriser la navigation
-  return NextResponse.next();
+  // ✅ Si tout va bien, autoriser la navigation avec headers anti-cache
+  const response = NextResponse.next();
+  response.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0");
+  response.headers.set("Pragma", "no-cache");
+  response.headers.set("Expires", "0");
+  response.headers.set("Surrogate-Control", "no-store");
+  return response;
 }
 
 // Fonction pour décoder le rôle depuis le token JWT

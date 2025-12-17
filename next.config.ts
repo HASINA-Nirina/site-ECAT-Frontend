@@ -5,7 +5,6 @@ import withBundleAnalyzer from '@next/bundle-analyzer';
 const isAnalyze = process.env.ANALYZE === 'true';
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-  swcMinify: true,
   eslint: {
     ignoreDuringBuilds: true, // <--- ignore les erreurs ESLint pendant build
   },

@@ -7,9 +7,6 @@ import {
   ArrowUpNarrowWide,
   CreditCard,
   MapPin,
-  CheckCircle,
-  Clock,
-  XCircle,
 } from "lucide-react";
 
 interface ListePaiementsProps {
@@ -35,7 +32,6 @@ export default function ListePaiements({ darkMode }: ListePaiementsProps) {
     statut: string;
   }[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
   const [antennesList, setAntennesList] = useState<string[]>([]);
 
   const normalizeKey = (s: any) => {

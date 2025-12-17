@@ -127,7 +127,6 @@ const handleSubmit = async (e: React.FormEvent) => {
   }
 };
 
-
   return (
     <section
       className="relative min-h-screen flex items-center justify-center bg-cover bg-center"
@@ -158,7 +157,7 @@ const handleSubmit = async (e: React.FormEvent) => {
               onClick={() => setShowPassword(!showPassword)}
               className="absolute right-3 top-3 text-purple-600"
             >
-              {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              {showPassword ? <Eye size={20} /> : <EyeOff size={20} />}
             </button>
           </div>
 
@@ -179,7 +178,7 @@ const handleSubmit = async (e: React.FormEvent) => {
               }
               className="absolute right-3 top-3 text-purple-600"
             >
-              {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              {showConfirmPassword ? <Eye size={20} /> : <EyeOff size={20} />}
             </button>
           </div>
 
