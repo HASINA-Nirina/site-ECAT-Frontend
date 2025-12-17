@@ -9,7 +9,6 @@ import MainContentFormation from "@/app/admin/super/formation/MainContentFormati
 export default function AdminLocalDashboard() {
   useAuth("admin"); // 🔒 Protège cette page
   const [darkMode, setDarkMode] = useState(false);
-  const [lang] = useState("fr");
 
   // State pour le sidebar mobile
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -36,7 +35,7 @@ export default function AdminLocalDashboard() {
         />
 
         {/* MainContent */}
-        <MainContentFormation darkMode={darkMode} lang={lang} />
+        <MainContentFormation darkMode={darkMode}/>
       </div>
     </div>
   );

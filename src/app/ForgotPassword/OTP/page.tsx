@@ -1,11 +1,11 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, Suspense } from "react";
 import background from "@/app/assets/background.png";
 import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 
-const OtpVerificationPage = () => {
+const OtpVerificationForm = () => {
   const otpKeys = ["otp-1", "otp-2", "otp-3", "otp-4", "otp-5", "otp-6"];
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const inputRefs = useRef<HTMLInputElement[]>([]);
@@ -194,5 +194,11 @@ const OtpVerificationPage = () => {
     </section>
   );
 };
+
+const OtpVerificationPage = () => (
+  <Suspense fallback={<div>Loading...</div>}>
+    <OtpVerificationForm />
+  </Suspense>
+);
 
 export default OtpVerificationPage;

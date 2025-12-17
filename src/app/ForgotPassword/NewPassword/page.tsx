@@ -1,12 +1,12 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, Suspense } from "react";
 import background from "@/app/assets/background.png";
 import { Eye, EyeOff, CheckCircle, XCircle } from "lucide-react";
 import {useSearchParams} from "next/navigation";
 
 
-const NewPasswordPage = () => {
+const NewPasswordForm = () => {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -215,5 +215,11 @@ const handleSubmit = async (e: React.FormEvent) => {
     </section>
   );
 };
+
+const NewPasswordPage = () => (
+  <Suspense fallback={<div>Loading...</div>}>
+    <NewPasswordForm />
+  </Suspense>
+);
 
 export default NewPasswordPage;

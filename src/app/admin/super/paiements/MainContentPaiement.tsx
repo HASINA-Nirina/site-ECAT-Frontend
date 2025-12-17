@@ -16,6 +16,8 @@ interface ListePaiementsProps {
 export default function ListePaiements({ darkMode }: ListePaiementsProps) {
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState<"recent" | "az">("recent");
+  const [error, setError] = useState<string | null>(null);
+
 
   // Nouvelle classe pour les cartes de statistiques avec bordure gauche #17f
   const statCardClass = `p-5 rounded-2xl shadow-lg border-l-4 border-[#17f] transition-all hover:scale-[1.02] ${
@@ -189,6 +191,13 @@ export default function ListePaiements({ darkMode }: ListePaiementsProps) {
           </button>
         </div>
       </div>
+
+      {/* Affichage des erreurs */}
+      {error && (
+        <div className="mb-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
+          {error}
+        </div>
+      )}
 
       {/* Statistiques */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-8">
