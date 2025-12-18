@@ -11,12 +11,15 @@ import {
     Loader2,
     FileText,
     SquarePlus,
-    Mail
+    Mail,
+    MessageCircle,
+    Inbox,
+    MoreVertical
 } from 'lucide-react';
-import Image from 'next/image';
-
-
+import Image from "next/image";
+import { Image as ImageIcon } from "lucide-react";
 // Types pour les données du backend
+// ✅ MODIFICATION : Ajout de la propriété isCreator pour le contrôle d'accès au menu
 interface Sujet {
     idSujet: number;
     titre: string;
@@ -24,6 +27,7 @@ interface Sujet {
     date_creation: string;
     image: string | null;
     messages?: Message[];
+    isCreator?: boolean; 
 }
 
 // Interface pour les données de l'expéditeur
@@ -39,7 +43,7 @@ interface Message {
     date_creation: string;
     idParentMessage?: number | null;
 
-    sender: {       
+    sender: {
         id: number;
         nom: string;
         prenom: string;
@@ -56,7 +60,7 @@ const AVATAR_COLORS = [
 // Mise à jour de l'interface pour accepter darkMode
 interface MessagePopupProps {
     onClose?: () => void;
-    darkMode: boolean; 
+    darkMode: boolean;
 }
 
 // Fonction utilitaire pour obtenir les initiales
@@ -114,11 +118,18 @@ export default function MessagePopup({ onClose, darkMode }: MessagePopupProps) {
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [idUser, setIdUser] = useState<number | null>(null);
-        useEffect(() => {
-          const storedId = localStorage.getItem("idUser");
-           if (storedId) setIdUser(Number(storedId)); 
-        }, []);
+    useEffect(() => {
+        const storedId = localStorage.getItem("idUser");
+        if (storedId) setIdUser(Number(storedId));
+    }, []);
+    // ✅ NOUVEAUX ÉTATS POUR LE MENU ET LA SUPPRESSION/MODIFICATION
+    const [menuOpen, setMenuOpen] = useState<number | null>(null); // id du sujet ouvert
+    const [deleteSujet, setDeleteSujet] = useState<Sujet | null>(null);
+    const [editSujet, setEditSujet] = useState<Sujet | null>(null);
 
+    // Helpers pour le popup de création/modification
+    const isEditMode = editSujet !== null;
+    const isPopupOpen = showCreatePopup || isEditMode;
 
     const activeChat = sujets.find(s => s.idSujet === activeChatId);
     // Debug: afficher l'état actuel
@@ -133,7 +144,20 @@ export default function MessagePopup({ onClose, darkMode }: MessagePopupProps) {
         });
     }, [sujets, activeChatId, loadingSujets, error, idUser]);
 
-    // Récupérer les sujets 
+    // ✅ NOUVEAU: useEffect pour pré-remplir le formulaire en mode modification
+    useEffect(() => {
+        if (editSujet) {
+            setNewSujetTitre(editSujet.titre);
+            // newSujetImage reste null, l'image actuelle sera conservée si l'utilisateur n'en choisit pas une nouvelle
+        } else {
+            // Réinitialiser les champs quand le popup se ferme ou passe en mode création
+            setNewSujetTitre('');
+            setNewSujetImage(null);
+            if (fileInputRef.current) fileInputRef.current.value = '';
+        }
+    }, [editSujet]);
+
+    // Récupérer les sujets
     const fetchSujets = useCallback(async () => {
         const storedId = localStorage.getItem("idUser");
         try {
@@ -171,22 +195,60 @@ export default function MessagePopup({ onClose, darkMode }: MessagePopupProps) {
         }
     }, []);
 
-   
+    //  FONCTION: Confirmer et exécuter la suppression d'un sujet
+    const confirmDelete = async (idSujet: number) => {
+        if (!idUser) {
+            setError("Erreur: Utilisateur non identifié.");
+            return;
+        }
+
+        try {
+            // Le backend DELETE /DeleteSujet/{id} nécessite idCreateur comme Form Data
+            const formData = new FormData();
+            formData.append('idCreateur', idUser.toString());
+
+            const response = await fetch(`${API_URL}/forum/DeleteSujet/${idSujet}`, {
+                method: 'DELETE',
+                credentials: "include",
+                // Headers (Content-Type) n'est pas nécessaire pour FormData, fetch le gère
+                body: formData, // Envoi de l'ID de l'utilisateur qui effectue la suppression
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`Erreur ${response.status}: ${errorText}`);
+            }
+
+            // Rafraîchir la liste des sujets et fermer le popup
+            await fetchSujets();
+            setDeleteSujet(null);
+            if (activeChatId === idSujet) {
+                setActiveChatId(null); // Désélectionner le sujet s'il était actif
+            }
+            // ❌ SUPPRIMÉ : Suppression du message de succès affiché via setError
+            // setError(`Sujet "${deleteSujet?.titre}" supprimé avec succès.`); 
+
+        } catch (err) {
+            console.error("Erreur suppression sujet", err);
+            const errorMessage = err instanceof Error ? err.message : 'Erreur inconnue';
+            setError(`Impossible de supprimer le sujet: ${errorMessage}`);
+        }
+    };
+
     // Récupérer les messages d'un sujet
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
-    
     const wsRef = useRef<WebSocket | null>(null);
-
+    const [ws, setWs] = useState<WebSocket | null>(null);
     const setupWebSocket = (idSujet: number) => {
         // Réinitialiser les messages
         setMessages([]);
         // Créer la connexion WebSocket
         const websocket = new WebSocket(`ws://localhost:8000/forum/ws/${idSujet}`);
-    
+
         websocket.onopen = () => {
             console.log('WebSocket connecté au sujet', idSujet);
         };
-    
+
         websocket.onmessage = (event) => {
             try {
                 const raw = JSON.parse(event.data);
@@ -215,10 +277,9 @@ export default function MessagePopup({ onClose, darkMode }: MessagePopupProps) {
                 console.error("Erreur parsing WS:", err);
             }
         };
-    
+
         websocket.onclose = () => console.log('WebSocket déconnecté');
-        websocket.onerror = (err) => console.error('WebSocket error:', err);
-    
+        websocket.onerror = (err) => console.error('WebSocket error:', err);  
         wsRef.current = websocket;
 
         return () => {
@@ -229,8 +290,12 @@ export default function MessagePopup({ onClose, darkMode }: MessagePopupProps) {
             }
             wsRef.current = null;
         };
+
+      //  setWs(websocket);
+
+    //return () => websocket.close();
     };
-    const [user, setUser] = useState<{nom: string; prenom: string} | null>(null);
+    const [user, setUser] = useState<{ nom: string; prenom: string } | null>(null);
     useEffect(() => {
         if (!activeChatId) return;
         const storedNom = localStorage.getItem("userNom");
@@ -239,19 +304,19 @@ export default function MessagePopup({ onClose, darkMode }: MessagePopupProps) {
             setUser({ nom: storedNom, prenom: storedPrenom });
         }
         const cleanup = setupWebSocket(activeChatId);
-    
+
         return () => {
             cleanup();
         };
     }, [activeChatId]);
-    
+
     // Envoyer un message
-    const handleSendMessage = async () => { 
+    const handleSendMessage = async () => {
         if ((!messageInput.trim() && !selectedFile) || !idUser || !activeChatId) return;
-    
+
         try {
             setSendingMessage(true);
-    
+
             const formData = new FormData();
             formData.append("idSender", idUser.toString());
             formData.append("idSujet", activeChatId.toString());
@@ -259,14 +324,14 @@ export default function MessagePopup({ onClose, darkMode }: MessagePopupProps) {
             if (selectedFile) {
                 formData.append("fichier", selectedFile);
             }
-    
+
             // Toujours utiliser fetch pour créer le message
             const response = await fetch(`${API_URL}/forum/ajouter_message`, {
                 method: 'POST',
                 credentials: "include",
                 body: formData,
             });
-    
+
             if (!response.ok) {
                 const errorText = await response.text();
                 throw new Error(`Erreur ${response.status}: ${errorText}`);
@@ -281,14 +346,14 @@ export default function MessagePopup({ onClose, darkMode }: MessagePopupProps) {
             setSendingMessage(false);
         }
     };
-    
+
     // Créer un nouveau sujet
     const handleCreateSujet = async () => {
         if (!newSujetTitre.trim() || !idUser || creatingSujet) {
-            console.warn('⚠️ Validation échouée:', { 
-                titre: newSujetTitre.trim(), 
-                idUser, 
-                creatingSujet 
+            console.warn('⚠️ Validation échouée:', {
+                titre: newSujetTitre.trim(),
+                idUser,
+                creatingSujet
             });
             return;
         }
@@ -299,7 +364,7 @@ export default function MessagePopup({ onClose, darkMode }: MessagePopupProps) {
             const formData = new FormData();
             formData.append('titre', newSujetTitre.trim());
             formData.append('idCreateur', idUser.toString());
-            
+
             if (newSujetImage instanceof File) {
                 formData.append('image', newSujetImage);
                 console.log(' Image ajoutée:', newSujetImage.name);
@@ -309,9 +374,9 @@ export default function MessagePopup({ onClose, darkMode }: MessagePopupProps) {
 
             const url = `${API_URL}/forum/NewSujet`;
             console.log('Création sujet:', url);
-            console.log(' Données:', { 
-                titre: newSujetTitre.trim(), 
-                idCreateur: idUser.toString() 
+            console.log(' Données:', {
+                titre: newSujetTitre.trim(),
+                idCreateur: idUser.toString()
             });
 
             const response = await fetch(url, {
@@ -327,19 +392,19 @@ export default function MessagePopup({ onClose, darkMode }: MessagePopupProps) {
                 console.error('❌ Erreur response:', errorText);
                 throw new Error(`Erreur ${response.status}: ${errorText}`);
             }
-            
+
             const data = await response.json();
             console.log(' Sujet créé:', data);
-            
+
             // Fermer le popup et réinitialiser les champs
             setShowCreatePopup(false);
             setNewSujetTitre('');
             setNewSujetImage(null);
             if (fileInputRef.current) fileInputRef.current.value = '';
-            
+
             // Recharger la liste des sujets
             await fetchSujets();
-            
+
             // Après création : ouvrir directement le nouveau sujet
             if (data.idSujet) {
                 console.log('🎯 Ouverture du nouveau sujet:', data.idSujet);
@@ -349,6 +414,75 @@ export default function MessagePopup({ onClose, darkMode }: MessagePopupProps) {
             const errorMessage = err instanceof Error ? err.message : 'Erreur inconnue';
             setError(`Erreur lors de l'ajout du sujet: ${errorMessage}`);
             console.error('❌ Erreur create sujet:', err);
+        } finally {
+            setCreatingSujet(false);
+        }
+    };
+
+    // ✅ NOUVEAU: Modifier un sujet
+    const handleUpdateSujet = async () => {
+        if (!editSujet || !newSujetTitre.trim() || !idUser || creatingSujet) {
+            console.warn('⚠️ Validation échouée (Update):', {
+                editSujet: editSujet,
+                titre: newSujetTitre.trim(),
+                idUser,
+                creatingSujet
+            });
+            return;
+        }
+
+        try {
+            setCreatingSujet(true); // Réutilisation de l'état de chargement
+            setError(null);
+            const formData = new FormData();
+            formData.append('titre', newSujetTitre.trim());
+            formData.append('idCreateur', idUser.toString()); // idCreateur est requis par le backend PUT
+
+            if (newSujetImage instanceof File) {
+                formData.append('image', newSujetImage);
+                console.log(' Nouvelle image ajoutée:', newSujetImage.name);
+            } else {
+                // Si aucune nouvelle image n'est sélectionnée, l'ancienne est conservée par le backend
+                console.log('Aucune nouvelle image à envoyer.');
+            }
+
+            const url = `${API_URL}/forum/UpdateSujet/${editSujet.idSujet}`;
+            console.log('Modification sujet (PUT):', url);
+
+            // PUT request
+            const response = await fetch(url, {
+                method: 'PUT',
+                credentials: "include",
+                body: formData
+            });
+
+            console.log(' Response status (Update):', response.status, response.statusText);
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('❌ Erreur response (Update):', errorText);
+                throw new Error(`Erreur ${response.status}: ${errorText}`);
+            }
+
+            const data = await response.json();
+            console.log(' Sujet modifié:', data);
+
+            // Fermer le popup et réinitialiser les champs
+            setEditSujet(null);
+            setNewSujetTitre('');
+            setNewSujetImage(null);
+            if (fileInputRef.current) fileInputRef.current.value = '';
+
+            // Recharger la liste des sujets
+            await fetchSujets();
+
+            // Réactiver le sujet actuel
+            setActiveChatId(editSujet.idSujet);
+
+        } catch (err) {
+            const errorMessage = err instanceof Error ? err.message : 'Erreur inconnue';
+            setError(`Erreur lors de la modification du sujet: ${errorMessage}`);
+            console.error('❌ Erreur update sujet:', err);
         } finally {
             setCreatingSujet(false);
         }
@@ -370,11 +504,10 @@ export default function MessagePopup({ onClose, darkMode }: MessagePopupProps) {
             setSelectedFile(file);
         }
     };
-    
-
     const handleSujetClick = (id: number) => {
         setActiveChatId(id);
-        if (window.innerWidth < 1024) setIsSidebarOpen(false); 
+        if (window.innerWidth < 1024) setIsSidebarOpen(false);
+        setMenuOpen(null); // Fermer le menu lors du changement de sujet
     };
 
     const OnlineDot = ({ isOnline }: { isOnline: boolean }) => (
@@ -396,8 +529,7 @@ export default function MessagePopup({ onClose, darkMode }: MessagePopupProps) {
     const filteredSujets = sujets.filter(sujet =>
         sujet.titre.toLowerCase().includes(searchQuery.toLowerCase())
     );
-   
-    
+
     // ----------------------------------------------------
     // Définition des classes de Thème (Light/Dark)
     // ----------------------------------------------------
@@ -413,15 +545,15 @@ export default function MessagePopup({ onClose, darkMode }: MessagePopupProps) {
     const borderDefault = darkMode ? "border-gray-700" : "border-gray-300";
 
     // Style de la bulle de message reçue - MODIFIÉ pour une forme plus douce
-    const receivedBubble = darkMode 
+    const receivedBubble = darkMode
         ? "bg-gray-700 text-white rounded-2xl rounded-tl-sm border border-gray-600 shadow-md"
         : "bg-white text-gray-800 rounded-2xl rounded-tl-sm border border-gray-200 shadow-md";
 
     // Style du contact dans la sidebar
-    const contactDefault = darkMode 
+    const contactDefault = darkMode
         ? 'font-medium text-white hover:bg-gray-700 bg-gray-800/50 shadow-md'
         : 'font-medium text-gray-700 hover:bg-white bg-white/50';
-    
+
     // Classes pour le style de l'input au focus ET au hover (violet)
     const inputInteractiveClasses = `focus:ring-indigo-500 focus:border-indigo-500 hover:border-indigo-500`;
 
@@ -476,25 +608,29 @@ export default function MessagePopup({ onClose, darkMode }: MessagePopupProps) {
                         const isActive = sujet.idSujet === activeChatId;
                         const initials = getInitials(sujet.titre);
                         const avatarColor = getAvatarColor(sujet.idSujet);
-                        const lastMessage = sujet.messages && sujet.messages.length > 0 
-                            ? sujet.messages[sujet.messages.length - 1] 
+                        const lastMessage = sujet.messages && sujet.messages.length > 0
+                            ? sujet.messages[sujet.messages.length - 1]
                             : null;
                         const timeDisplay = lastMessage ? formatDate(lastMessage.date_creation) : formatDate(sujet.date_creation);
-                        
-                    return (
-                        <div
+
+                        return (
+                            <div
                                 key={sujet.idSujet}
-                                onClick={() => handleSujetClick(sujet.idSujet)}
-                            className={`flex items-center p-3 text-sm rounded-xl shadow-sm cursor-pointer transition duration-150 ${
-                                isActive
-                                    ? 'font-semibold text-white bg-indigo-600 hover:bg-indigo-700'
-                                    : contactDefault
-                            }`}
-                        >
-                            <div className="relative w-10 h-10 mr-3 shrink-0">
+                                className={`flex items-center p-3 text-sm rounded-xl shadow-sm cursor-pointer transition duration-150 ${
+                                    isActive
+                                        ? 'font-semibold text-white bg-indigo-600 hover:bg-indigo-700'
+                                        : contactDefault
+                                    }`}
+                            >
+                                {/* Avatar */}
+                                <div
+                                    onClick={() => handleSujetClick(sujet.idSujet)}
+                                    className="relative w-10 h-10 mr-3 shrink-0"
+                                >
+                                 <div className="relative w-10 h-10 mr-3 shrink-0">
                                     {sujet.image ? (
                                         <Image
-                                            src={`${API_URL}/uploads/sujet/${sujet.image}`}
+                                            src={`${API_URL}/uploads/forum/${sujet.image}`}
                                             alt={sujet.titre}
                                             fill
                                             className="rounded-full object-cover"
@@ -505,50 +641,111 @@ export default function MessagePopup({ onClose, darkMode }: MessagePopupProps) {
                                     </div>
                                 )}
                             </div>
-                            <div className="flex-1 overflow-hidden">
+                                </div>
+
+                                {/* Titre + dernier message */}
+                                <div onClick={() => handleSujetClick(sujet.idSujet)} className="flex-1 overflow-hidden">
                                     <p className="truncate">{sujet.titre}</p>
                                     {lastMessage && (
                                         <p className={`text-xs ${isActive ? 'font-normal opacity-90' : subtleText} truncate`}>
                                             {lastMessage.contenu}
                                         </p>
                                     )}
+                                </div>
+                                <span className={`text-xs ${isActive ? 'opacity-90' : subtleText} block`}>{timeDisplay}</span>
+                                {/* Date + Menu MoreVertical */}
+                                <div className="flex flex-col items-end ml-2 shrink-0 relative">
+                                   
+
+                                    {/* AFFICHAGE CONDITIONNEL DU MENU */}
+                                    {sujet.isCreator && (
+                                        <>
+                                            {/* Icône 3 points (MoreVertical) */}
+                                            <MoreVertical
+                                                size={18}
+                                                className={`cursor-pointer mt-1 ${isActive ? 'text-white' : subtleText} hover:text-indigo-400 transition-colors duration-150`}
+                                                onClick={(e) => {
+                                                    e.stopPropagation(); // Empêche le clic de déclencher handleSujetClick
+                                                    setMenuOpen(menuOpen === sujet.idSujet ? null : sujet.idSujet);
+                                                }}
+                                            />
+
+                                            {/* Menu déroulant */}
+                                            {menuOpen === sujet.idSujet && (
+                                                <div
+                                                    className={`absolute right-0 top-10 w-32 rounded-lg shadow-xl p-1.5 z-50 ${
+                                                        darkMode ? "bg-gray-700 text-white border border-gray-600" : "bg-white text-gray-900 border border-gray-200"
+                                                        }`}
+                                                >
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setEditSujet(sujet); // Définit le sujet à modifier et ouvre le popup
+                                                            setMenuOpen(null);
+                                                        }}
+                                                        className="block w-full text-left text-sm py-1.5 px-2 hover:bg-indigo-100 dark:hover:bg-gray-600 rounded transition duration-100"
+                                                    >
+                                                        Modifier
+                                                    </button>
+
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setDeleteSujet(sujet); // Définit le sujet à supprimer
+                                                            setMenuOpen(null);
+                                                        }}
+                                                        className="block w-full text-left text-sm py-1.5 px-2 hover:bg-red-100 dark:hover:bg-red-800 rounded text-red-600 dark:text-red-400 transition duration-100"
+                                                    >
+                                                        Supprimer
+                                                    </button>
+                                                </div >
+                                            )}
+                                        </>
+                                    )}
+                                    {!sujet.isCreator && <div className="mt-1 w-4 h-4"></div>}
+                                </div>
                             </div>
-                            <div className="flex flex-col items-end ml-2 shrink-0">
-                                    <span className={`text-xs ${isActive ? 'opacity-90' : subtleText} block`}>{timeDisplay}</span>
-                            </div>
-                        </div>
-                    );
+                        );
                     })
                 )}
-                
-                {/* Bouton pour créer un nouveau sujet */}
-                <button
-            onClick={() => setShowCreatePopup(true)}
-            className={"w-full flex items-center justify-center p-3 rounded-xl shadow-lg transition-all duration-300 ease-in-out font-semibold text-sm tracking-wide bg-yellow-500 text-gray-900 border-b-2 border-yellow-600 hover:bg-yellow-400 hover:shadow-xl hover:scale-[1.01] active:bg-yellow-400 active:border-b-2 active:translate-y-px focus:outline-none focus:ring-4 focus:ring-yellow-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none dark:bg-amber-400 dark:text-gray-900 dark:border-amber-700 dark:hover:bg-amber-400 dark:hover:shadow-xl dark:active:bg-amber-400 dark:active:border-b-2 dark:focus:ring-amber-400"}
-            title="Créer un nouveau groupe"
-        >
-            {/* Remplacer 'Plus' par votre icône de création */}
-            <SquarePlus className="w-5 h-5 mr-2" /> 
-            <span>Nouveau Groupe</span>
-        </button>
-
-            </div>
+                  </div>
 
             <div className={`mt-auto pt-4 border-t ${borderDefault}`}>
-                <div className={`flex items-center p-3 rounded-xl shadow-lg border ${borderDefault} transition duration-150 hover:shadow-xl cursor-pointer ${darkMode ? "bg-gray-700 hover:bg-gray-600" : "bg-white hover:bg-gray-50"}`}>
-                    <div className="relative w-10 h-10 shrink-0">
-                        <div className="w-full h-full bg-indigo-400 rounded-full flex items-center justify-center text-white font-bold text-lg">J</div>
-                        <OnlineDot isOnline={true} />
-                    </div>
+                
+                <button
+                    onClick={() => setShowCreatePopup(true)}
+                    className={`
+                // --- BASE : Forme et Disposition ---
+                w-full flex items-center justify-center p-3 rounded-xl
+                shadow-lg transition-all duration-300 ease-in-out
+                font-semibold text-sm tracking-wide 
+                
+                // --- MODE CLAIR (Light Mode) : Vert-Jaune (Chartreuse) ---
+                // Couleur par défaut
+                bg-yellow-500 text-gray-900 border-b-2 border-yellow-600 // Texte sombre sur fond clair
+                
+                // États interactifs
+                hover:bg-yellow-400 hover:shadow-xl hover:scale-[1.01]
+                active:bg-yellow-400 active:border-b-2 active:translate-y-px 
+                focus:outline-none focus:ring-4 focus:ring-yellow-300
+                
+                // --- MODE SOMBRE (Dark Mode) : Vert-Jaune (Chartreuse) ---
+                dark:bg-amber-400 dark:text-gray-900 dark:border-amber-700 // Utilisation d'Amber pour plus de contraste en sombre
+                
+                // États interactifs en mode sombre
+                dark:hover:bg-amber-400 dark:hover:shadow-xl 
+                dark:active:bg-amber-400 dark:active:border-b-2
+                dark:focus:ring-amber-400
+                
+                disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none
+            `}
+                    title="Créer un nouveau groupe"
+                >
+                    
+                    <SquarePlus className="w-5 h-5 mr-2" />
+                    <span>Nouveau Groupe</span>
+                </button>
 
-                    <div className="ml-3 leading-tight overflow-hidden flex-1 min-w-0">
-                    <p className={`text-sm font-bold ${generalText} truncate`}>
-                        {user ? `${user.prenom}` : 'Utilisateur'}
-                    </p>
-
-                        <p className="text-xs text-green-500 truncate">Connecté</p>
-                    </div>
-                </div>
             </div>
         </div>
     );
@@ -604,21 +801,21 @@ export default function MessagePopup({ onClose, darkMode }: MessagePopupProps) {
                 ) : messages.length === 0 ? (
 
                     <div className="flex flex-col items-center justify-center py-70">
-                    {/* Icône Lucide animée */}
-                    <Mail 
-                        className="w-20 h-20 mb-4 text-purple-800"
-                        style={{
-                        animation: "swing 1.5s ease-in-out infinite"
-                        }}
-                    />
+                        {/* Icône Lucide animée */}
+                        <Mail
+                            className="w-20 h-20 mb-4 text-purple-800"
+                            style={{
+                                animation: "swing 1.5s ease-in-out infinite"
+                            }}
+                        />
 
-                    {/* Texte */}
-                    <div className={`text-center text-sm ${subtleText}`}>
-                        Aucun message pour le moment. Soyez le premier à écrire !
-                    </div>
+                        {/* Texte */}
+                        <div className={`text-center text-sm ${subtleText}`}>
+                            Aucun message pour le moment. Soyez le premier à écrire !
+                        </div>
 
-                    {/* Ajout des keyframes dans le style global ou dans un fichier CSS */}
-                    <style jsx>{`
+                        {/* Ajout des keyframes dans le style global ou dans un fichier CSS */}
+                        <style jsx>{`
                         @keyframes swing {
                         0% { transform: rotate(-15deg); }
                         50% { transform: rotate(15deg); }
@@ -628,31 +825,33 @@ export default function MessagePopup({ onClose, darkMode }: MessagePopupProps) {
                     </div>
                 ) : (
                     messages.map((message) => {
-                        const isSent = message.idSender === idUser; 
+                        const isSent = message.idSender === idUser;
                         // Récupérer les initiales pour l'avatar du message reçu
-                          const prenom = message.sender?.prenom || '';
+                        const prenom = message.sender?.prenom || '';
                         const nom = message.sender?.nom || '';
                         const initials = (prenom[0] || '') + (nom[0] || '');
                         const avatarColor = getAvatarColor(message.idSender || 0);
 
                         return (
-                            <div 
-                                key={message.idMessage} 
+                            <div
+                                key={message.idMessage}
                                 className={`flex ${isSent ? 'justify-end' : 'justify-start'} items-start`} // Ajout de items-start
                             >
-                                
+
                                 {/* 💡 1. AVATAR (Pour messages Reçus seulement) */}
                                 {!isSent && (
                                     <div className="relative w-8 h-8 mr-2 shrink-0">
                                      {/* Si l'utilisateur a une image de profil */}
                                      {message.sender?.image ? (
+
                                             <Image
                                                 src={`${API_URL}${message.sender.image}`}
                                                 alt={`${prenom} ${nom}`}
                                                 fill
                                                 className="rounded-full object-cover"
                                             />
-                                    ) : (
+                                        
+                                        ) : (
                                             /* Sinon, avatar avec initiales */
                                             <div
                                                 className={`w-full h-full ${avatarColor} rounded-full flex items-center justify-center font-bold text-xs text-white`}
@@ -660,26 +859,24 @@ export default function MessagePopup({ onClose, darkMode }: MessagePopupProps) {
                                                 {initials.toUpperCase() || '??'}
                                             </div>
                                         )}
-
                                     </div>
                                 )}
 
-
-                                <div 
+                                <div
                                     className={`p-3 max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg shadow-lg ${
                                         isSent
-                                            ? 'bg-indigo-600 text-white rounded-2xl rounded-tr-sm' 
+                                            ? 'bg-indigo-600 text-white rounded-2xl rounded-tr-sm'
                                             : receivedBubble
-                                        } ${isSent ? '' : 'mr-4'}` 
-                                    }
+                                        } ${isSent ? '' : 'mr-4'}`
+                                        }
                                 >
                                     {/* Nom de l'expéditeur pour messages reçus */}
-                                        {!isSent && message.sender && (
-                                            <p className={`text-xs font-semibold mb-1 ${darkMode ? 'text-indigo-400' : 'text-indigo-600'}`}>
-                                                {message.sender.prenom} {message.sender.nom}
-                                            </p>
-                                        )}
-                                    {/*  GESTION DU FICHIER ATTACHÉ */}
+                                    {!isSent && message.sender && (
+                                        <p className={`text-xs font-semibold mb-1 ${darkMode ? 'text-indigo-400' : 'text-indigo-600'}`}>
+                                            {message.sender.prenom} {message.sender.nom}
+                                        </p>
+                                    )}
+                                    {/* GESTION DU FICHIER ATTACHÉ */}
 
                                     {message.fichier && (() => {
                                         const filenameOnly = message.fichier.split("/").pop()?.trim() || "";
@@ -719,14 +916,20 @@ export default function MessagePopup({ onClose, darkMode }: MessagePopupProps) {
 
                                     {/* Contenu textuel */}
                                     {message.contenu && <p className="text-sm break-words">{message.contenu}</p>}
-                                    
-                                    {/* Heure */}
+
                                     <span className={`text-xs block mt-1 text-right ${isSent ? 'opacity-80' : subtleText}`}>
-                                        {formatTime(message.date_creation)}
+                                        {new Date(message.date_creation).toLocaleString([], {
+                                            day: "2-digit",
+                                            month: "2-digit",
+                                            year: "numeric",
+                                            hour: "2-digit",
+                                            minute: "2-digit"
+                                        })}
                                     </span>
+
                                 </div>
                             </div>
-                            
+
                         );
                     })
                 )}
@@ -734,94 +937,140 @@ export default function MessagePopup({ onClose, darkMode }: MessagePopupProps) {
                 <div ref={messagesEndRef} />
             </div>
 
-        <footer className={`p-4 border-t ${borderDefault} ${footerBg} shadow-inner`}>
-        <div className="flex items-center">
+            <footer className={`p-4 border-t ${borderDefault} ${footerBg} shadow-inner`}>
+                <div className="flex items-center">
 
-            {/* Bouton d'importation de fichier */}
-            <label 
-            htmlFor="file-upload"
-            title="Attacher un fichier (sauf vidéo)"
-            className={`p-3 mr-3 ${subtleText} hover:text-indigo-600 hover:bg-gray-100 rounded-xl transition duration-150 cursor-pointer shrink-0 ${darkMode && 'hover:bg-gray-700'}`}
-            >
-            <Paperclip className="w-6 h-6 rotate-45" />
-            <input
-                id="file-upload"
-                type="file"
-                className="hidden"
-                onChange={handleFileChange}
-                accept="image/*, application/pdf, application/msword, application/vnd.ms-excel, application/vnd.openxmlformats-officedocument.wordprocessingml.document, application/vnd.openxmlformats-officedocument.spreadsheetml.document, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, text/plain"
-            />
-            </label>
+                    {/* Bouton d'importation de fichier */}
+                    <label
+                        htmlFor="file-upload"
+                        title="Attacher un fichier (sauf vidéo)"
+                        className={`p-3 mr-3 ${subtleText} hover:text-indigo-600 hover:bg-gray-100 rounded-xl transition duration-150 cursor-pointer shrink-0 ${darkMode && 'hover:bg-gray-700'}`}
+                    >
+                        <Paperclip className="w-6 h-6 rotate-45" />
+                        <input
+                            id="file-upload"
+                            type="file"
+                            className="hidden"
+                            onChange={handleFileChange}
+                            accept="image/*, application/pdf, application/msword, application/vnd.ms-excel, application/vnd.openxmlformats-officedocument.wordprocessingml.document, application/vnd.openxmlformats-officedocument.spreadsheetml.document, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, text/plain"
+                        />
+                    </label>
 
-            {/* Champ message + aperçu fichier */}
-            <div
-            className={`flex items-center p-3 rounded-full border ${borderDefault} ${inputInteractiveClasses} 
+                    {/* Champ message + aperçu fichier */}
+                    <div
+                        className={`flex items-center p-3 rounded-full border ${borderDefault} ${inputInteractiveClasses} 
                 transition mr-3 shadow-sm flex-1
                 ${darkMode ? "bg-gray-700 text-white placeholder-gray-400" : "bg-white text-gray-900 placeholder-gray-500"}
                 disabled:opacity-50 disabled:cursor-not-allowed
                 hover:border-purple-500 focus-within:border-purple-500
             `}
-            >
-            {/* Aperçu du fichier sélectionné */}
-            {selectedFile && (
-                <div className="flex items-center mr-3 px-2 py-1 rounded-lg bg-gray-200 dark:bg-gray-600">
-                <FileText className="w-4 h-4 mr-2" />
-                <span className="text-sm">{selectedFile.name}</span>
-                <button
-                    className="ml-2 text-red-500 hover:text-red-700"
-                    onClick={() => setSelectedFile(null)}
-                >
-                    <X className="w-4 h-4" />
-                </button>
-                </div>
-            )}
+                    >
+                        {/* Aperçu du fichier sélectionné */}
+                        {selectedFile && (
+                            <div className="flex items-center mr-3 px-2 py-1 rounded-lg bg-gray-200 dark:bg-gray-600">
+                                <FileText className="w-4 h-4 mr-2" />
+                                <span className="text-sm">{selectedFile.name}</span>
+                                <button
+                                    className="ml-2 text-red-500 hover:text-red-700"
+                                    onClick={() => setSelectedFile(null)}
+                                >
+                                    <X className="w-4 h-4" />
+                                </button>
+                            </div>
+                        )}
 
-            {/* Champ de message */}
-            <input
-                type="text"
-                placeholder="Écrire un message..."
-                value={messageInput}
-                onChange={(e) => setMessageInput(e.target.value)}
-                onKeyPress={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    handleSendMessage();
-                }
-                }}
-                disabled={!activeChatId || sendingMessage}
-                className={`flex-1 bg-transparent outline-none
+                        {/* Champ de message */}
+                        <input
+                            type="text"
+                            placeholder="Écrire un message..."
+                            value={messageInput}
+                            onChange={(e) => setMessageInput(e.target.value)}
+                            onKeyPress={(e) => {
+                                if (e.key === 'Enter' && !e.shiftKey) {
+                                    e.preventDefault();
+                                    handleSendMessage();
+                                }
+                            }}
+                            disabled={!activeChatId || sendingMessage}
+                            className={`flex-1 bg-transparent outline-none
                 ${darkMode ? "text-white placeholder-gray-400" : "text-gray-900 placeholder-gray-500"}
                 sm:text-sm md:text-base
                 `}
-            />
-            </div>
+                        />
+                    </div>
 
-            {/* Bouton Envoyer */}
-            <button
-            onClick={handleSendMessage}
-            disabled={!activeChatId || (!messageInput.trim() && !selectedFile) || sendingMessage}
-            className="bg-indigo-600 text-white px-4 py-3 rounded-full hover:bg-indigo-700 transition duration-150 shadow-lg flex items-center justify-center space-x-2 shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
-            title="Envoyer"
-            >
-            {sendingMessage ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
-            ) : (
-                <>
-                <Send className="w-5 h-5" />
-                <span className="hidden sm:inline">Envoyer</span>
-                </>
-            )}
-            </button>
-        </div>
-        </footer>
+                    {/* Bouton Envoyer */}
+                    <button
+                        onClick={handleSendMessage}
+                        disabled={!activeChatId || (!messageInput.trim() && !selectedFile) || sendingMessage}
+                        className="bg-indigo-600 text-white px-4 py-3 rounded-full hover:bg-indigo-700 transition duration-150 shadow-lg flex items-center justify-center space-x-2 shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="Envoyer"
+                    >
+                        {sendingMessage ? (
+                            <Loader2 className="w-5 h-5 animate-spin" />
+                        ) : (
+                            <>
+                                <Send className="w-5 h-5" />
+                                <span className="hidden sm:inline">Envoyer</span>
+                            </>
+                        )}
+                    </button>
+                </div>
+            </footer>
 
         </div>
     )
 
+    //  POPUP DE CONFIRMATION DE SUPPRESSION
+    const DeleteConfirmationPopup = () => {
+        if (!deleteSujet) return null;
+
+        return (
+            <div className="fixed inset-0 flex items-center justify-center z-50">
+                <div
+                    className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+                    onClick={() => setDeleteSujet(null)}
+                />
+
+                <div
+                    className={`relative w-[90%] max-w-sm p-6 rounded-xl shadow-2xl ${
+                        darkMode ? "bg-gray-800 text-white" : "bg-white text-gray-900"
+                        }`}
+                >
+                    <h2 className={`text-lg font-bold mb-4 text-center ${generalText}`}>
+                        Confirmer la suppression
+                    </h2>
+
+                    <p className={`mb-6 text-center text-sm ${subtleText}`}>
+                        Voulez-vous vraiment supprimer le sujet{" "}
+                        <span className="font-semibold text-red-500 dark:text-red-400">{deleteSujet.titre}</span> ?
+                        Cette action est irréversible et supprimera tous les messages associés.
+                    </p>
+
+                    <div className="flex justify-center gap-4">
+                        <button
+                            onClick={() => setDeleteSujet(null)}
+                            className="px-5 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg transition"
+                        >
+                            Annuler
+                        </button>
+
+                        <button
+                            onClick={() => confirmDelete(deleteSujet.idSujet)}
+                            className="px-5 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition"
+                        >
+                            Supprimer
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
     return (
         <>
-        <div
-            className={`
+            <div
+                className={`
                 absolute
                 top-0 left-0 right-0 
                 w-full h-full 
@@ -835,7 +1084,7 @@ export default function MessagePopup({ onClose, darkMode }: MessagePopupProps) {
                 bottom-0 
                 transform -translate-y-1 
             `}
-        >
+            >
                 {/* Message d'erreur */}
                 {error && (
                     <div className={`absolute top-4 right-4 z-50 p-3 rounded-lg shadow-lg ${darkMode ? 'bg-red-900 text-white' : 'bg-red-100 text-red-800'} flex items-center justify-between max-w-md`}>
@@ -849,17 +1098,19 @@ export default function MessagePopup({ onClose, darkMode }: MessagePopupProps) {
                     </div>
                 )}
 
-            <div className="flex flex-row h-full w-full overflow-hidden">
-                {renderSidebar()}
-                {renderChatWindow()}
+                <div className="flex flex-row h-full w-full overflow-hidden">
+                    {renderSidebar()}
+                    {renderChatWindow()}
+                </div>
             </div>
-        </div>
 
             {/* Popup de création de sujet  */}
-            {showCreatePopup && (
+            {isPopupOpen && (
                 <div className="fixed inset-0 flex items-center justify-center z-50 backdrop-blur-sm">
                     <div className={`relative w-[95%] max-w-lg p-6 rounded-xl shadow-2xl ${darkMode ? 'bg-gray-800 text-white' : 'bg-white text-gray-900'}`}>
-                        <h2 className={`text-xl font-bold mb-4 text-center ${generalText}`}>Créer un nouveau groupe</h2>
+                        <h2 className={`text-xl font-bold mb-4 text-center ${generalText}`}>
+                            {isEditMode ? 'Modifier le groupe' : 'Créer un nouveau groupe'}
+                        </h2>
                         <div className="space-y-4">
                             <input
                                 type="text"
@@ -869,13 +1120,19 @@ export default function MessagePopup({ onClose, darkMode }: MessagePopupProps) {
                                 className={`w-full px-3 py-2 rounded-lg border ${borderDefault} ${darkMode ? "bg-gray-700 text-white placeholder-gray-400" : "bg-white text-gray-900 placeholder-gray-500"}`}
                             />
 
-                            {/* Importer une image  */}
+                            {/* Importer une image */}
                             <label className="flex items-center gap-3 cursor-pointer">
                                 <div className="flex items-center justify-center bg-[#19ff11] text-white p-3 rounded-lg shadow">
                                     <FileText size={20} />
                                 </div>
                                 <span className={darkMode ? "text-[#19ff11]" : "text-[#17f]"}>
-                                    {newSujetImage ? newSujetImage.name : "Importer une image (optionnelle)"}
+                                    {/* Affiche l'image actuellement sélectionnée (pour la création/modification) */}
+                                    {newSujetImage
+                                        ? newSujetImage.name
+                                        : isEditMode && editSujet.image
+                                            ? `Remplacer l'image actuelle (${editSujet.image})`
+                                            : "Importer une image (optionnelle)"
+                                    }
                                 </span>
                                 <input
                                     ref={fileInputRef}
@@ -894,6 +1151,7 @@ export default function MessagePopup({ onClose, darkMode }: MessagePopupProps) {
                                 <button
                                     onClick={() => {
                                         setShowCreatePopup(false);
+                                        setEditSujet(null); // Ferme le mode modification
                                         setNewSujetTitre('');
                                         setNewSujetImage(null);
                                         if (fileInputRef.current) fileInputRef.current.value = '';
@@ -903,17 +1161,17 @@ export default function MessagePopup({ onClose, darkMode }: MessagePopupProps) {
                                     Annuler
                                 </button>
                                 <button
-                                    onClick={handleCreateSujet}
+                                    onClick={isEditMode ? handleUpdateSujet : handleCreateSujet}
                                     disabled={!newSujetTitre.trim() || creatingSujet}
                                     className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
                                 >
                                     {creatingSujet ? (
                                         <>
                                             <Loader2 className="w-5 h-5 animate-spin mr-2" />
-                                            Création...
+                                            {isEditMode ? 'Modification...' : 'Création...'}
                                         </>
                                     ) : (
-                                        'Ajouter'
+                                        isEditMode ? 'Modifier' : 'Ajouter'
                                     )}
                                 </button>
                             </div>
@@ -921,6 +1179,12 @@ export default function MessagePopup({ onClose, darkMode }: MessagePopupProps) {
                     </div>
                 </div>
             )}
+
+            {/* APPEL DU POPUP DE CONFIRMATION DE SUPPRESSION */}
+            <DeleteConfirmationPopup />
+
         </>
     );
 }
+
+

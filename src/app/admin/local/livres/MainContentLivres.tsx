@@ -64,6 +64,24 @@ const imageInputRef = useRef<HTMLInputElement | null>(null);
       return "";
     }
   };
+   // fetch formations from backend
+    /*const fetchFormations = async () => {
+      try {
+        const res = await fetch("http://localhost:8000/formation/ReadFormation");
+        const data = await res.json();
+        const arr = Array.isArray(data) ? data : data.formations || [];
+        const mapped = arr.map((f: any) => ({
+          idFormation: f.idFormation ?? f.id ?? f.id_formation ?? 0,
+          titre: f.titre ?? f.name ?? "Formation",
+          description: f.description ?? "",
+          image: normalizeImage(f.image),
+        }));
+        setFormations(mapped);
+      } catch (err) {
+        console.error("Erreur fetch formations:", err);
+      }
+    };*/
+    
 
   // fetch formations from backend
   const fetchFormations = useCallback(async () => {

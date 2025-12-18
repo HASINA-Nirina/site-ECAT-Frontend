@@ -59,9 +59,10 @@ export default function MainContent({ darkMode, lang }: MainContentProps) {
   const [formations, setFormations] = useState<number>(0);
   const [paiements, setPaiements] = useState<number>(0);
   const [livres, setLivres] = useState<number>(0);
-  const [tempsActivite, setTempsActivite] = useState<number>(0); // en heures par exemple
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const [historique, setHistorique] = useState<{ mois: string; livres: number; heures: number }[]>([]);
+  const [historique, setHistorique] = useState<{ mois: string; livres: number }[]>([]);
 
   useEffect(() => {
     setMounted(true);
@@ -72,18 +73,29 @@ export default function MainContent({ darkMode, lang }: MainContentProps) {
 
   useEffect(() => {
     const fetchData = async () => {
+      setLoading(true);
+      setError(null);
       try {
-        const res = await fetch("http://localhost:8000/student/dashboard");
-        if (!res.ok) return;
+        const token = localStorage.getItem("token");
+        const res = await fetch("http://localhost:8000/student/dashboard", {
+          credentials: "include",
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        });
+        
+        if (!res.ok) {
+          throw new Error(`Erreur HTTP: ${res.status}`);
+        }
+        
         const data = await res.json();
         setFormations(data.formations ?? 0);
         setPaiements(data.paiements ?? 0);
         setLivres(data.livres ?? 0);
-        setTempsActivite(data.temps_activite ?? 0);
-
-        setHistorique(data.historique ?? []); // [{mois:'Jan', livres:2, heures:5},...]
+        setHistorique(data.historique ?? []); // [{mois:'Jan', livres:2},...]
       } catch (e) {
-        console.warn("Erreur fetch étudiant:", e);
+        console.error("Erreur fetch étudiant:", e);
+        setError("Impossible de charger les statistiques du dashboard.");
+      } finally {
+        setLoading(false);
       }
     };
     fetchData();
@@ -96,12 +108,11 @@ export default function MainContent({ darkMode, lang }: MainContentProps) {
     { name: "Formations", value: formations },
     { name: "Paiements", value: paiements },
     { name: "Livres débloqués", value: livres },
-    { name: "Temps activité", value: tempsActivite },
   ];
 
   const pieColors = rankToColors(pieData.map(d => d.value));
 
-  const barColors = rankToColors(historique.map(h => h.livres + h.heures));
+  const barColors = rankToColors(historique.map(h => h.livres));
 
   return (
     <main className="flex-1 p-6 relative">
@@ -120,64 +131,98 @@ export default function MainContent({ darkMode, lang }: MainContentProps) {
         </div>
       </div>
 
+      {/* Affichage du chargement ou de l'erreur */}
+      {loading && (
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+            <p className={darkMode ? "text-white" : "text-gray-700"}>
+              {lang === "fr" ? "Chargement des statistiques..." : "Loading statistics..."}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {error && (
+        <div className="mb-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
+          <p>{error}</p>
+        </div>
+      )}
+
       {/* Top stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-6 mb-6">
-        <div className={statCardClass}>
-          <div className="flex items-center gap-3 mb-2"><BookOpen size={22} color="#fbbf24" /><h3 className="font-semibold text-lg">Formations</h3></div>
-          <h2 className="text-4xl font-extrabold text-yellow-400">{formations}</h2>
-          <p className="text-sm opacity-75">Formations suivies</p>
-        </div>
-        <div className={statCardClass}>
-          <div className="flex items-center gap-3 mb-2"><CreditCard size={22} color="#3b82f6" /><h3 className="font-semibold text-lg">Paiements</h3></div>
-          <h2 className="text-4xl font-extrabold text-green-400">{paiements}</h2>
-          <p className="text-sm opacity-75">Paiements validés</p>
-        </div>
-        <div className={statCardClass}>
-          <div className="flex items-center gap-3 mb-2"><Users size={22} color="#16a34a" /><h3 className="font-semibold text-lg">Livres</h3></div>
-          <h2 className="text-4xl font-extrabold text-blue-400">{livres}</h2>
-          <p className="text-sm opacity-75">Livres débloqués</p>
-        </div>
-        <div className={statCardClass}>
-          <div className="flex items-center gap-3 mb-2"><Clock size={22} color="#ef4444" /><h3 className="font-semibold text-lg">Activité</h3></div>
-          <h2 className="text-4xl font-extrabold text-red-400">{tempsActivite}h</h2>
-          <p className="text-sm opacity-75">Heures d&apos;activité</p>
-        </div>
-      </div>
+      {!loading && !error && (
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-6">
+            <div className={statCardClass}>
+              <div className="flex items-center gap-3 mb-2"><BookOpen size={22} color="#fbbf24" /><h3 className="font-semibold text-lg">Formations</h3></div>
+              <h2 className="text-4xl font-extrabold text-yellow-400">{formations}</h2>
+              <p className="text-sm opacity-75">Formations suivies</p>
+            </div>
+            <div className={statCardClass}>
+              <div className="flex items-center gap-3 mb-2"><CreditCard size={22} color="#3b82f6" /><h3 className="font-semibold text-lg">Paiements</h3></div>
+              <h2 className="text-4xl font-extrabold text-green-400">{paiements}</h2>
+              <p className="text-sm opacity-75">Paiements validés</p>
+            </div>
+            <div className={statCardClass}>
+              <div className="flex items-center gap-3 mb-2"><Users size={22} color="#16a34a" /><h3 className="font-semibold text-lg">Livres</h3></div>
+              <h2 className="text-4xl font-extrabold text-blue-400">{livres}</h2>
+              <p className="text-sm opacity-75">Livres débloqués</p>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Graphiques */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        {/* Diagramme circulaire */}
-        <div className={chartCardClass}>
-          <h2 className="text-lg font-semibold mb-4 text-center">Répartition des activités</h2>
-          <PieChart width={300} height={300}>
-            <ReTooltip content={<CustomTooltip darkMode={darkMode} />} />
-            <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={70} outerRadius={120} paddingAngle={4} cornerRadius={10} startAngle={90} endAngle={-270} label={renderCustomLabel} labelLine={false}>
-              {pieData.map((entry, index) => <Cell key={index} fill={pieColors[index]} />)}
-            </Pie>
-            <Legend layout="horizontal" verticalAlign="bottom" align="center" iconType="circle" wrapperStyle={{ paddingTop: "20px" }} formatter={v => <span className="text-sm font-medium opacity-90">{v}</span>} />
-          </PieChart>
-        </div>
+      {!loading && !error && (
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+          {/* Diagramme circulaire */}
+          <div className={chartCardClass}>
+            <h2 className="text-lg font-semibold mb-4 text-center">Répartition des activités</h2>
+            {pieData.some(d => d.value > 0) ? (
+              <PieChart width={300} height={300}>
+                <ReTooltip content={<CustomTooltip darkMode={darkMode} />} />
+                <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={70} outerRadius={120} paddingAngle={4} cornerRadius={10} startAngle={90} endAngle={-270} label={renderCustomLabel} labelLine={false}>
+                  {pieData.map((entry, index) => <Cell key={index} fill={pieColors[index]} />)}
+                </Pie>
+                <Legend layout="horizontal" verticalAlign="bottom" align="center" iconType="circle" wrapperStyle={{ paddingTop: "20px" }} formatter={v => <span className="text-sm font-medium opacity-90">{v}</span>} />
+              </PieChart>
+            ) : (
+              <div className="flex items-center justify-center h-[300px]">
+                <p className={darkMode ? "text-gray-400" : "text-gray-600"}>
+                  {lang === "fr" ? "Aucune donnée disponible" : "No data available"}
+                </p>
+              </div>
+            )}
+          </div>
 
-        {/* Histogramme */}
-        <div className={chartCardClass}>
-          <h2 className="text-lg font-semibold mb-4 text-center">Historique mensuel</h2>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={historique} barSize={40}>
-              <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? "#222731" : "#e6eef8"} />
-              <XAxis dataKey="mois" tick={{ fill: "#9aa4b2" }} />
-              <YAxis tick={{ fill: "#9aa4b2" }} />
-              <ReTooltip content={<CustomTooltip darkMode={darkMode} />} />
-              <Bar dataKey="livres" radius={[10, 10, 0, 0]}>
-                {historique.map((entry, i) => <Cell key={i} fill={barColors[i]} />)}
-              </Bar>
-              <Bar dataKey="heures" radius={[10, 10, 0, 0]}>
-                {historique.map((entry, i) => <Cell key={`h-${i}`} fill={barColors[i]} />)}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-          <p className="mt-3 text-xs opacity-75 text-center">Couleurs selon l&apos;importance des valeurs : vert = élevé, bleu/jaune = moyen, rouge = faible</p>
+          {/* Histogramme */}
+          <div className={chartCardClass}>
+            <h2 className="text-lg font-semibold mb-4 text-center">Historique mensuel</h2>
+            {historique.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={historique} barSize={40}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? "#222731" : "#e6eef8"} />
+                  <XAxis dataKey="mois" tick={{ fill: darkMode ? "#9aa4b2" : "#4b5563" }} />
+                  <YAxis tick={{ fill: darkMode ? "#9aa4b2" : "#4b5563" }} />
+                  <ReTooltip content={<CustomTooltip darkMode={darkMode} />} />
+                  <Bar dataKey="livres" radius={[10, 10, 0, 0]}>
+                    {historique.map((entry, i) => (
+                      <Cell key={i} fill={barColors[i] || "#3b82f6"} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-[300px]">
+                <p className={darkMode ? "text-gray-400" : "text-gray-600"}>
+                  {lang === "fr" ? "Aucune donnée disponible" : "No data available"}
+                </p>
+              </div>
+            )}
+            <p className="mt-3 text-xs opacity-75 text-center">Couleurs selon l&apos;importance des valeurs : vert = élevé, bleu/jaune = moyen, rouge = faible</p>
+          </div>
         </div>
-      </div>
+      )}
             {/* Floating message button */}
       <button
         className="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-purple-600 hover:bg-purple-700 text-white flex items-center justify-center shadow-xl transition-all duration-300 hover:scale-105"

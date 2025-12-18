@@ -44,7 +44,6 @@ export default function MainContentAchat({ darkMode, lang }: MainContentProps) {
   const [userId, setUserId] = useState<number | null>(null);
   const [showMessage, setShowMessage] = useState(false);
 
-
   const bgClass = darkMode ? "bg-gray-900 text-white" : "bg-gray-50 text-black";
   const cardClass = darkMode ? "bg-gray-800 text-white" : "bg-white text-black";
   const borderClass = darkMode ? "border-gray-700" : "border-gray-200";
@@ -168,8 +167,8 @@ export default function MainContentAchat({ darkMode, lang }: MainContentProps) {
           
         
           const arr = Array.isArray(data) ? data : data.livres || [];
-          console.log("📚 Array après traitement:", arr);
-          console.log("🔢 Nombre de livres:", arr.length);
+          console.log(" Array après traitement:", arr);
+          console.log(" Nombre de livres:", arr.length);
           
           const formatted = arr.map((l: any, index: number) => {
             const livre = {
@@ -199,7 +198,7 @@ export default function MainContentAchat({ darkMode, lang }: MainContentProps) {
     }
   }, [selectedFormation, userId]);
 
-  // ✅ Gestion téléphone internationale avec typage
+  //  Gestion téléphone internationale avec typage
   const handlePhoneChange = (value: string, data: CountryData) => {
     const formattedValue = value.startsWith("+") ? value : "+" + value;
     try {
@@ -236,7 +235,9 @@ export default function MainContentAchat({ darkMode, lang }: MainContentProps) {
   const handleLivreClick = (livre: Livre) => {
     if (livre.access) {
       // Si le livre est débloqué, ouvrir directement le PDF
-      window.open(`http://localhost:8000/${livre.pdf}`, "_blank");
+      window.open(`http://127.0.0.1:8000/forum/filesdownload/${encodeURIComponent(livre.pdf)}`, "_blank");
+
+                     
       // Sinon, afficher le formulaire de paiement
     } else {
       setSelectedLivre(livre);
@@ -372,270 +373,255 @@ export default function MainContentAchat({ darkMode, lang }: MainContentProps) {
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {livres.map((livre, i) => (
-          <motion.div
-            key={livre.id}
-            className={`rounded-2xl overflow-hidden shadow-lg transform transition hover:scale-[1.02] hover:shadow-2xl relative ${
-              darkMode ? "bg-gray-800 text-white" : "bg-white text-gray-900"
-            }`}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: i * 0.08 }}
-          >
-            {/* Image du livre */}
-            <div className="relative w-full h-35 overflow-hidden">
-              {livre.image ? (
-                <Image src={livre.image} alt={livre.title} fill className="object-cover w-full h-full" />
-              ) : (
-                <div className="w-full h-full bg-blue-200 flex items-center justify-center text-white font-bold text-2xl">
-                  {livre.title.charAt(0).toUpperCase()}
-                </div>
-              )}
+  <motion.div
+    key={livre.id}
+    className={`rounded-2xl overflow-hidden shadow-lg transform transition hover:scale-[1.02] hover:shadow-2xl relative ${
+      darkMode ? "bg-gray-800 text-white" : "bg-white text-gray-900"
+    }`}
+    initial={{ opacity: 0, y: 20 }}
+    animate={{ opacity: 1, y: 0 }}
+    transition={{ duration: 0.4, delay: i * 0.08 }}
+  >
+    {/* Image du livre */}
+    <div className="relative w-full h-35 overflow-hidden">
+      {livre.image ? (
+        <Image
+          src={livre.image}
+          alt={livre.title}
+          fill
+          className="object-cover w-full h-full"
+        />
+      ) : (
+        <div className="w-full h-full bg-blue-200 flex items-center justify-center text-white font-bold text-2xl">
+          {livre.title.charAt(0).toUpperCase()}
+        </div>
+      )}
 
-              {/* Icône d'accès */}
-              <div className="absolute top-2 right-2">
-                {livre.access ? (
-                  <Unlock size={20} className="text-green-500" />
-                ) : (
-                  <Lock size={20} className="text-red-500" />
-                )}
-              </div>
-            </div>
-
-            {/* Détails du livre */}
-            <div className="p-4 flex flex-col gap-2">
-              <h3 className="text-lg font-semibold text-[#17f]">{livre.title}</h3>
-              <p className={`text-sm ${darkMode ? "text-white" : "text-gray-900"}`}>
-                <span className="font-semibold">{lang === "fr" ? "Auteur" : "Author"}:</span> {livre.author}
-              </p>
-              <p className={`text-sm ${darkMode ? "text-white" : "text-gray-900"}`}>
-                <span className="font-semibold">{lang === "fr" ? "Prix" : "Price"}:</span> {livre.prix} Ar
-              </p>
-
-              {/* Fichier PDF */}
-              {livre.pdf && (
-                <div className="flex items-center gap-2 text-[#17f] font-semibold mt-1">
-                  <FileText size={16} /> 
-                  <span className="truncate">{livre.pdf.split("/").pop()}</span>
-                </div>
-              )}
-
-              {/* Description du livre */}
-              {livre.description && (
-                <p className={`text-sm leading-relaxed ${darkMode ? "text-gray-300" : "text-gray-700"}`}>
-                {livre.description ? (livre.description.length > 200 ? livre.description.substring(0,200)+"..." : livre.description)
-                : ""}
-              </p>
-
-              )}
-
-              {/* Bouton lire/acheter */}
-              <button
-                onClick={() => handleLivreClick(livre)}
-                className={`w-full flex items-center justify-center gap-2 py-2 rounded-lg font-medium transition ${
-                  livre.access ? "bg-[#17f] hover:bg-[#0f0fcf] text-white" : "bg-blue-600 hover:bg-blue-700 text-white"
-                }`}
-              >
-                {livre.access ? (
-                  <>
-                    <Eye size={18} /> {lang === "fr" ? "Lire maintenant" : "Read now"}
-                  </>
-                ) : (
-                  <>
-                    <ShoppingCart size={18} /> {lang === "fr" ? "Acheter" : "Buy"}
-                  </>
-                )}
-              </button>
-            </div>
-          </motion.div>
-        ))}
-      </div>
-
+      {/* Cadenas animé */}
+      <div className="absolute top-2 right-2">
+        <motion.div
+          animate={
+            livre.access
+              ? { scale: [1, 1.3, 1], rotate: [0, 10, -10, 0] }
+              : { rotate: [0, 10, -10, 0] }
+          }
+          transition={{ duration: 0.6, repeat: livre.access ? 1 : Infinity }}
+        >
+          {livre.access ? (
+            <Unlock size={20} className="text-green-500" />
+          ) : (
+            <Lock size={20} className="text-red-500" />
           )}
-          </motion.div>
+        </motion.div>
+      </div>
+    </div>
+
+    {/* Contenu */}
+    <div className="p-4">
+      <h2 className="text-lg font-semibold mb-2 text-[#17f]">
+        {livre.title}
+      </h2>
+
+      <p className={`text-sm mb-2 ${darkMode ? "text-gray-300" : "text-gray-700"}`}>
+        {lang === "fr" ? "Auteur" : "Author"} : {livre.author}
+      </p>
+
+      <p className={`text-sm mb-4 font-semibold ${darkMode ? "text-white" : "text-gray-900"}`}>
+        {livre.prix} Ar
+      </p>
+
+      <button
+        onClick={() => handleLivreClick(livre)}
+        className={`w-full flex items-center justify-center gap-2 py-2 rounded-lg font-medium transition ${
+          livre.access
+            ? "bg-[#17f] hover:bg-[#0f0fcf] text-white"
+            : "bg-blue-600 hover:bg-blue-700 text-white"
+        }`}
+      >
+        {livre.access ? (
+          <>
+            <Eye size={18} /> {lang === "fr" ? "Lire maintenant" : "Read now"}
+          </>
+        ) : (
+          <>
+            <ShoppingCart size={18} /> {lang === "fr" ? "Acheter" : "Buy"}
+          </>
         )}
+      </button>
+    </div>
+  </motion.div>
+))}
 
-        {/* =============== PAGE 3 : PAIEMENT =============== */}
-        {selectedLivre && !showConfirmation && selectedFormation && (
-          <motion.div
-            key="paiement"
-            initial={{ opacity: 0, x: 50 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -50 }}
-            transition={{ duration: 0.4 }}
+      {/* Fin de la grille des livres */}
+      </div>
+        )}
+      </motion.div>
+    )}
+
+    {/* =============== PAGE 3 : PAIEMENT =============== */}
+    <AnimatePresence mode="wait">
+      {selectedLivre && !showConfirmation && (
+        <motion.div
+          key="paiement-screen"
+          initial={{ opacity: 0, x: 50 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: -50 }}
+          transition={{ duration: 0.4 }}
+        >
+          <button
+            className="flex items-center gap-2 mb-4 text-purple-600 hover:text-purple-700 font-medium"
+            onClick={() => setSelectedLivre(null)}
           >
-            <button
-              className="flex items-center gap-2 mb-4 text-purple-600 hover:text-purple-700"
-              onClick={() => setSelectedLivre(null)}
-            >
-              <ChevronLeft size={20} /> {lang === "fr" ? "Retour aux livres" : "Back to books"}
-            </button>
+            <ChevronLeft size={20} /> {lang === "fr" ? "Retour aux livres" : "Back to books"}
+          </button>
 
-            <div
-              className={`flex flex-col lg:flex-row gap-6 max-w-4xl mx-auto ${cardClass} border ${borderClass} rounded-2xl shadow-lg p-6`}
-            >
-              {/* Formulaire */}
-              <div className="flex-1 flex flex-col gap-4">
-                <h2 className="text-2xl font-bold mb-2">{lang === "fr" ? "Paiement" : "Payment"}</h2>
-                <p className={`text-sm mb-4 ${darkMode ? "text-gray-300" : "text-gray-600"}`}>
-                  Remplissez les informations pour procéder au paiement mobile.
-                </p>
-
+          <div className={`flex flex-col lg:flex-row gap-6 max-w-4xl mx-auto ${cardClass} border ${borderClass} rounded-2xl shadow-lg p-6`}>
+            
+            {/* Formulaire de paiement */}
+            <div className="flex-1 flex flex-col gap-4">
+              <h2 className="text-2xl font-bold mb-2">
+                {lang === "fr" ? "Finaliser l'achat" : "Complete Purchase"}
+              </h2>
+              
+              <div className="grid grid-cols-2 gap-4">
                 <input
                   type="text"
                   name="firstName"
-                  placeholder="Prénom"
+                  placeholder={lang === "fr" ? "Prénom" : "First Name"}
                   value={form.firstName}
                   onChange={handleChange}
-                  className={`w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 ${
-                    darkMode
-                      ? "bg-gray-800 text-white placeholder-gray-400 border-gray-700"
-                      : "bg-white text-black placeholder-gray-500 border-gray-200"
-                  }`}
+                  className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-purple-500 outline-none ${darkMode ? "bg-gray-700 border-gray-600 text-white" : "bg-white border-gray-200"}`}
                 />
-
                 <input
                   type="text"
                   name="lastName"
-                  placeholder="Nom"
+                  placeholder={lang === "fr" ? "Nom" : "Last Name"}
                   value={form.lastName}
                   onChange={handleChange}
-                  className={`w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 ${
-                    darkMode
-                      ? "bg-gray-800 text-white placeholder-gray-400 border-gray-700"
-                      : "bg-white text-black placeholder-gray-500 border-gray-200"
-                  }`}
+                  className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-purple-500 outline-none ${darkMode ? "bg-gray-700 border-gray-600 text-white" : "bg-white border-gray-200"}`}
                 />
-
-                <div>
-                  <label className="block text-sm mb-2">
-                    {lang === "fr" ? "Méthode de paiement" : "Payment method"}
-                  </label>
-                  <select
-                    name="paymentMethod"
-                    value={form.paymentMethod}
-                    onChange={handleChange}
-                    className={`w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 ${
-                      darkMode ? "bg-gray-800 text-white border-gray-700" : "bg-white text-black border-gray-200"
-                    }`}
-                  >
-                    <option value="airtel">Airtel Money</option>
-                    <option value="orange">Orange Money</option>
-                    <option value="telma">Telma Money</option>
-                  </select>
-                </div>
-
-                {/* ✅ Champ téléphone international complet */}
-                <div>
-                  <label className="block text-sm mb-2">
-                    {lang === "fr" ? "Numéro Mobile Money" : "Mobile number"}
-                  </label>
-                  <PhoneInput
-                    country={"mg"}
-                    enableSearch
-                    value={form.mobileNumber}
-                    onChange={handlePhoneChange}
-                    inputClass={`!w-full !h-12 !rounded-lg !text-base ${
-                      darkMode ? "!bg-gray-800 !text-white" : "!bg-white !text-black"
-                    }`}
-                    buttonClass={`${darkMode ? "!bg-gray-700" : "!bg-gray-100"}`}
-                    dropdownClass={`${darkMode ? "!bg-gray-800 !text-white" : "!bg-white !text-black"}`}
-                    placeholder="Ex: +261 38 13 893 32"
-                  />
-                  {phoneError && <p className="text-red-500 text-sm mt-2">{phoneError}</p>}
-                </div>
-
-                <div className="flex gap-3 mt-3">
-                  <button
-                    onClick={() => setSelectedLivre(null)}
-                    className="flex-1 bg-gray-300 hover:bg-gray-400 text-black py-3 rounded-lg transition"
-                  >
-                    {lang === "fr" ? "Annuler" : "Cancel"}
-                  </button>
-
-                  <button
-                    onClick={() => setShowConfirmation(true)}
-                    className="flex-1 bg-green-600 hover:bg-green-700 text-white py-3 rounded-lg font-semibold transition"
-                  >
-                    {lang === "fr" ? "Payer" : "Pay"}
-                  </button>
-                </div>
               </div>
 
-              {/* Aperçu livre */}
-              <div className="flex-1 flex flex-col gap-4 items-center justify-center">
-                <h3 className={`text-xl font-semibold mb-1 ${darkMode ? "text-white" : "text-black"}`}>
-                  {selectedLivre.title}
-                </h3>
-                <p className={`text-sm opacity-80 mb-1 ${darkMode ? "text-gray-300" : "text-gray-700"}`}>
-                  {lang === "fr" ? "Formation" : "Course"}: {selectedFormation.titre}
-                </p>
-                <p className={`text-sm opacity-80 mb-2 ${darkMode ? "text-gray-300" : "text-gray-700"}`}>
-                  {lang === "fr" ? "Auteur" : "Author"}: {selectedLivre.author}
-                </p>
-                <p className={`text-lg font-bold mb-2 ${darkMode ? "text-white" : "text-black"}`}>
-                  {selectedLivre.prix} Ar
-                </p>
+              <select
+                name="paymentMethod"
+                value={form.paymentMethod}
+                onChange={handleChange}
+                className={`w-full p-3 border rounded-lg outline-none ${darkMode ? "bg-gray-700 border-gray-600 text-white" : "bg-white border-gray-200"}`}
+              >
+                <option value="airtel">Airtel Money</option>
+                <option value="orange">Orange Money</option>
+                <option value="telma">Telma Money</option>
+              </select>
 
-                <div className="w-full h-48 lg:h-64 overflow-hidden rounded-xl shadow-lg relative">
-                  <Image
-                    src="https://images.unsplash.com/photo-1581091870625-72be1b594fa7?w=400"
-                    alt="Illustration paiement"
-                    fill
-                    className="object-cover rounded-xl"
-                  />
-                </div>
-              </div>
-            </div>
-          </motion.div>
-        )}
-
-        {/* =============== PAGE 4 : CONFIRMATION =============== */}
-        {showConfirmation && selectedLivre && (
-          <motion.div
-            key="confirmation"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.4 }}
-          >
-            <button
-              className="flex items-center gap-2 mb-4 text-purple-600 hover:text-purple-700"
-              onClick={() => setShowConfirmation(false)}
-            >
-              <ChevronLeft size={20} /> {lang === "fr" ? "Retour au paiement" : "Back to payment"}
-            </button>
-
-            <div
-              className={`p-6 rounded-xl ${cardClass} border ${borderClass} shadow-md max-w-md mx-auto flex flex-col gap-4 text-center`}
-            >
-              <h1 className="text-2xl font-bold mb-4">
-                {lang === "fr" ? "Paiement confirmé !" : "Payment Confirmed!"}
-              </h1>
-              <p className="mb-4">
-                {lang === "fr"
-                  ? `Le livre ${selectedLivre?.title} est maintenant débloqué.`
-                  : `Book ${selectedLivre?.title} is now unlocked.`}
-              </p>
-              <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
-                {lang === "fr" ? "Télécharger le livre" : "Download the book"}
-              </button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-      <button
-          className="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-purple-600 hover:bg-purple-700 text-white flex items-center justify-center shadow-xl transition-all duration-300 hover:scale-105 z-50"
-          title="Messages"
-          onClick={() => setShowMessage(true)}
-        >
-          <MessageCircle size={28} />
-      </button>
-            {showMessage && (
-              <MessagePopup
-                darkMode={darkMode}
-                onClose={() => setShowMessage(false)}
+              <PhoneInput
+                country={"mg"}
+                value={form.mobileNumber}
+                onChange={handlePhoneChange}
+                containerClass="!w-full"
+                inputClass={`!w-full !h-12 !rounded-lg ${darkMode ? "!bg-gray-700 !text-white !border-gray-600" : ""}`}
+                buttonClass={`${darkMode ? "!bg-gray-600 !border-gray-600" : ""}`}
               />
-            )}
-    </main>
-  );
+
+              <div className="flex gap-3 mt-4">
+                <button 
+                  onClick={() => setSelectedLivre(null)} 
+                  className="flex-1 px-4 py-3 rounded-lg bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium transition"
+                >
+                  {lang === "fr" ? "Annuler" : "Cancel"}
+                </button>
+                <button 
+                  onClick={() => setShowConfirmation(true)} 
+                  className="flex-1 px-4 py-3 rounded-lg bg-green-600 hover:bg-green-700 text-white font-bold shadow-md transition"
+                >
+                  {lang === "fr" ? "Payer" : "Pay"} {selectedLivre.prix} Ar
+                </button>
+              </div>
+            </div>
+
+            {/* Récapitulatif du livre sélectionné */}
+            <div className="flex-1 flex flex-col gap-4 bg-gray-100 dark:bg-gray-900/50 p-6 rounded-xl items-center justify-center text-center">
+              <div className="relative w-32 h-44 shadow-xl rounded-lg overflow-hidden mb-2">
+                {selectedLivre.image ? (
+                   <Image src={selectedLivre.image} alt={selectedLivre.title} fill className="object-cover" />
+                ) : (
+                   <div className="w-full h-full bg-blue-500 flex items-center justify-center text-white text-3xl font-bold">
+                     {selectedLivre.title.charAt(0)}
+                   </div>
+                )}
+              </div>
+              <h3 className="text-xl font-bold text-purple-600">{selectedLivre.title}</h3>
+              <p className="text-sm opacity-75 italic">{selectedLivre.author}</p>
+              <div className="h-px w-16 bg-gray-300 my-2"></div>
+              <p className="text-2xl font-black">{selectedLivre.prix} Ar</p>
+            </div>
+          </div>
+        </motion.div>
+      )}
+
+      {/* =============== PAGE 4 : CONFIRMATION =============== */}
+      {showConfirmation && selectedLivre && (
+        <motion.div
+          key="confirmation-screen"
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+        >
+          <div className={`p-8 rounded-2xl shadow-2xl max-w-sm w-full text-center ${cardClass} border ${borderClass}`}>
+            <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6">
+              <Unlock size={40} />
+            </div>
+            <h1 className="text-2xl font-bold mb-2">
+              {lang === "fr" ? "Achat réussi !" : "Purchase Successful!"}
+            </h1>
+            <p className="mb-6 opacity-80">
+              {lang === "fr" 
+                ? `Le livre "${selectedLivre.title}" est désormais disponible dans votre bibliothèque.` 
+                : `The book "${selectedLivre.title}" is now available in your library.`}
+            </p>
+            <button 
+              onClick={() => {
+                setShowConfirmation(false);
+                setSelectedLivre(null);
+              }} 
+              className="w-full py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold transition"
+            >
+              {lang === "fr" ? "Accéder au livre" : "Access Book"}
+            </button>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+      {/* =============== PAGE 4 : CONFIRMATION =============== */}
+      {showConfirmation && selectedLivre && (
+        <motion.div
+          key="confirmation"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -20 }}
+          transition={{ duration: 0.4 }}
+        >
+          <div className={`p-6 rounded-xl ${cardClass} border ${borderClass} shadow-md max-w-md mx-auto text-center`}>
+            <h1 className="text-2xl font-bold mb-4">{lang === "fr" ? "Paiement confirmé !" : "Payment Confirmed!"}</h1>
+            <p className="mb-4">{selectedLivre.title} est débloqué.</p>
+            <button onClick={() => setShowConfirmation(false)} className="bg-blue-600 text-white px-4 py-2 rounded-lg">
+              Fermer
+            </button>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+
+    {/* Bouton Messages et Popup */}
+    <button
+      className="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-purple-600 text-white flex items-center justify-center shadow-xl z-50"
+      onClick={() => setShowMessage(true)}
+    >
+      <MessageCircle size={28} />
+    </button>
+
+    {showMessage && (
+      <MessagePopup darkMode={darkMode} onClose={() => setShowMessage(false)} />
+    )}
+  </main>
+);
 }

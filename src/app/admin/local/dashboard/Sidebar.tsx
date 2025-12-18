@@ -18,7 +18,6 @@ export default function Sidebar({ darkMode, sidebarOpen, setSidebarOpen }: Sideb
     { name: "Liste étudiants", icon: <Users size={20} />, href: "/admin/local/etudiants" },
     { name: "Gestion livres", icon: <BookOpen size={20} />, href: "/admin/local/livres" },
     { name: "Paiements", icon: <CreditCard size={20} />, href: "/admin/local/paiements" },
-    { name: "Historique", icon: <FileText size={20} />, href: "/admin/super/rapports" },
     { name: "Paramètre compte", icon: <Settings size={20} />, href: "/admin/local/SettingCompte" },
   ];
 

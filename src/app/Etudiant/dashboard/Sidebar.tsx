@@ -27,7 +27,6 @@ export default function Sidebar({ darkMode, sidebarOpen, setSidebarOpen }: Sideb
     { name: "Tableau de bord", icon: <LayoutDashboard size={20} />, href: "/Etudiant/dashboard" },
     { name: "Consulter livres", icon: <BookLockIcon size={20} />, href: "/Etudiant/Achatlivre" },
     { name: "Livres débloqué", icon: <UnlockIcon size={20} />, href: "/Etudiant/LivreDebloque" },
-    { name: "Rapports", icon: <FileText size={20} />, href: "/Etudiant/rapports" },
     { name: "Paramètre compte", icon: <SettingsIcon size={20} />, href: "/Etudiant/SettingCompte" },
   ];
 

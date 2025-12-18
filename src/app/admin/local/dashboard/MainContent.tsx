@@ -35,30 +35,6 @@ interface MainContentProps {
 // FONCTIONS D'AIDE ET COMPOSANTS GRAPHIQUES
 // --------------------------
 
-/**
- * Assigne une couleur basée sur le rang des valeurs.
- * Utilisé pour le Pie Chart (Actifs, En attente, Diplômés)
- */
-function rankToColors(values: number[]) {
-  const palette = {
-    highest: "#16a34a", // Green (Vert - Plus élevé)
-    second: "#fbbf24", // Yellow (Jaune - Deuxième)
-    third: "#3b82f6", // Blue (Bleu - Troisième)
-    // Pour cet usage, nous n'avons que trois catégories significatives.
-  };
-
-  const pairs = values.map((v, i) => ({ v, i }));
-  pairs.sort((a, b) => b.v - a.v);
-
-  const colorsByIndex: string[] = new Array(values.length).fill("#ef4444"); // Default Red
-
-  // Assigner les couleurs aux indices d'origine
-  if (pairs[0]) colorsByIndex[pairs[0].i] = palette.highest;
-  if (pairs[1]) colorsByIndex[pairs[1].i] = palette.second;
-  if (pairs[2]) colorsByIndex[pairs[2].i] = palette.third;
-
-  return colorsByIndex;
-}
 
 /**
  * Assigne une couleur aux barres du Bar Chart en fonction de leur valeur
@@ -161,41 +137,14 @@ export default function MainContent({ darkMode, lang }: MainContentProps) {
   const [time, setTime] = useState<Date | null>(null);
   const [mounted, setMounted] = useState(false);
 
-  // Simulation des données spécifiques à l'antenne locale
-  const statEtudiantsGeres = 120;
-  const statPaiementsLocaux = 1_500_000; // En Ariary
-  const statFormationsActives = 5;
-
-  // Données du Pie Chart : Répartition des étudiants par statut
-  const studentStatusData = useMemo(() => {
-    // Statut : Actif, En attente de paiement, Diplômé
-    const studentStatusValues = [75, 30, 15]; // Exemple de nombres
-    const labels = ["Actifs", "En attente", "Diplômés"];
-
-    const data = studentStatusValues.map((value, i) => ({
-      name: labels[i],
-      value,
-    }));
-    const colors = rankToColors(studentStatusValues);
-    return { pieData: data, pieColors: colors };
-  }, []); // Aucune dépendance ici, données simulées
-
-  // Données pour le Bar Chart (Inscriptions Mensuelles)
-  const monthlyEnrollmentData = useMemo(() => {
-    const data = [
-      { name: "Jan", Inscrits: 20 },
-      { name: "Fév", Inscrits: 35 },
-      { name: "Mar", Inscrits: 15 },
-      { name: "Avr", Inscrits: 40 },
-      { name: "Mai", Inscrits: 25 },
-    ];
-    const colors = colorBars(data);
-    return { barData: data, barColors: colors };
-  }, []);
-
-  const { pieData, pieColors } = studentStatusData;
-  const { barData, barColors } = monthlyEnrollmentData;
-
+  // États pour les données du dashboard
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [statEtudiantsGeres, setStatEtudiantsGeres] = useState(0);
+  const [statPaiementsLocaux, setStatPaiementsLocaux] = useState(0);
+  const [statFormationsActives, setStatFormationsActives] = useState(0);
+  const [barData, setBarData] = useState<{ name: string; Inscrits: number }[]>([]);
+  const [pieData, setPieData] = useState<{ name: string; value: number }[]>([]);
 
   // Initialisation de l'horloge
   useEffect(() => {
@@ -205,6 +154,63 @@ export default function MainContent({ darkMode, lang }: MainContentProps) {
     const timer = setInterval(() => setTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
+
+  // Charger les données du dashboard depuis l'API
+  useEffect(() => {
+    const fetchDashboardStats = async () => {
+      setLoading(true);
+      setError(null);
+      
+      try {
+        const token = localStorage.getItem("token");
+        const res = await fetch("http://localhost:8000/stats/dashboard", {
+          credentials: "include",
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        });
+
+        if (!res.ok) {
+          throw new Error(`Erreur HTTP: ${res.status}`);
+        }
+
+        const data = await res.json();
+
+        // Mettre à jour les états avec les données de l'API
+        setStatEtudiantsGeres(data.etudiants_geres || 0);
+        setStatPaiementsLocaux(data.revenus_locaux || 0);
+        setStatFormationsActives(data.formations_actives || 0);
+        setBarData(data.inscriptions_mensuelles || []);
+        setPieData(data.repartition_paiements || []);
+      } catch (err) {
+        console.error("Erreur lors du chargement des statistiques:", err);
+        setError("Impossible de charger les statistiques du dashboard.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardStats();
+  }, []);
+
+  // Couleurs pour le Bar Chart
+  const barColors = useMemo(() => {
+    if (barData.length === 0) return [];
+    return colorBars(barData);
+  }, [barData]);
+
+  // Couleurs pour le Pie Chart (statuts de paiement)
+  // Vert pour "Validé", Jaune/Orange pour "En attente", etc.
+  const pieColors = useMemo(() => {
+    if (pieData.length === 0) return [];
+    
+    const colorMap: Record<string, string> = {
+      "Validé": "#16a34a",        // Vert
+      "En attente": "#fbbf24",     // Jaune
+      "Échoué": "#ef4444",         // Rouge
+      "Annulé": "#6b7280",         // Gris
+    };
+
+    return pieData.map((entry) => colorMap[entry.name] || "#3b82f6");
+  }, [pieData]);
 
   // NOUVELLE CLASSE POUR LES CARTES DE STATISTIQUES (Style Super Admin)
   const statCardClass = `rounded-2xl shadow-xl transition-all p-6 border-l-4 border-[#17f] ${
@@ -281,28 +287,47 @@ export default function MainContent({ darkMode, lang }: MainContentProps) {
         </div>
       </div>
 
+      {/* Affichage du chargement ou de l'erreur */}
+      {loading && (
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+            <p className={darkMode ? "text-white" : "text-gray-700"}>
+              {lang === "fr" ? "Chargement des statistiques..." : "Loading statistics..."}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {error && (
+        <div className="mb-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
+          <p>{error}</p>
+        </div>
+      )}
+
       {/* === Grille principale (3 colonnes pour les stats + 1 pour le graphique) === */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        
-        {/* Colonne des cartes statistiques */}
-        <div className="flex flex-col gap-6 xl:col-span-2">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-            
-            {/* CARTE 1: Étudiants gérés (Total) */}
-            <div className={statCardClass}>
-              <div className="flex items-center gap-3 mb-2">
-                <Users size={22} color="#16a34a" />
-                <h3 className="font-semibold text-lg">
-                  {lang === "fr" ? "Étudiants Gérés" : "Managed Students"}
-                </h3>
+      {!loading && !error && (
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+          
+          {/* Colonne des cartes statistiques */}
+          <div className="flex flex-col gap-6 xl:col-span-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+              
+              {/* CARTE 1: Étudiants gérés (Total) */}
+              <div className={statCardClass}>
+                <div className="flex items-center gap-3 mb-2">
+                  <Users size={22} color="#16a34a" />
+                  <h3 className="font-semibold text-lg">
+                    {lang === "fr" ? "Étudiants Gérés" : "Managed Students"}
+                  </h3>
+                </div>
+                <h2 className="text-4xl font-extrabold text-blue-400">
+                  {statEtudiantsGeres}
+                </h2>
+                <p className="text-sm opacity-75">
+                  {lang === "fr" ? "Total inscrits sur cette antenne" : "Total enrolled in this branch"}
+                </p>
               </div>
-              <h2 className="text-4xl font-extrabold text-blue-400">
-                {statEtudiantsGeres}
-              </h2>
-              <p className="text-sm opacity-75">
-                {lang === "fr" ? "Total inscrits sur cette antenne" : "Total enrolled in this branch"}
-              </p>
-            </div>
 
             {/* CARTE 2: Paiements reçus (Revenus Locaux) */}
             <div className={statCardClass}>
@@ -337,85 +362,102 @@ export default function MainContent({ darkMode, lang }: MainContentProps) {
             </div>
           </div>
           
-          {/* GRAPHIQUE 1: Bar Chart pour les Inscriptions par Mois (Exemple) */}
+          {/* GRAPHIQUE 1: Bar Chart pour les Inscriptions par Mois */}
           <div className={chartCardClass}>
             <h2 className="text-lg font-semibold mb-4">
-              {lang === "fr" ? "Inscriptions Mensuelles" : "Monthly Enrollment (Simulation)"}
+              {lang === "fr" ? "Inscriptions Mensuelles" : "Monthly Enrollment"}
             </h2>
             <div className="w-full h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={barData}
-                  margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? "#4b5563" : "#e5e7eb"} />
-                  <XAxis dataKey="name" stroke={darkMode ? "#9ca3af" : "#4b5563"} />
-                  <YAxis stroke={darkMode ? "#9ca3af" : "#4b5563"} />
-                  <ReTooltip content={<CustomBarTooltip darkMode={darkMode} />} />
-                  {/* Bordure Radius appliquée ici : [8, 8, 0, 0] pour les coins supérieurs */}
-                  <Bar dataKey="Inscrits" radius={[8, 8, 0, 0]}>
-                    {
-                      barData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={barColors[index]} />
-                      ))
-                    }
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
+              {barData.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={barData}
+                    margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? "#4b5563" : "#e5e7eb"} />
+                    <XAxis dataKey="name" stroke={darkMode ? "#9ca3af" : "#4b5563"} />
+                    <YAxis stroke={darkMode ? "#9ca3af" : "#4b5563"} />
+                    <ReTooltip content={<CustomBarTooltip darkMode={darkMode} />} />
+                    {/* Bordure Radius appliquée ici : [8, 8, 0, 0] pour les coins supérieurs */}
+                    <Bar dataKey="Inscrits" radius={[8, 8, 0, 0]}>
+                      {
+                        barData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={barColors[index] || "#3b82f6"} />
+                        ))
+                      }
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex items-center justify-center h-full">
+                  <p className={darkMode ? "text-gray-400" : "text-gray-600"}>
+                    {lang === "fr" ? "Aucune donnée disponible" : "No data available"}
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 
         </div>
 
-        {/* Colonne de droite: Pie Chart (Répartition des étudiants) */}
+            {/* Colonne de droite: Pie Chart (Répartition des statuts de paiement) */}
         <div className={chartCardClass}>
           <h2 className="text-lg font-semibold mb-4 text-center">
-            {lang === "fr" ? "Statut des Étudiants" : "Student Status Overview"}
+            {lang === "fr" ? "Statuts des Paiements" : "Payment Status Overview"}
           </h2>
 
           <div className="w-full flex flex-col items-center justify-center pt-8">
-            <PieChart width={300} height={320}>
-              <ReTooltip content={<CustomPieTooltip darkMode={darkMode} />} />
-              <Pie
-                data={pieData}
-                dataKey="value"
-                nameKey="name"
-                cx="50%"
-                cy="50%"
-                innerRadius={70} 
-                outerRadius={120}
-                paddingAngle={4}
-                cornerRadius={10} 
-                startAngle={90}
-                endAngle={-270}
-                isAnimationActive={false} 
-                label={renderCustomLabel} 
-                labelLine={false} 
-              >
-                {pieData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={pieColors[index]} />
-                ))}
-              </Pie>
-              <Legend
-                layout="horizontal"
-                verticalAlign="bottom"
-                align="center"
-                wrapperStyle={{ paddingTop: "20px" }}
-                iconType="circle"
-                formatter={(value) => (
-                  <span className="text-sm font-medium opacity-90">{value}</span>
-                )}
-              />
-            </PieChart>
+            {pieData.length > 0 ? (
+              <PieChart width={300} height={320}>
+                <ReTooltip content={<CustomPieTooltip darkMode={darkMode} />} />
+                <Pie
+                  data={pieData}
+                  dataKey="value"
+                  nameKey="name"
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={70} 
+                  outerRadius={120}
+                  paddingAngle={4}
+                  cornerRadius={10} 
+                  startAngle={90}
+                  endAngle={-270}
+                  isAnimationActive={false} 
+                  label={renderCustomLabel} 
+                  labelLine={false} 
+                >
+                  {pieData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={pieColors[index]} />
+                  ))}
+                </Pie>
+                <Legend
+                  layout="horizontal"
+                  verticalAlign="bottom"
+                  align="center"
+                  wrapperStyle={{ paddingTop: "20px" }}
+                  iconType="circle"
+                  formatter={(value) => (
+                    <span className="text-sm font-medium opacity-90">{value}</span>
+                  )}
+                />
+              </PieChart>
+            ) : (
+              <div className="flex items-center justify-center h-80">
+                <p className={darkMode ? "text-gray-400" : "text-gray-600"}>
+                  {lang === "fr" ? "Aucun paiement trouvé" : "No payments found"}
+                </p>
+              </div>
+            )}
 
             <div className="text-center mt-4">
               <div className="text-sm opacity-80">
-              {lang === "fr" ? "Répartition des étudiants par statut dans cette antenne." : "Distribution of students by status in this branch."}
+              {lang === "fr" ? "Répartition des paiements par statut dans cette province." : "Distribution of payments by status in this province."}
               </div>
             </div>
           </div>
         </div>
       </div>
+      )}
 
       <button
         className="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-purple-600 hover:bg-purple-700 text-white flex items-center justify-center shadow-xl transition-all duration-300 hover:scale-105"
