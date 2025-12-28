@@ -1,7 +1,7 @@
  
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect,useCallback } from "react";
 import { BookOpen, ChevronLeft, ShoppingCart, Lock, Unlock, Eye, FileX, FileText, MessageCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import PhoneInput, { CountryData } from "react-phone-input-2";
@@ -9,6 +9,7 @@ import "react-phone-input-2/lib/style.css";
 import { parsePhoneNumberFromString } from "libphonenumber-js";
 import Image from "next/image";
 import MessagePopup from "@/app/admin/super/dashboard/Message/MessagePopup";
+
 
 interface MainContentProps {
   readonly darkMode: boolean;
@@ -146,57 +147,43 @@ export default function MainContentAchat({ darkMode, lang }: MainContentProps) {
   }, []);
 
   // Récupérer les livres quand une formation est sélectionnée
-  useEffect(() => {
-    if (selectedFormation && userId) {
-      const fetchLivres = async () => {
-        try {
-          setLoadingLivres(true);
-          const url = `http://localhost:8000/livre/ReadLivres/${selectedFormation.id}/${userId}`;
-          console.log("🔍 Fetching livres from:", url);
-          
-          const res = await fetch(url);
-          console.log("📡 Response status:", res.status);
-          
-          if (!res.ok) {
-            const errorText = await res.text();
-            console.error("❌ Erreur HTTP:", res.status, errorText);
-            throw new Error(`Erreur de chargement des livres: ${res.status}`);
-          }
-          
-          const data = await res.json();
-          
-        
-          const arr = Array.isArray(data) ? data : data.livres || [];
-          console.log(" Array après traitement:", arr);
-          console.log(" Nombre de livres:", arr.length);
-          
-          const formatted = arr.map((l: any, index: number) => {
-            const livre = {
-              id: l.id ?? l.idLivre ?? 0,
-              title: l.title ?? l.titre ?? "Livre",
-              author: l.author ?? l.auteur ?? "",
-              pdf: l.pdf ?? l.urlPdf ?? "",
-              prix: l.prix ?? l.price ?? "",
-              image: normalizeImage(l.image ?? l.cover ?? ""),
-              access: l.access ?? false,
-              description: l.description ?? l.desc ?? "",
-            };
-            console.log(`📖 Livre ${index}:`, livre);
-            return livre;
-          });
-          
-          console.log("Livres formatés:", formatted);
-          setLivres(formatted);
-        } catch (error) {
-          console.error("Erreur:", error);
-          setLivres([]);
-        } finally {
-          setLoadingLivres(false);
-        }
-      };
-      fetchLivres();
-    }
-  }, [selectedFormation, userId]);
+  // 1. Définition de la fonction de récupération (accessible partout)
+const fetchLivres = useCallback(async () => {
+  if (!selectedFormation || !userId) return;
+
+  try {
+    setLoadingLivres(true);
+    const url = `http://localhost:8000/livre/ReadLivres/${selectedFormation.id}/${userId}`;
+    console.log("🔍 Fetching livres from:", url);
+
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`Erreur HTTP: ${res.status}`);
+
+    const data = await res.json();
+    const arr = Array.isArray(data) ? data : data.livres || [];
+
+    const formatted = arr.map((l: any) => ({
+      id: l.id ?? l.idLivre ?? 0,
+      title: l.title ?? l.titre ?? "Livre",
+      author: l.author ?? l.auteur ?? "",
+      pdf: l.pdf ?? l.urlPdf ?? "",
+      prix: l.prix ?? l.price ?? "",
+      image: normalizeImage(l.image ?? l.cover ?? ""),
+      access: l.access ?? false,
+      description: l.description ?? l.desc ?? "",
+    }));
+
+    setLivres(formatted);
+  } catch (error) {
+    console.error("Erreur:", error);
+    setLivres([]);
+  } finally {
+    setLoadingLivres(false);
+  }
+}, [selectedFormation, userId]); 
+useEffect(() => {
+  fetchLivres();
+}, [fetchLivres]);
 
   //  Gestion téléphone internationale avec typage
   const handlePhoneChange = (value: string, data: CountryData) => {
@@ -241,6 +228,38 @@ export default function MainContentAchat({ darkMode, lang }: MainContentProps) {
       // Sinon, afficher le formulaire de paiement
     } else {
       setSelectedLivre(livre);
+    }
+  };
+  const handlePayment = async () => {
+    if (!selectedLivre || !userId) return;
+  
+    // Génération d'une référence unique simple (ex: PAY-17353...)
+    const transactionRef = `PAY-${Date.now()}-${userId}`;
+  
+    const paymentData = {
+      idUser: userId,
+      idLivre: selectedLivre.id,
+      contact: form.mobileNumber,      // Provient de votre PhoneInput
+      montant: parseFloat(selectedLivre.prix),
+      operateur: form.paymentMethod,   // airtel, orange, telma
+      reference: transactionRef,
+      canAccess: true
+    };
+  
+    try {
+      const response = await fetch("http://localhost:8000/livre/Debloque", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(paymentData),
+      });
+  
+      if (response.ok) {
+        setShowConfirmation(true);
+      } else {
+        alert("Erreur lors de la transaction.");
+      }
+    } catch (error) {
+      console.error("Erreur réseau:", error);
     }
   };
 
@@ -459,7 +478,6 @@ export default function MainContentAchat({ darkMode, lang }: MainContentProps) {
     )}
 
     {/* =============== PAGE 3 : PAIEMENT =============== */}
-    <AnimatePresence mode="wait">
       {selectedLivre && !showConfirmation && (
         <motion.div
           key="paiement-screen"
@@ -530,11 +548,11 @@ export default function MainContentAchat({ darkMode, lang }: MainContentProps) {
                   {lang === "fr" ? "Annuler" : "Cancel"}
                 </button>
                 <button 
-                  onClick={() => setShowConfirmation(true)} 
-                  className="flex-1 px-4 py-3 rounded-lg bg-green-600 hover:bg-green-700 text-white font-bold shadow-md transition"
-                >
-                  {lang === "fr" ? "Payer" : "Pay"} {selectedLivre.prix} Ar
-                </button>
+  onClick={handlePayment} // Appelle l'API au lieu de juste changer l'état
+  className="flex-1 px-4 py-3 rounded-lg bg-green-600 hover:bg-green-700 text-white font-bold shadow-md transition"
+>
+  {lang === "fr" ? "Payer" : "Pay"} {selectedLivre.prix} Ar
+</button>
               </div>
             </div>
 
@@ -557,6 +575,7 @@ export default function MainContentAchat({ darkMode, lang }: MainContentProps) {
           </div>
         </motion.div>
       )}
+      
 
       {/* =============== PAGE 4 : CONFIRMATION =============== */}
       {showConfirmation && selectedLivre && (
@@ -582,6 +601,7 @@ export default function MainContentAchat({ darkMode, lang }: MainContentProps) {
               onClick={() => {
                 setShowConfirmation(false);
                 setSelectedLivre(null);
+                fetchLivres(); 
               }} 
               className="w-full py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold transition"
             >
@@ -590,38 +610,24 @@ export default function MainContentAchat({ darkMode, lang }: MainContentProps) {
           </div>
         </motion.div>
       )}
-    </AnimatePresence>
-      {/* =============== PAGE 4 : CONFIRMATION =============== */}
-      {showConfirmation && selectedLivre && (
-        <motion.div
-          key="confirmation"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -20 }}
-          transition={{ duration: 0.4 }}
-        >
-          <div className={`p-6 rounded-xl ${cardClass} border ${borderClass} shadow-md max-w-md mx-auto text-center`}>
-            <h1 className="text-2xl font-bold mb-4">{lang === "fr" ? "Paiement confirmé !" : "Payment Confirmed!"}</h1>
-            <p className="mb-4">{selectedLivre.title} est débloqué.</p>
-            <button onClick={() => setShowConfirmation(false)} className="bg-blue-600 text-white px-4 py-2 rounded-lg">
-              Fermer
-            </button>
-          </div>
-        </motion.div>
-      )}
-    </AnimatePresence>
-
-    {/* Bouton Messages et Popup */}
+    </AnimatePresence> 
+    {/* Floating message button */}
+    
     <button
-      className="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-purple-600 text-white flex items-center justify-center shadow-xl z-50"
-      onClick={() => setShowMessage(true)}
-    >
-      <MessageCircle size={28} />
-    </button>
+        className="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-purple-600 hover:bg-purple-700 text-white flex items-center justify-center shadow-xl transition-all duration-300 hover:scale-105"
+        title="Messages"
+        onClick={() => setShowMessage(true)}
+      >
+        <MessageCircle size={28} />
+      </button>
 
-    {showMessage && (
-      <MessagePopup darkMode={darkMode} onClose={() => setShowMessage(false)} />
-    )}
+      {/* Utilisation du composant MessagePopup simulé localement */}
+      {showMessage && (
+        <MessagePopup
+          darkMode={darkMode}
+          onClose={() => setShowMessage(false)}
+        />
+      )}
   </main>
 );
 }

@@ -223,7 +223,7 @@ export default function MainContent({ darkMode, lang }: MainContentProps) {
           </div>
         </div>
       )}
-            {/* Floating message button */}
+      {/* Floating message button */}
       <button
         className="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-purple-600 hover:bg-purple-700 text-white flex items-center justify-center shadow-xl transition-all duration-300 hover:scale-105"
         title="Messages"

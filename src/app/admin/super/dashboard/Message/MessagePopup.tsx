@@ -767,7 +767,7 @@ export default function MessagePopup({ onClose, darkMode }: MessagePopupProps) {
                 <div className="relative w-10 h-10 shrink-0 flex-col-reverse">
                     {activeChat?.image ? (
                         <Image
-                            src={`${API_URL}/uploads/sujet/${activeChat.image}`}
+                            src={`${API_URL}/uploads/forum/${activeChat.image}`}
                             alt={activeChat.titre}
                             fill
                             className="rounded-full object-cover"
@@ -1071,18 +1071,20 @@ export default function MessagePopup({ onClose, darkMode }: MessagePopupProps) {
         <>
             <div
                 className={`
-                absolute
-                top-0 left-0 right-0 
-                w-full h-full 
-                ${containerBg} shadow-2xl 
-                border-none
-                overflow-hidden 
+                fixed
+                /* Positionnement par rapport au Header et à la Sidebar */
+                top-[72px]       /* Hauteur approximative de votre Header */
+                left-0 md:left-64 /* 0 sur mobile, décalé de la largeur Sidebar sur PC */
+                right-0
+                bottom-0
+                
+                /* Style et Couleurs */
+                ${containerBg} 
+                shadow-2xl 
                 z-40
                 transition-all duration-300
-                md:rounded-2xl
-                md:border md:border-gray-700
-                bottom-0 
-                transform -translate-y-1 
+                overflow-hidden
+                flex flex-col
             `}
             >
                 {/* Message d'erreur */}
@@ -1098,15 +1100,16 @@ export default function MessagePopup({ onClose, darkMode }: MessagePopupProps) {
                     </div>
                 )}
 
+                {/* Contenu du Forum */}
                 <div className="flex flex-row h-full w-full overflow-hidden">
                     {renderSidebar()}
                     {renderChatWindow()}
                 </div>
             </div>
 
-            {/* Popup de création de sujet  */}
+            {/* Popup de création de sujet (Reste centré sur tout l'écran) */}
             {isPopupOpen && (
-                <div className="fixed inset-0 flex items-center justify-center z-50 backdrop-blur-sm">
+                <div className="fixed inset-0 flex items-center justify-center z-50 backdrop-blur-sm bg-black/20">
                     <div className={`relative w-[95%] max-w-lg p-6 rounded-xl shadow-2xl ${darkMode ? 'bg-gray-800 text-white' : 'bg-white text-gray-900'}`}>
                         <h2 className={`text-xl font-bold mb-4 text-center ${generalText}`}>
                             {isEditMode ? 'Modifier le groupe' : 'Créer un nouveau groupe'}
@@ -1126,11 +1129,10 @@ export default function MessagePopup({ onClose, darkMode }: MessagePopupProps) {
                                     <FileText size={20} />
                                 </div>
                                 <span className={darkMode ? "text-[#19ff11]" : "text-[#17f]"}>
-                                    {/* Affiche l'image actuellement sélectionnée (pour la création/modification) */}
                                     {newSujetImage
                                         ? newSujetImage.name
-                                        : isEditMode && editSujet.image
-                                            ? `Remplacer l'image actuelle (${editSujet.image})`
+                                        : isEditMode && editSujet?.image
+                                            ? `Remplacer l'image actuelle`
                                             : "Importer une image (optionnelle)"
                                     }
                                 </span>
@@ -1151,7 +1153,7 @@ export default function MessagePopup({ onClose, darkMode }: MessagePopupProps) {
                                 <button
                                     onClick={() => {
                                         setShowCreatePopup(false);
-                                        setEditSujet(null); // Ferme le mode modification
+                                        setEditSujet(null);
                                         setNewSujetTitre('');
                                         setNewSujetImage(null);
                                         if (fileInputRef.current) fileInputRef.current.value = '';
@@ -1163,13 +1165,10 @@ export default function MessagePopup({ onClose, darkMode }: MessagePopupProps) {
                                 <button
                                     onClick={isEditMode ? handleUpdateSujet : handleCreateSujet}
                                     disabled={!newSujetTitre.trim() || creatingSujet}
-                                    className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                                    className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition disabled:opacity-50 flex items-center justify-center"
                                 >
                                     {creatingSujet ? (
-                                        <>
-                                            <Loader2 className="w-5 h-5 animate-spin mr-2" />
-                                            {isEditMode ? 'Modification...' : 'Création...'}
-                                        </>
+                                        <Loader2 className="w-5 h-5 animate-spin mr-2" />
                                     ) : (
                                         isEditMode ? 'Modifier' : 'Ajouter'
                                     )}
@@ -1180,9 +1179,7 @@ export default function MessagePopup({ onClose, darkMode }: MessagePopupProps) {
                 </div>
             )}
 
-            {/* APPEL DU POPUP DE CONFIRMATION DE SUPPRESSION */}
             <DeleteConfirmationPopup />
-
         </>
     );
 }

@@ -40,5 +40,6 @@ export default function StudentDashboardPage() {
         <MainContentDebloque darkMode={darkMode} lang={lang} />
       </div>
     </div>
+    
   );
 }

@@ -2,8 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { BookOpen, Search, Eye, FileX, MessageCircle } from "lucide-react";
-// Remplacement de next/image par une balise <img> standard pour la compatibilité de l'environnement
-// import Image from "next/image"; 
 import Image from "next/image";
 import MessagePopup from "@/app/admin/super/dashboard/Message/MessagePopup";
 
@@ -189,19 +187,22 @@ export default function MainContent({ darkMode, lang }: MainContentProps) {
           </div>
         )}
       </div>
-      <button
-          className="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-purple-600 hover:bg-purple-700 text-white flex items-center justify-center shadow-xl transition-all duration-300 hover:scale-105 z-50"
-          title="Messages"
-          onClick={() => setShowMessage(true)}
-        >
-          <MessageCircle size={28} />
+       {/* Floating message button */}
+       <button
+        className="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-purple-600 hover:bg-purple-700 text-white flex items-center justify-center shadow-xl transition-all duration-300 hover:scale-105"
+        title="Messages"
+        onClick={() => setShowMessage(true)}
+      >
+        <MessageCircle size={28} />
       </button>
-            {showMessage && (
-              <MessagePopup
-                darkMode={darkMode}
-                onClose={() => setShowMessage(false)}
-              />
-            )}
+
+      {/* Utilisation du composant MessagePopup simulé localement */}
+      {showMessage && (
+        <MessagePopup
+          darkMode={darkMode}
+          onClose={() => setShowMessage(false)}
+        />
+      )}
     </main>
   );
 }

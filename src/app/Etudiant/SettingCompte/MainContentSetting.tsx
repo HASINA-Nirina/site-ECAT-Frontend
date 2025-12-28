@@ -372,19 +372,22 @@ const [popup, setPopup] = useState<{
         onClose={() => setPopup({ type: null, message: "" })}
       />
     )}
-    <button
-          className="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-purple-600 hover:bg-purple-700 text-white flex items-center justify-center shadow-xl transition-all duration-300 hover:scale-105 z-50"
-          title="Messages"
-          onClick={() => setShowMessage(true)}
-        >
-          <MessageCircle size={28} />
+     {/* Floating message button */}
+     <button
+        className="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-purple-600 hover:bg-purple-700 text-white flex items-center justify-center shadow-xl transition-all duration-300 hover:scale-105"
+        title="Messages"
+        onClick={() => setShowMessage(true)}
+      >
+        <MessageCircle size={28} />
       </button>
-            {showMessage && (
-              <MessagePopup
-                darkMode={darkMode}
-                onClose={() => setShowMessage(false)}
-              />
-            )}
+
+      {/* Utilisation du composant MessagePopup simulé localement */}
+      {showMessage && (
+        <MessagePopup
+          darkMode={darkMode}
+          onClose={() => setShowMessage(false)}
+        />
+      )}
     </main>
   );
 }
