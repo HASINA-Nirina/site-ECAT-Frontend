@@ -2,7 +2,6 @@
 
 import {
   LayoutDashboard,
-  FileText,
   X,
   BookLockIcon,
   UnlockIcon,
@@ -27,7 +26,7 @@ export default function Sidebar({ darkMode, sidebarOpen, setSidebarOpen }: Sideb
     { name: "Tableau de bord", icon: <LayoutDashboard size={20} />, href: "/Etudiant/dashboard" },
     { name: "Consulter livres", icon: <BookLockIcon size={20} />, href: "/Etudiant/Achatlivre" },
     { name: "Livres débloqué", icon: <UnlockIcon size={20} />, href: "/Etudiant/LivreDebloque" },
-    { name: "Paramètre compte", icon: <SettingsIcon size={20} />, href: "/Etudiant/SettingCompte" },
+    { name: "Paramètre compte", icon: <SettingsIcon size={20} />, href: "/admin/local/SettingCompte" },
   ];
 
   return (

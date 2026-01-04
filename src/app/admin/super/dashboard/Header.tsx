@@ -6,6 +6,7 @@ import { Sun, Moon, Bell, Menu, Pencil, X, LogOut } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
 import Link from "next/link";
+import { apiFetch } from "@/lib/api";
 
 interface HeaderProps {
   readonly darkMode: boolean;
@@ -52,60 +53,71 @@ export default function Header({ darkMode, setDarkMode, sidebarOpen, setSidebarO
   }, []);
 
 
-  // Charger les données utilisateur
-  useEffect(() => {
-    const token = localStorage.getItem("token");
+// 1. Premier effet : Vérification du token et chargement initial
+useEffect(() => {
+  const token = localStorage.getItem("token");
 
-    if (!token) {
-      console.warn("Token manquant : impossible de récupérer les informations utilisateur");
+  if (!token) {
+    console.warn("Token manquant : impossible de récupérer les informations utilisateur");
+    setAdminName("Utilisateur inconnu");
+    setInitials("?");
+    return;
+  }
+
+  async function fetchUser() {
+    try {
+      const res = await apiFetch("/auth/me", {
+        credentials: "include",
+      });
+
+      if (!res.ok) throw new Error("Non autorisé");
+      const data = await res.json();
+
+      // Mise à jour Nom/Prénom
+      const userPrenom = data.prenom || "";
+      const userNom = data.nom || "";
+      setPrenom(userPrenom);
+      setNom(userNom);
+      setAdminName(`${userPrenom} ${userNom}`.trim() || "Utilisateur");
+
+      // Gestion de l'Image
+      const envUrl = process.env.NEXT_PUBLIC_API_URL;
+      const backendUrl = (envUrl && envUrl !== "undefined" && envUrl !== "None") 
+                         ? envUrl 
+                         : "http://localhost:8000";
+
+      let finalImageUrl = null;
+      if (data.image && typeof data.image === "string" && !data.image.includes("None")) {
+        finalImageUrl = data.image.startsWith("http") 
+          ? data.image 
+          : `${backendUrl}${data.image.startsWith("/") ? "" : "/"}${data.image}`;
+      }
+      setProfileImage(finalImageUrl);
+
+      // Stockage et Thème
+      localStorage.setItem("idUser", data.id?.toString() || "");
+      if (data.theme === "dark") {
+        setDarkMode(true);
+        document.documentElement.classList.add('dark');
+      } else {
+        setDarkMode(false);
+        document.documentElement.classList.remove('dark');
+      }
+
+      const initialsStr = (userPrenom[0] || "").toUpperCase() + (userNom[0] || "").toUpperCase();
+      setInitials(initialsStr || "?");
+
+    } catch (error) {
+      console.error("Erreur fetchUser:", error);
       setAdminName("Utilisateur inconnu");
       setInitials("?");
-      return;
+      setProfileImage(null);
     }
+  }
 
-    async function fetchUser() {
-      try {
-        const res = await fetch("http://localhost:8000/auth/me", {
-          credentials: "include",
-        });
-
-        if (!res.ok) {
-          console.error("Erreur lors de la récupération de l'utilisateur :", res.statusText);
-          setAdminName("Utilisateur inconnu");
-          setInitials("?");
-          return;
-        }
-
-        const data = await res.json();
-
-        setPrenom(data.prenom || "");
-        setNom(data.nom || "");
-        setAdminName(`${data.prenom || ""} ${data.nom || ""}`);
-        setProfileImage(data.image || null);
-
-        localStorage.setItem("idUser", data.id?.toString() || "");
-        localStorage.setItem("userNom", data.nom || "");
-        localStorage.setItem("userPrenom", data.prenom || "");
-
-        if (data.theme === "dark") setDarkMode(true);
-        else setDarkMode(false);
-
-        const initials =
-          (data.prenom?.[0] || "").toUpperCase() +
-          (data.nom?.[0] || "").toUpperCase();
-        setInitials(initials);
-
-      } catch (err) {
-        console.error("Erreur réseau lors de la récupération de l'utilisateur :", err);
-        setAdminName("Utilisateur inconnu");
-        setInitials("?");
-      }
-    }
-
-    fetchUser();
-  }, [setDarkMode]);
-
-  // Déconnexion
+  fetchUser();
+}, [setDarkMode]); 
+//   // Déconnexion
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("role");
@@ -113,47 +125,66 @@ export default function Header({ darkMode, setDarkMode, sidebarOpen, setSidebarO
     document.cookie = "token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT;";
     router.push("/login");
   };
-
-  // Changement d'image local
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setProfileImageFile(file);
-      const reader = new FileReader();
-      reader.onload = () => setProfileImage(reader.result as string);
-      reader.readAsDataURL(file);
-    }
-  };
-
-  // Mise à jour du profil
-  const handleProfileUpdate = async () => {
-    try {
-      const formData = new FormData();
-      formData.append("prenom", prenom);
-      formData.append("nom", nom);
-      if (profileImageFile) formData.append("file", profileImageFile);
-
-      const res = await fetch("http://localhost:8000/auth/me/update", {
-        method: "PUT",
-        body: formData,
-        credentials: "include",
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        alert(data.detail || "Erreur lors de la mise à jour du profil");
-        return;
+  
+    // Changement d'image local
+    const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (file) {
+        setProfileImageFile(file);
+        const reader = new FileReader();
+        reader.onload = () => setProfileImage(reader.result as string);
+        reader.readAsDataURL(file);
       }
-
-      setAdminName(`${data.user.prenom} ${data.user.nom}`);
-      if (data.user.image) setProfileImage(data.user.image);
-      setShowSettings(false);
-    } catch (error) {
-      console.error(error);
-      alert("Erreur réseau lors de la mise à jour du profil");
-    }
-  };
-
+    };
+  
+    const handleProfileUpdate = async () => {
+      try {
+        const formData = new FormData();
+        formData.append("prenom", prenom);
+        formData.append("nom", nom);
+        if (profileImageFile) formData.append("file", profileImageFile);
+  
+        const res = await apiFetch("/auth/me/update", {
+          method: "PUT",
+          body: formData,
+          credentials: "include",
+        });
+  
+        const data = await res.json();
+        
+        if (!res.ok) {
+          alert(data.detail || "Erreur lors de la mise à jour du profil");
+          return;
+        }
+  
+        // 1. Mise à jour du nom affiché
+        setAdminName(`${data.user.prenom} ${data.user.nom}`);
+  
+        // 2. Mise à jour de l'image avec reconstruction de l'URL
+        if (data.user.image) {
+          const envUrl = process.env.NEXT_PUBLIC_API_URL;
+          const backendUrl = (envUrl && envUrl !== "undefined" && envUrl !== "None") 
+                             ? envUrl 
+                             : "http://localhost:8000";
+  
+          // On vérifie si l'image renvoyée est déjà une URL complète ou juste un chemin
+          const cleanPath = data.user.image.startsWith("http") 
+            ? data.user.image 
+            : `${backendUrl}${data.user.image.startsWith("/") ? "" : "/"}${data.user.image}`;
+          
+          setProfileImage(cleanPath);
+        }
+  
+        // 3. Fermer le popup et réinitialiser le fichier temporaire
+        setProfileImageFile(null);
+        setShowSettings(false);
+        
+  
+      } catch (error) {
+        console.error("Erreur lors de la mise à jour :", error);
+        alert("Erreur réseau lors de la mise à jour du profil");
+      }
+    };
   // Ajoute ces états en haut de ton composant Header
   interface Notification {
     id: number;
@@ -182,7 +213,7 @@ export default function Header({ darkMode, setDarkMode, sidebarOpen, setSidebarO
         }
 
     try {
-      const res = await fetch("http://localhost:8000/auth/notifications", {
+      const res = await apiFetch("/auth/notifications", {
         credentials: "include",
       });
 
@@ -243,8 +274,7 @@ export default function Header({ darkMode, setDarkMode, sidebarOpen, setSidebarO
       const unread = updated.filter((n) => n.action_status === "non_lu").length;
       setUnreadCount(unread);
 
-      // Appel backend
-      fetch("http://localhost:8000/auth/notifications/mark_read", {
+     apiFetch("/auth/notifications/mark_read", {
         method: "PUT",
         credentials: "include",
       }).catch((err) => console.error("Erreur marque comme lu:", err));
@@ -253,7 +283,7 @@ export default function Header({ darkMode, setDarkMode, sidebarOpen, setSidebarO
 
   const handleAccept = async (notifId: number) => {
       try {
-        const res = await fetch(`http://localhost:8000/auth/notifications/${notifId}/accepter`, {
+        const res = await apiFetch(`/auth/notifications/${notifId}/accepter`, {
           method: "POST",
           credentials: "include",
         });
@@ -268,7 +298,7 @@ export default function Header({ darkMode, setDarkMode, sidebarOpen, setSidebarO
 
     const handleRefuse = async (notifId: number) => {
       try {
-        const res = await fetch(`http://localhost:8000/auth/notifications/${notifId}/refuser`, {
+        const res = await apiFetch(`/auth/notifications/${notifId}/refuser`, {
           method: "POST",
           credentials: "include",
         });
@@ -317,7 +347,7 @@ export default function Header({ darkMode, setDarkMode, sidebarOpen, setSidebarO
       const formData = new FormData();
       formData.append("theme", newMode ? "dark" : "light");
 
-      await fetch("http://localhost:8000/auth/me/theme", {
+      await apiFetch("/auth/me/theme", {
         method: "PUT",
         body: formData,
         credentials: "include",
@@ -367,14 +397,16 @@ export default function Header({ darkMode, setDarkMode, sidebarOpen, setSidebarO
                 darkMode ? "bg-[#17f]" : "bg-blue-400"
               }`}
             >
-              {profileImage ? (
-                <Image
-                  src={profileImage}
-                  alt="Profil"
-                  width={40}
-                  height={40}
-                  className="object-cover w-full h-full rounded-full"
-                />
+              {profileImage && profileImage.includes("/uploads") ? (
+  <Image
+    src={profileImage}
+    alt="Profil"
+    width={40}
+    height={40}
+    className="object-cover w-full h-full rounded-full"
+    unoptimized 
+  />
+
               ) : (
                 initials
               )}

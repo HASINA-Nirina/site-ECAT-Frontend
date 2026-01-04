@@ -25,7 +25,7 @@ import {
   ResponsiveContainer // Conteneur réactif
 } from "recharts";
 import MessagePopup from "@/app/admin/super/dashboard/Message/MessagePopup";
-
+import { apiFetch } from "@/lib/api";
 interface MainContentProps {
   readonly darkMode: boolean;
   readonly lang: string;
@@ -163,7 +163,7 @@ export default function MainContent({ darkMode, lang }: MainContentProps) {
       
       try {
         const token = localStorage.getItem("token");
-        const res = await fetch("http://localhost:8000/stats/dashboard", {
+        const res = await apiFetch("/stats/dashboard", {
           credentials: "include",
           headers: token ? { Authorization: `Bearer ${token}` } : undefined,
         });

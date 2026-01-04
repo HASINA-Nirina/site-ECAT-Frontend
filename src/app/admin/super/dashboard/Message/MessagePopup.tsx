@@ -18,6 +18,8 @@ import {
 } from 'lucide-react';
 import Image from "next/image";
 import { Image as ImageIcon } from "lucide-react";
+import { apiFetch } from "@/lib/api";
+
 // Types pour les données du backend
 // ✅ MODIFICATION : Ajout de la propriété isCreator pour le contrôle d'accès au menu
 interface Sujet {
@@ -51,7 +53,7 @@ interface Message {
     };
 }
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
 const AVATAR_COLORS = [
     'bg-indigo-200', 'bg-pink-200', 'bg-yellow-200', 'bg-green-200',
     'bg-blue-200', 'bg-purple-200', 'bg-red-200', 'bg-orange-200'

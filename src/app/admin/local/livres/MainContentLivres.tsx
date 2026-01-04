@@ -3,7 +3,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import Image from "next/image";
 import { BookOpen, PlusCircle, ChevronLeft, Edit, Trash2, FileText, ImageIcon, MessageCircle } from "lucide-react";
 import MessagePopup from "@/app/admin/super/dashboard/Message/MessagePopup";
-
+import { apiFetch } from "@/lib/api";
 interface MainContentProps {
   readonly darkMode: boolean;
   readonly lang: string;
@@ -54,39 +54,31 @@ const imageInputRef = useRef<HTMLInputElement | null>(null);
       if (!raw) return "";
   
       const s = String(raw).trim();
-      if (s.startsWith("blob:")) return s;
-      if (s.startsWith("http://") || s.startsWith("https://")) return s;
+      
+      // 1. Si c'est déjà une URL complète ou un blob, on ne touche à rien
+      if (s.startsWith("blob:") || s.startsWith("http://") || s.startsWith("https://")) {
+        return s;
+      }
   
-      if (s.startsWith("/")) return `http://localhost:8000${s}`;
-      return `http://localhost:8000/${s}`;
+      // 2. On récupère l'URL de base depuis le .env
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL;
+  
+      // 3. On construit l'URL proprement en gérant le slash
+      if (s.startsWith("/")) {
+        return `${baseUrl}${s}`;
+      }
+      
+      return `${baseUrl}/${s}`;
   
     } catch {
       return "";
     }
   };
-   // fetch formations from backend
-    /*const fetchFormations = async () => {
-      try {
-        const res = await fetch("http://localhost:8000/formation/ReadFormation");
-        const data = await res.json();
-        const arr = Array.isArray(data) ? data : data.formations || [];
-        const mapped = arr.map((f: any) => ({
-          idFormation: f.idFormation ?? f.id ?? f.id_formation ?? 0,
-          titre: f.titre ?? f.name ?? "Formation",
-          description: f.description ?? "",
-          image: normalizeImage(f.image),
-        }));
-        setFormations(mapped);
-      } catch (err) {
-        console.error("Erreur fetch formations:", err);
-      }
-    };*/
-    
-
+  
   // fetch formations from backend
   const fetchFormations = useCallback(async () => {
     try {
-      const res = await fetch("http://localhost:8000/formation/ReadFormation");
+      const res = await apiFetch("/formation/ReadFormation");
       const data = await res.json();
       const arr = Array.isArray(data) ? data : data.formations || [];
       const mapped = arr.map((f: any) => ({
@@ -103,7 +95,7 @@ const imageInputRef = useRef<HTMLInputElement | null>(null);
 
   const fetchLivresForFormation = useCallback(async (idFormation: number) => {
     try {
-      const res = await fetch(`http://localhost:8000/livre/ReadLivresLocal/${idFormation}`);
+      const res = await apiFetch(`/livre/ReadLivresLocal/${idFormation}`);
       const data = await res.json();
       const arr = Array.isArray(data) ? data : data.livres || [];
       const mapped = arr.map((l: any) => ({
@@ -168,7 +160,7 @@ const addLivre = async () => {
     if (selectedPDF) body.append("urlPdf", selectedPDF);
     if (selectedImage) body.append("image", selectedImage);  
 
-    const res = await fetch("http://localhost:8000/livre/NewLivre/", {
+    const res = await apiFetch("/livre/NewLivre/", {
       method: "POST",
       body,
     });
@@ -210,7 +202,7 @@ const addLivre = async () => {
     if (selectedPDF) body.append("urlPdf", selectedPDF);
     if (selectedImage) body.append("image", selectedImage);
 
-    await fetch(`http://localhost:8000/livre/UpdateLivre/${editingLivre.id}`, {
+    await apiFetch(`/livre/UpdateLivre/${editingLivre.id}`, {
       method: "PUT",
       body,
     });
@@ -238,10 +230,10 @@ const deleteLivre = async (idLivre: number) => {
   if (!idLivre) return;
 
   // Confirmation visuelle
-  if (!confirm("Voulez-vous vraiment supprimer ce livre ?")) return;
+ 
 
   try {
-    const res = await fetch(`http://localhost:8000/livre/DeleteLivre/${idLivre}`, {
+    const res = await apiFetch(`/livre/DeleteLivre/${idLivre}`, {
       method: "DELETE",
     });
 

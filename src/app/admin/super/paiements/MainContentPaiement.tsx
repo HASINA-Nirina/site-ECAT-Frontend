@@ -7,13 +7,16 @@ import {
   ArrowUpNarrowWide,
   CreditCard,
   MapPin,
+  MessageCircle,
 } from "lucide-react";
-
+import { apiFetch } from "@/lib/api";
+import MessagePopup from "@/app/admin/super/dashboard/Message/MessagePopup";
 interface ListePaiementsProps {
   readonly darkMode: boolean;
 }
 
 export default function ListePaiements({ darkMode }: ListePaiementsProps) {
+  const [showMessage, setShowMessage] = useState(false);
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState<"recent" | "az">("recent");
   const [error, setError] = useState<string | null>(null);
@@ -48,8 +51,8 @@ export default function ListePaiements({ darkMode }: ListePaiementsProps) {
       setError(null);
       try {
         const token = localStorage.getItem("token");
-        const url = `http://localhost:8000/paiement/ReadPaiement/`;
-        const res = await fetch(url, { headers: token ? { Authorization: `Bearer ${token}` } : undefined });
+        const url = `/paiement/ReadPaiement/`;
+        const res = await apiFetch(url, { headers: token ? { Authorization: `Bearer ${token}` } : undefined });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
 
@@ -79,7 +82,7 @@ export default function ListePaiements({ darkMode }: ListePaiementsProps) {
   useEffect(() => {
     const fetchAntennes = async () => {
       try {
-        const res = await fetch("http://localhost:8000/auth/antennes");
+        const res = await apiFetch("/auth/antennes");
         if (!res.ok) return;
   const data = await res.json();
   // data may be list of objects {id, province} or strings
@@ -141,7 +144,7 @@ export default function ListePaiements({ darkMode }: ListePaiementsProps) {
     if (!("Inconnu" in counts)) counts["Inconnu"] = 0;
     return counts;
   }, [paiements]);
-
+  
   return (
     <div
       className={`p-6 rounded-lg shadow-md transition-colors duration-300 ${
@@ -296,6 +299,23 @@ export default function ListePaiements({ darkMode }: ListePaiementsProps) {
           </tbody>
         </table>
       </div>
+      {/* Floating message button */}
+      <button
+        className="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-purple-600 hover:bg-purple-700 text-white flex items-center justify-center shadow-xl transition-all duration-300 hover:scale-105"
+        title="Messages"
+        onClick={() => setShowMessage(true)}
+      >
+        <MessageCircle size={28} />
+      </button>
+
+      {/* Utilisation du composant MessagePopup simulé localement */}
+      {showMessage && (
+        <MessagePopup
+          darkMode={darkMode}
+          onClose={() => setShowMessage(false)}
+        />
+      )}
     </div>
+    
   );
 }

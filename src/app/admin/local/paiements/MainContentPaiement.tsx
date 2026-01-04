@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { CreditCard, Search, Calendar, ArrowUpDown, ChevronUp, ChevronDown, MessageCircle } from "lucide-react";
 import MessagePopup from "@/app/admin/super/dashboard/Message/MessagePopup";
-
+import { apiFetch } from "@/lib/api";
 interface MainContentProps {
   readonly darkMode: boolean;
   readonly lang: string;
@@ -30,7 +30,7 @@ export default function MainContentPaiements({ darkMode, lang }: MainContentProp
     const fetchPaiements = async () => {
       try {
         const token = localStorage.getItem("token");
-        const res = await fetch("http://localhost:8000/paiement/par_province", {
+        const res = await apiFetch("/paiement/par_province", {
           headers: token ? { Authorization: `Bearer ${token}` } : undefined,
         });
         if (!res.ok) throw new Error("Erreur de chargement des paiements");

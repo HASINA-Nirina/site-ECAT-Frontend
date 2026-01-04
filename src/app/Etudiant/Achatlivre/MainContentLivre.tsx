@@ -9,7 +9,7 @@ import "react-phone-input-2/lib/style.css";
 import { parsePhoneNumberFromString } from "libphonenumber-js";
 import Image from "next/image";
 import MessagePopup from "@/app/admin/super/dashboard/Message/MessagePopup";
-
+import { apiFetch } from "@/lib/api";
 
 interface MainContentProps {
   readonly darkMode: boolean;
@@ -64,17 +64,26 @@ export default function MainContentAchat({ darkMode, lang }: MainContentProps) {
       if (!raw) return "";
   
       const s = String(raw).trim();
-      if (s.startsWith("blob:")) return s;
-      if (s.startsWith("http://") || s.startsWith("https://")) return s;
+      
+      // 1. Si c'est déjà une URL complète ou un blob, on ne touche à rien
+      if (s.startsWith("blob:") || s.startsWith("http://") || s.startsWith("https://")) {
+        return s;
+      }
   
-      if (s.startsWith("/")) return `http://localhost:8000${s}`;
-      return `http://localhost:8000/${s}`;
+      // 2. On récupère l'URL de base depuis le .env
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL;
+  
+      // 3. On construit l'URL proprement en gérant le slash
+      if (s.startsWith("/")) {
+        return `${baseUrl}${s}`;
+      }
+      
+      return `${baseUrl}/${s}`;
   
     } catch {
       return "";
     }
   };
-  
 
   // Récupérer l'ID utilisateur
   useEffect(() => {
@@ -91,15 +100,17 @@ export default function MainContentAchat({ darkMode, lang }: MainContentProps) {
           }
         }
 
-        // Sinon, faire une requête API
         const token = localStorage.getItem("token");
-        const res = await fetch("http://localhost:8000/auth/me", {
-          credentials: "include",
-          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-        });
+
+        // Ajoutez ce log pour voir exactement ce que vous envoyez
+        console.log("Header envoyé :", token ? `Bearer ${token}` : "AUCUN TOKEN");
         
-        if (res.ok) {
-          const data = await res.json();
+        const resUser = await apiFetch("/auth/me", {
+          method: "GET", 
+          headers: token ? { "Authorization": `Bearer ${token.trim()}` } : {},
+        });
+        if (resUser.ok) {
+          const data = await resUser.json();
           console.log("👤 Données utilisateur:", data);
           if (data.id) {
             setUserId(data.id);
@@ -109,7 +120,7 @@ export default function MainContentAchat({ darkMode, lang }: MainContentProps) {
             console.error("❌ Pas d'ID dans les données");
           }
         } else {
-          console.error("❌ Erreur auth/me:", res.status);
+          console.error("❌ Erreur auth/me:", resUser.status);
         }
       } catch (error) {
         console.error("❌ Erreur récupération utilisateur:", error);
@@ -123,7 +134,7 @@ export default function MainContentAchat({ darkMode, lang }: MainContentProps) {
     const fetchFormations = async () => {
       try {
         setLoadingFormations(true);
-        const res = await fetch("http://localhost:8000/formation/ReadFormation");
+        const res = await apiFetch("/formation/ReadFormation");
         if (!res.ok) throw new Error("Erreur de chargement des formations");
         const data = await res.json();
         const arr = Array.isArray(data) ? data : data.formations || [];
@@ -147,44 +158,47 @@ export default function MainContentAchat({ darkMode, lang }: MainContentProps) {
   }, []);
 
   // Récupérer les livres quand une formation est sélectionnée
-  // 1. Définition de la fonction de récupération (accessible partout)
-const fetchLivres = useCallback(async () => {
-  if (!selectedFormation || !userId) return;
-
-  try {
-    setLoadingLivres(true);
-    const url = `http://localhost:8000/livre/ReadLivres/${selectedFormation.id}/${userId}`;
-    console.log("🔍 Fetching livres from:", url);
-
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`Erreur HTTP: ${res.status}`);
-
-    const data = await res.json();
-    const arr = Array.isArray(data) ? data : data.livres || [];
-
-    const formatted = arr.map((l: any) => ({
-      id: l.id ?? l.idLivre ?? 0,
-      title: l.title ?? l.titre ?? "Livre",
-      author: l.author ?? l.auteur ?? "",
-      pdf: l.pdf ?? l.urlPdf ?? "",
-      prix: l.prix ?? l.price ?? "",
-      image: normalizeImage(l.image ?? l.cover ?? ""),
-      access: l.access ?? false,
-      description: l.description ?? l.desc ?? "",
-    }));
-
-    setLivres(formatted);
-  } catch (error) {
-    console.error("Erreur:", error);
-    setLivres([]);
-  } finally {
-    setLoadingLivres(false);
-  }
-}, [selectedFormation, userId]); 
-useEffect(() => {
-  fetchLivres();
-}, [fetchLivres]);
-
+  const fetchLivres = useCallback(async () => {
+    if (!selectedFormation || !userId) return;
+  
+    try {
+      setLoadingLivres(true);
+      
+      // 1. Correction : Définir le endpoint pour le log et l'appel
+      const endpoint = `/livre/ReadLivres/${selectedFormation.id}/${userId}`;
+      console.log("🔍 Fetching livres from:", endpoint);
+  
+      // 2. Utilisation de apiFetch (le token sera ajouté automatiquement via votre api.js)
+      const res = await apiFetch(endpoint); 
+      
+      if (!res.ok) throw new Error(`Erreur HTTP: ${res.status}`);
+  
+      const data = await res.json();
+      const arr = Array.isArray(data) ? data : data.livres || [];
+  
+      const formatted = arr.map((l: any) => ({
+        id: l.id ?? l.idLivre ?? 0,
+        title: l.title ?? l.titre ?? "Livre",
+        author: l.author ?? l.auteur ?? "",
+        pdf: l.pdf ?? l.urlPdf ?? "",
+        prix: l.prix ?? l.price ?? "",
+        image: normalizeImage(l.image ?? l.cover ?? ""),
+        access: l.access ?? false,
+        description: l.description ?? l.desc ?? "",
+      }));
+  
+      setLivres(formatted);
+    } catch (error) {
+      console.error("Erreur lors de la récupération des livres:", error);
+      setLivres([]);
+    } finally {
+      setLoadingLivres(false);
+    }
+  }, [selectedFormation, userId]);
+  
+  useEffect(() => {
+    fetchLivres();
+  }, [fetchLivres]);
   //  Gestion téléphone internationale avec typage
   const handlePhoneChange = (value: string, data: CountryData) => {
     const formattedValue = value.startsWith("+") ? value : "+" + value;
@@ -222,8 +236,10 @@ useEffect(() => {
   const handleLivreClick = (livre: Livre) => {
     if (livre.access) {
       // Si le livre est débloqué, ouvrir directement le PDF
-      window.open(`http://127.0.0.1:8000/forum/filesdownload/${encodeURIComponent(livre.pdf)}`, "_blank");
-
+      window.open(
+        `${process.env.NEXT_PUBLIC_API_URL}/forum/filesdownload/${encodeURIComponent(livre.pdf)}`, 
+        "_blank"
+      );
                      
       // Sinon, afficher le formulaire de paiement
     } else {
@@ -247,7 +263,7 @@ useEffect(() => {
     };
   
     try {
-      const response = await fetch("http://localhost:8000/livre/Debloque", {
+      const response = await apiFetch("/livre/Debloque", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(paymentData),

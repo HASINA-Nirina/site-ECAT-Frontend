@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import background from "@/app/assets/background.png";
 // router not required here
+import { apiFetch } from "@/lib/api";
 
 const ForgotPasswordPage = () => {
   const [email, setEmail] = useState("");
@@ -18,16 +19,16 @@ const ForgotPasswordPage = () => {
     setShowPopup(false);
 
     try {
-      const res = await fetch("http://127.0.0.1:8000/auth/sendOtp", {
+      const res = await apiFetch("/auth/sendOtp", {
         method: "POST",
-        headers: { "Content-type": "application/json" },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
       });
 
       const data = await res.json();
       if (data.message) {
-        // ✅ au lieu de alert()
-        setMessage("✅ Un code OTP a été envoyé à votre adresse e-mail.");
+        //  au lieu de alert()
+        setMessage("Un code OTP a été envoyé à votre adresse e-mail.");
         setShowPopup(true);
         setTimeout(() => setShowPopup(false), 5000);
 

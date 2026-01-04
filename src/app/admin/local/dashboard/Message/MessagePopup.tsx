@@ -11,6 +11,9 @@ import {
     Paperclip // <-- Import de l'icône d'attachement
 } from 'lucide-react';
 
+
+
+const res2 = await apiFetch("/users/me");
 /**
  * Données simulées des contacts pour la barre latérale.
  */

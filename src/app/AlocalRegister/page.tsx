@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import background from "@/app/assets/background.png";
 import { Eye, EyeOff } from "lucide-react";
+import { apiFetch } from "@/lib/api";
 
 interface Antenne {
   id: number;
@@ -40,7 +41,7 @@ const InscriptionAdminLocal = () => {
     }
 
     try {
-      const res = await fetch("http://127.0.0.1:8000/auth/AdminLocalRegister", {
+      const res = await apiFetch("/auth/AdminLocalRegister", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -85,7 +86,7 @@ const InscriptionAdminLocal = () => {
   //  Récupération des antennes
   const fetchAntennes = async () => {
     try {
-      const res = await fetch("http://127.0.0.1:8000/antenne/ReadAntenne");
+      const res = await apiFetch("/antenne/ReadAntenne");
       if (res.ok) {
         const data: Antenne[] = await res.json();
         // Le champ est 'antenne' dans l'interface, mais le champ du backend est 'province' pour l'inscription.
