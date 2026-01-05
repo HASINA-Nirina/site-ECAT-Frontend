@@ -12,13 +12,10 @@ import {
     FileText,
     SquarePlus,
     Mail,
-    MessageCircle,
-    Inbox,
     MoreVertical
 } from 'lucide-react';
 import Image from "next/image";
 import { Image as ImageIcon } from "lucide-react";
-import { apiFetch } from "@/lib/api";
 
 // Types pour les données du backend
 // ✅ MODIFICATION : Ajout de la propriété isCreator pour le contrôle d'accès au menu
