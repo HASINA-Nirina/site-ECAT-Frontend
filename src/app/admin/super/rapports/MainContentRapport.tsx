@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Clock, ChevronLeft, ChevronRight, List } from "lucide-react";
 
 interface MainContentProps {
@@ -38,7 +38,7 @@ export default function MainContentRapport({ darkMode, lang }: MainContentProps)
     total_pages: 1,
   });
 
-  const fetchHistoriques = async (page: number = 1) => {
+  const fetchHistoriques = useCallback(async (page: number = 1) => {
     setLoading(true);
     setError(null);
 
@@ -58,18 +58,18 @@ export default function MainContentRapport({ darkMode, lang }: MainContentProps)
 
       const data = await res.json();
       setHistoriques(data.historiques || []);
-      setPagination(data.pagination || pagination);
+      setPagination(prev => data.pagination || prev);
     } catch (err) {
       console.error("Erreur lors du chargement des historiques:", err);
       setError("Impossible de charger les historiques.");
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchHistoriques(1);
-  }, []);
+  }, [fetchHistoriques]);
 
   const handlePageChange = (newPage: number) => {
     if (newPage >= 1 && newPage <= pagination.total_pages) {
@@ -93,20 +93,6 @@ export default function MainContentRapport({ darkMode, lang }: MainContentProps)
     }
   };
 
-  const getVisibilityBadgeColor = (visibility: string) => {
-    switch (visibility) {
-      case "SUPER_ADMIN":
-        return darkMode ? "bg-purple-600/20 text-purple-300" : "bg-purple-100 text-purple-700";
-      case "ADMIN_LOCAL_SUPER":
-        return darkMode ? "bg-blue-600/20 text-blue-300" : "bg-blue-100 text-blue-700";
-      case "GLOBAL":
-        return darkMode ? "bg-green-600/20 text-green-300" : "bg-green-100 text-green-700";
-      case "USER":
-        return darkMode ? "bg-yellow-600/20 text-yellow-300" : "bg-yellow-100 text-yellow-700";
-      default:
-        return darkMode ? "bg-gray-600/20 text-gray-300" : "bg-gray-100 text-gray-700";
-    }
-  };
 
   const cardClass = `rounded-2xl shadow-xl transition-all p-6 ${
     darkMode

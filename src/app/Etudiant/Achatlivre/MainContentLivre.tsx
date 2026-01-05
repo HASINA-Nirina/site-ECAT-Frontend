@@ -2,9 +2,9 @@
 "use client";
 
 import { useState, useEffect,useCallback } from "react";
-import { BookOpen, ChevronLeft, ShoppingCart, Lock, Unlock, Eye, FileX, FileText, MessageCircle } from "lucide-react";
+import { BookOpen, ChevronLeft, ShoppingCart, Lock, Unlock, Eye, FileX, MessageCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import PhoneInput, { CountryData } from "react-phone-input-2";
+import PhoneInput from "react-phone-input-2";
 import "react-phone-input-2/lib/style.css";
 import { parsePhoneNumberFromString } from "libphonenumber-js";
 import Image from "next/image";
@@ -55,8 +55,6 @@ export default function MainContentAchat({ darkMode, lang }: MainContentProps) {
     paymentMethod: "airtel",
     mobileNumber: "",
   });
-
-  const [phoneError, setPhoneError] = useState("");
 
   // Helper pour normaliser les URLs d'images
   const normalizeImage = (raw: any): string => {
@@ -180,32 +178,24 @@ const fetchLivres = useCallback(async () => {
   } finally {
     setLoadingLivres(false);
   }
-}, [selectedFormation, userId]); 
+}, [selectedFormation, userId]);
 useEffect(() => {
-  fetchLivres();
+fetchLivres();
 }, [fetchLivres]);
 
-  //  Gestion téléphone internationale avec typage
-  const handlePhoneChange = (value: string, data: CountryData) => {
-    const formattedValue = value.startsWith("+") ? value : "+" + value;
+//  Gestion téléphone internationale avec typage
+const handlePhoneChange = (value: string) => {
+  const formattedValue = value.startsWith("+") ? value : "+" + value;
     try {
       const phoneNumber = parsePhoneNumberFromString(formattedValue);
       if (phoneNumber) {
         const formatted = phoneNumber.formatInternational();
         setForm((prev) => ({ ...prev, mobileNumber: formatted }));
-
-        if (!phoneNumber.isValid()) {
-          setPhoneError(`Numéro invalide pour ${data?.name || "ce pays"}`);
-        } else {
-          setPhoneError("");
-        }
       } else {
         setForm((prev) => ({ ...prev, mobileNumber: formattedValue }));
-        setPhoneError("Numéro non valide");
       }
     } catch {
       setForm((prev) => ({ ...prev, mobileNumber: formattedValue }));
-      setPhoneError("Format incorrect");
     }
   };
 

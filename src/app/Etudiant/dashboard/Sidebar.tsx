@@ -2,7 +2,6 @@
 
 import {
   LayoutDashboard,
-  FileText,
   X,
   BookLockIcon,
   UnlockIcon,

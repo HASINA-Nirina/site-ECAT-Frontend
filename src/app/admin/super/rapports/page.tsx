@@ -9,6 +9,7 @@ import MainContentRapport from "@/app/admin/super/rapports/MainContentRapport";
 export default function AdminLocalDashboard() {
   useAuth("admin"); // 🔒 Protège cette page
   const [darkMode, setDarkMode] = useState(false);
+  const [lang] = useState("fr");
 
   // State pour le sidebar mobile
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -35,7 +36,7 @@ export default function AdminLocalDashboard() {
         />
 
         {/* MainContent */}
-        <MainContentRapport darkMode={darkMode}/>
+        <MainContentRapport darkMode={darkMode} lang={lang}/>
       </div>
     </div>
   );

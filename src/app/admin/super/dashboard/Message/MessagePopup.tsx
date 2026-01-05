@@ -12,12 +12,9 @@ import {
     FileText,
     SquarePlus,
     Mail,
-    MessageCircle,
-    Inbox,
     MoreVertical
 } from 'lucide-react';
 import Image from "next/image";
-import { Image as ImageIcon } from "lucide-react";
 // Types pour les données du backend
 // ✅ MODIFICATION : Ajout de la propriété isCreator pour le contrôle d'accès au menu
 interface Sujet {
@@ -93,11 +90,6 @@ const formatDate = (dateString: string): string => {
     return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
 };
 
-// Fonction utilitaire pour formater l'heure
-const formatTime = (dateString: string): string => {
-    const date = new Date(dateString);
-    return date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-};
 
 // Mise à jour de l'export pour accepter la prop darkMode
 export default function MessagePopup({ onClose, darkMode }: MessagePopupProps) {
@@ -238,7 +230,6 @@ export default function MessagePopup({ onClose, darkMode }: MessagePopupProps) {
     // Récupérer les messages d'un sujet
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const wsRef = useRef<WebSocket | null>(null);
-    const [ws, setWs] = useState<WebSocket | null>(null);
     const setupWebSocket = (idSujet: number) => {
         // Réinitialiser les messages
         setMessages([]);
@@ -295,14 +286,8 @@ export default function MessagePopup({ onClose, darkMode }: MessagePopupProps) {
 
     //return () => websocket.close();
     };
-    const [user, setUser] = useState<{ nom: string; prenom: string } | null>(null);
     useEffect(() => {
         if (!activeChatId) return;
-        const storedNom = localStorage.getItem("userNom");
-        const storedPrenom = localStorage.getItem("userPrenom");
-        if (storedNom && storedPrenom) {
-            setUser({ nom: storedNom, prenom: storedPrenom });
-        }
         const cleanup = setupWebSocket(activeChatId);
 
         return () => {
@@ -509,10 +494,6 @@ export default function MessagePopup({ onClose, darkMode }: MessagePopupProps) {
         if (window.innerWidth < 1024) setIsSidebarOpen(false);
         setMenuOpen(null); // Fermer le menu lors du changement de sujet
     };
-
-    const OnlineDot = ({ isOnline }: { isOnline: boolean }) => (
-        <div className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white ${isOnline ? 'bg-green-500' : 'bg-gray-400'}`}></div>
-    );
 
     useEffect(() => {
         const handleResize = () => {

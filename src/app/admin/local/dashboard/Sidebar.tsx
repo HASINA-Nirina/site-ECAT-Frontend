@@ -1,6 +1,6 @@
 "use client";
 
-import { LayoutDashboard, Users, CreditCard, FileText, LogOut, BookOpen, X, Settings } from "lucide-react";
+import { LayoutDashboard, Users, CreditCard, LogOut, BookOpen, X, Settings } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
