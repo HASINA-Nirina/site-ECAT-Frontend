@@ -157,7 +157,7 @@ export default function MainContent({ darkMode, lang }: MainContentProps) {
                 <div className="relative w-full h-48 overflow-hidden">
                 {imageUrl ? (
                   <Image
-                    src={imageUrl}
+                  src={imageUrl}
                     alt={book.title || "LIVRE"}
                     fill
                     className="object-cover w-full h-full"

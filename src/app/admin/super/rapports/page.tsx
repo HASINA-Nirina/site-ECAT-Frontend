@@ -35,7 +35,8 @@ export default function AdminLocalDashboard() {
         />
 
         {/* MainContent */}
-        <MainContentRapport darkMode={darkMode} lang="fr" />
+
+       <MainContentRapport darkMode={darkMode} lang="fr" />
       </div>
     </div>
   );
