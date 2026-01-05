@@ -6,6 +6,7 @@ import { apiFetch } from "@/lib/api";
 import MessagePopup from "@/app/admin/super/dashboard/Message/MessagePopup";
 interface MainContentProps {
   readonly darkMode: boolean;
+  readonly lang: string;
 }
 
 interface HistoriqueItem {
