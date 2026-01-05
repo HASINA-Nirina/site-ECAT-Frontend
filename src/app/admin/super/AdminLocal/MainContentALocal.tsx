@@ -16,7 +16,11 @@ import {
   Edit,
   FileX,
   X,
+  MessageCircle,
 } from "lucide-react";
+
+import { apiFetch } from "@/lib/api";
+import MessagePopup from "@/app/admin/super/dashboard/Message/MessagePopup";
 
 // --- INTERFACES ---
 
@@ -53,6 +57,7 @@ interface Props {
 }
 
 export default function ListeAdminsLocaux({ darkMode }: Props) {
+  const [showMessage, setShowMessage] = useState(false);
   // --- ETATS ADMINS ---
   const [admins, setAdmins] = useState<AdminLocal[]>([]);
   const [search, setSearch] = useState<string>("");
@@ -73,7 +78,7 @@ export default function ListeAdminsLocaux({ darkMode }: Props) {
   // --- 2. GESTION DES ANTENNES (Intégration Backend) ---
   const fetchAntenneStats = useCallback(async () => {
     try {
-      const res = await fetch("http://localhost:8000/antenne/ReadAntenne");
+      const res = await apiFetch("/antenne/ReadAntenne");
       if (!res.ok) throw new Error("Erreur récupération antennes");
       
       const backendAntennes: { id: number; province: string }[] = await res.json();
@@ -121,7 +126,7 @@ export default function ListeAdminsLocaux({ darkMode }: Props) {
   }, [admins, selectedId]);
 
   useEffect(() => {
-    fetch("http://localhost:8000/auth/GetAdminLocaux")
+    apiFetch("/auth/GetAdminLocaux")
       .then(async (res) => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
@@ -151,7 +156,7 @@ export default function ListeAdminsLocaux({ darkMode }: Props) {
      
   const onCreateAntenne = async (nom: string) => {
     try {
-      const res = await fetch("http://localhost:8000/antenne/NewAntenne", {
+      const res = await apiFetch("/antenne/NewAntenne", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ province: nom }), // Correspond à AntenneCreate
@@ -166,7 +171,7 @@ export default function ListeAdminsLocaux({ darkMode }: Props) {
 
   const onUpdateAntenne = async (antenne: Antenne, newName: string) => {
     try {
-      const res = await fetch(`http://localhost:8000/antenne/UpdateAntenne/${antenne.id}`, {
+      const res = await apiFetch(`/antenne/UpdateAntenne/${antenne.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ province: newName }), 
@@ -188,7 +193,7 @@ export default function ListeAdminsLocaux({ darkMode }: Props) {
   const confirmDelete = async () => {
     if (!deleteAntenne) return;
     try {
-      const res = await fetch(`http://localhost:8000/antenne/DeleteAntenne/${deleteAntenne.id}`, {
+      const res = await apiFetch(`/antenne/DeleteAntenne/${deleteAntenne.id}`, {
         method: "DELETE",
       });
       if (!res.ok) throw new Error("Erreur suppression");
@@ -241,7 +246,7 @@ export default function ListeAdminsLocaux({ darkMode }: Props) {
     const newStatus = adminToChange.statut === "Actif" ? "Suspendu" : "Actif";
 
     try {
-      const res = await fetch(`http://localhost:8000/auth/ChangeStatus/${id}`, {
+      const res = await apiFetch(`/auth/ChangeStatus/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ statuts: newStatus }),
@@ -261,8 +266,8 @@ export default function ListeAdminsLocaux({ darkMode }: Props) {
     try {
       if (!province) return [];
       const token = localStorage.getItem("token");
-      const url = `http://localhost:8000/auth/ReadEtudiantByprovince/${encodeURIComponent(province)}`;
-      const res = await fetch(url, {
+      const url = `/auth/ReadEtudiantByprovince/${encodeURIComponent(province)}`;
+      const res = await apiFetch(url, {
         headers: token ? { Authorization: `Bearer ${token}` } : undefined,
       });
       if (!res.ok) throw new Error("Erreur lors du chargement des étudiants");
@@ -763,6 +768,22 @@ const html = `
             </div>
           </div>
         </div>
+      )}
+       {/* Floating message button */}
+       <button
+        className="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-purple-600 hover:bg-purple-700 text-white flex items-center justify-center shadow-xl transition-all duration-300 hover:scale-105"
+        title="Messages"
+        onClick={() => setShowMessage(true)}
+      >
+        <MessageCircle size={28} />
+      </button>
+
+      {/* Utilisation du composant MessagePopup simulé localement */}
+      {showMessage && (
+        <MessagePopup
+          darkMode={darkMode}
+          onClose={() => setShowMessage(false)}
+        />
       )}
     </div>
   );

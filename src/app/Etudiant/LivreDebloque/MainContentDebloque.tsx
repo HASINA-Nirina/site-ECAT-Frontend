@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { BookOpen, Search, Eye, FileX, MessageCircle } from "lucide-react";
 import Image from "next/image";
 import MessagePopup from "@/app/admin/super/dashboard/Message/MessagePopup";
+import { apiFetch } from "@/lib/api";
 
 // Définition de l'interface Book
 interface Book {
@@ -26,17 +27,27 @@ export default function MainContent({ darkMode, lang }: MainContentProps) {
   const [showMessage, setShowMessage] = useState(false);
 
   
-  // Récupération de l'ID utilisateur
-  const normalizeImage = (raw: any): string => {
+   // Helper pour normaliser les URLs d'images
+   const normalizeImage = (raw: any): string => {
     try {
       if (!raw) return "";
   
       const s = String(raw).trim();
-      if (s.startsWith("blob:")) return s;
-      if (s.startsWith("http://") || s.startsWith("https://")) return s;
+      
+      // 1. Si c'est déjà une URL complète ou un blob, on ne touche à rien
+      if (s.startsWith("blob:") || s.startsWith("http://") || s.startsWith("https://")) {
+        return s;
+      }
   
-      if (s.startsWith("/")) return `http://localhost:8000${s}`;
-      return `http://localhost:8000/${s}`;
+      // 2. On récupère l'URL de base depuis le .env
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL;
+  
+      // 3. On construit l'URL proprement en gérant le slash
+      if (s.startsWith("/")) {
+        return `${baseUrl}${s}`;
+      }
+      
+      return `${baseUrl}/${s}`;
   
     } catch {
       return "";
@@ -51,7 +62,7 @@ export default function MainContent({ darkMode, lang }: MainContentProps) {
   
       setLoading(true);
       try {
-        const res = await fetch(`http://127.0.0.1:8000/livre/livreDebloqueEtudiant/${idUser}`, {
+        const res = await apiFetch(`/livre/livreDebloqueEtudiant/${idUser}`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
         });
@@ -146,7 +157,7 @@ export default function MainContent({ darkMode, lang }: MainContentProps) {
                 <div className="relative w-full h-48 overflow-hidden">
                 {imageUrl ? (
                   <Image
-                    src={imageUrl}
+                  src={imageUrl}
                     alt={book.title || "LIVRE"}
                     fill
                     className="object-cover w-full h-full"
@@ -168,8 +179,15 @@ export default function MainContent({ darkMode, lang }: MainContentProps) {
                   {/* Bouton Lire maintenant - Lié à l'endpoint de téléchargement */}
                   <button
                      onClick={() => {   
-                      window.open(`http://127.0.0.1:8000/forum/filesdownload/${encodeURIComponent(book.pdf)}`, "_blank");
+                      if (!book.pdf) {
+                        alert("Aucun fichier disponible");
+                        return;
+                      }
+                      // Utiliser l'URL de l'API (évitez de hardcoder 127.0.0.1 si possible, utilisez votre variable API_URL)
+                      const downloadUrl = `${process.env.NEXT_PUBLIC_API_URL}/forum/filesdownload/${encodeURIComponent(book.pdf)}`;
+                      window.open(downloadUrl, "_blank");
                     }}
+                    
                     className="mt-2 flex items-center justify-center gap-2 bg-[#17f] hover:bg-[#0f0fcf] text-white py-2 rounded-lg font-medium transition duration-200 shadow-md shadow-[#17f]/50"
                   >
                     <Eye size={18} /> Lire maintenant

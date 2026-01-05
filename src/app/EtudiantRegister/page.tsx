@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import background from "@/app/assets/background.png";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff } from "lucide-react";
-
+import { apiFetch } from "@/lib/api";
 interface Antenne {
   id: number;
   antenne: string;
@@ -31,7 +31,7 @@ const RegisterPage = () => {
   //  Récupération des antennes
   const fetchAntennes = async () => {
     try {
-      const res = await fetch("http://127.0.0.1:8000/antenne/ReadAntenne");
+      const res = await apiFetch("/antenne/ReadAntenne");
       if (res.ok) {
         const data: Antenne[] = await res.json();
         setAntennes(data);
@@ -60,7 +60,7 @@ const RegisterPage = () => {
     }
 
     try {
-      const res = await fetch("http://127.0.0.1:8000/auth/Etudiantregister", {
+      const res = await apiFetch("/auth/Etudiantregister", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -78,7 +78,9 @@ const RegisterPage = () => {
 
       if (res.ok) {
         setMessage("Votre compte est creé avec succées !");
-        router.push("/login");
+        setTimeout(() => {
+          router.push("/login");
+        }, 3000);
       } else {
         alert(data.detail || "Erreur lors de l'inscription");
       }

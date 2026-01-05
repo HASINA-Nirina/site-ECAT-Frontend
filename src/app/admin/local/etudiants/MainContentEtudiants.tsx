@@ -3,6 +3,7 @@ import { useState } from "react";
 import { ArrowUpDown, Calendar, ChevronUp, ChevronDown, Users,MessageCircle } from "lucide-react";
 import MessagePopup from "@/app/admin/super/dashboard/Message/MessagePopup";
 import { useEffect } from "react";
+import { apiFetch } from "@/lib/api";
 
 interface MainContentProps {
   readonly darkMode: boolean;
@@ -32,7 +33,7 @@ useEffect(() => {
     try {
       const province=localStorage.getItem("province");
       setLoading(true);
-      const response = await fetch(`http://localhost:8000/auth/ReadEtudiantByprovince/${province}`);
+      const response = await apiFetch("/auth/ReadEtudiantByprovince/${province}");
       if (!response.ok) throw new Error("Erreur lors du chargement des étudiants");
       const data: Etudiant[] = await response.json();
       setEtudiants(data);

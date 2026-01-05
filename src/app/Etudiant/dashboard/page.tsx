@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import Header from "@/app/Etudiant/dashboard/Header";
+import Header from "@/app/admin/local/dashboard/Header";
 import Sidebar from "@/app/Etudiant/dashboard/Sidebar";
 import MainContent from "@/app/Etudiant/dashboard/MainContent";
 

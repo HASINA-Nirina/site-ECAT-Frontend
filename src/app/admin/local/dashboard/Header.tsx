@@ -6,7 +6,7 @@ import { Sun, Moon, Bell, Menu, Pencil, X, LogOut } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
 import Link from "next/link";
-
+import { apiFetch } from "@/lib/api";
 interface HeaderProps {
   readonly darkMode: boolean;
   readonly setDarkMode: (mode: boolean) => void;
@@ -49,43 +49,70 @@ export default function Header({ darkMode, setDarkMode,sidebarOpen, setSidebarOp
   };
   }, []);
 
-
-  // Charger les données utilisateur
   useEffect(() => {
     async function fetchUser() {
       try {
-        const res = await fetch("http://localhost:8000/auth/me", {
+        const res = await apiFetch("/auth/me", {
           credentials: "include",
         });
+
         if (!res.ok) throw new Error("Non autorisé");
         const data = await res.json();
 
-        setPrenom(data.prenom || "");
-        setNom(data.nom || "");
-        setAdminName(`${data.prenom} ${data.nom}`);
-        setProfileImage(data.image || null);
-        localStorage.setItem("idUser", data.id.toString());
-        localStorage.setItem("province", data.province);
+        // 1. Mise à jour Nom/Prénom
+        const userPrenom = data.prenom || "";
+        const userNom = data.nom || "";
+        setPrenom(userPrenom);
+        setNom(userNom);
+        setAdminName(`${userPrenom} ${userNom}`.trim() || "Utilisateur");
 
-      //Appliquer le thème sauvegardé
-      if (data.theme === "dark") {
-        setDarkMode(true);
-      } else {
-        setDarkMode(false);
-      }
+        // 2. Gestion de l'Image avec détection d'erreur "None"
+        const envUrl = process.env.NEXT_PUBLIC_API_URL;
+        // On force http://localhost:8000 si la variable d'env est absente ou vaut "None"
+        const backendUrl = (envUrl && envUrl !== "undefined" && envUrl !== "None") 
+                           ? envUrl 
+                           : "http://localhost:8000";
 
-        const initials =
-          (data.prenom?.[0] || "").toUpperCase() +
-          (data.nom?.[0] || "").toUpperCase();
-        setInitials(initials);
-      } catch {
+        let finalImageUrl = null;
+
+        if (data.image && typeof data.image === "string") {
+          // Si l'image contient "None", c'est une donnée corrompue -> on met null
+          if (data.image.includes("None")) {
+            finalImageUrl = null;
+          } else if (data.image.startsWith("http")) {
+            finalImageUrl = data.image;
+          } else {
+            const cleanPath = data.image.startsWith("/") ? data.image : `/${data.image}`;
+            finalImageUrl = `${backendUrl}${cleanPath}`;
+          }
+        }
+        
+        setProfileImage(finalImageUrl);
+
+        // 3. Stockage et Thème
+        localStorage.setItem("idUser", data.id?.toString() || "");
+        if (data.theme === "dark") {
+          setDarkMode(true);
+          document.documentElement.classList.add('dark');
+        } else {
+          setDarkMode(false);
+          document.documentElement.classList.remove('dark');
+        }
+
+        // 4. Initiales
+        const initials = (userPrenom[0] || "").toUpperCase() + (userNom[0] || "").toUpperCase();
+        setInitials(initials || "?");
+
+      } catch (error) {
+        console.error("Erreur fetchUser:", error);
         setAdminName("Utilisateur inconnu");
         setInitials("?");
+        setProfileImage(null);
       }
     }
+
     fetchUser();
   }, [setDarkMode]);
-
   // Déconnexion
   const handleLogout = () => {
     localStorage.clear();
@@ -105,7 +132,6 @@ export default function Header({ darkMode, setDarkMode,sidebarOpen, setSidebarOp
     }
   };
 
-  // Mise à jour du profil
   const handleProfileUpdate = async () => {
     try {
       const formData = new FormData();
@@ -113,23 +139,44 @@ export default function Header({ darkMode, setDarkMode,sidebarOpen, setSidebarOp
       formData.append("nom", nom);
       if (profileImageFile) formData.append("file", profileImageFile);
 
-      const res = await fetch("http://localhost:8000/auth/me/update", {
+      const res = await apiFetch("/auth/me/update", {
         method: "PUT",
         body: formData,
         credentials: "include",
       });
 
       const data = await res.json();
+      
       if (!res.ok) {
         alert(data.detail || "Erreur lors de la mise à jour du profil");
         return;
       }
 
+      // 1. Mise à jour du nom affiché
       setAdminName(`${data.user.prenom} ${data.user.nom}`);
-      if (data.user.image) setProfileImage(data.user.image);
+
+      // 2. Mise à jour de l'image avec reconstruction de l'URL
+      if (data.user.image) {
+        const envUrl = process.env.NEXT_PUBLIC_API_URL;
+        const backendUrl = (envUrl && envUrl !== "undefined" && envUrl !== "None") 
+                           ? envUrl 
+                           : "http://localhost:8000";
+
+        // On vérifie si l'image renvoyée est déjà une URL complète ou juste un chemin
+        const cleanPath = data.user.image.startsWith("http") 
+          ? data.user.image 
+          : `${backendUrl}${data.user.image.startsWith("/") ? "" : "/"}${data.user.image}`;
+        
+        setProfileImage(cleanPath);
+      }
+
+      // 3. Fermer le popup et réinitialiser le fichier temporaire
+      setProfileImageFile(null);
       setShowSettings(false);
+      
+
     } catch (error) {
-      console.error(error);
+      console.error("Erreur lors de la mise à jour :", error);
       alert("Erreur réseau lors de la mise à jour du profil");
     }
   };
@@ -150,7 +197,7 @@ export default function Header({ darkMode, setDarkMode,sidebarOpen, setSidebarOp
     const formData = new FormData();
     formData.append("theme", newMode ? "dark" : "light");
 
-    await fetch("http://localhost:8000/auth/me/theme", {
+    await apiFetch("/auth/me/theme", {
       method: "PUT",
       body: formData,
       credentials: "include",
@@ -199,14 +246,16 @@ export default function Header({ darkMode, setDarkMode,sidebarOpen, setSidebarOp
                 darkMode ? "bg-[#17f]" : "bg-blue-400"
               }`}
             >
-              {profileImage ? (
-                <Image
-                  src={profileImage}
-                  alt="Profil"
-                  width={40}
-                  height={40}
-                  className="object-cover w-full h-full rounded-full"
-                />
+             {profileImage && profileImage.includes("/uploads") ? (
+  <Image
+    src={profileImage}
+    alt="Profil"
+    width={40}
+    height={40}
+    className="object-cover w-full h-full rounded-full"
+    unoptimized // Utile si vous chargez des images d'un serveur externe sans configurer next.config.js
+  />
+
               ) : (
                 initials
               )}
@@ -221,15 +270,6 @@ export default function Header({ darkMode, setDarkMode,sidebarOpen, setSidebarOp
           >
             <Pencil size={20} color={iconColor} />
           </button>
-
-          <button
-            onClick={() => setShowNotifications(true)}
-            className="p-2 rounded-full border border-purple-500 hover:bg-purple-100 dark:hover:bg-yellow-400 transition relative"
-          >
-            <Bell size={20} color={iconColor} />
-            <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
-          </button>
-
           <button
             onClick={handleThemeToggle}
             className="p-2 rounded-full border border-purple-500 hover:bg-purple-100 dark:hover:bg-yellow-400 transition"

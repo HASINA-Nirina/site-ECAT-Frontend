@@ -6,6 +6,7 @@ import { Sun, Moon, Bell, Menu, Pencil, X, LogOut } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
 import Link from "next/link";
+import { apiFetch } from "@/lib/api";
 
 interface HeaderProps {
   readonly darkMode: boolean;
@@ -49,88 +50,138 @@ export default function Header({ darkMode, setDarkMode,sidebarOpen, setSidebarOp
   };
   }, []);
 
-  // Charger les données utilisateur
   useEffect(() => {
+    const token = localStorage.getItem("token");
+  
+    if (!token) {
+      console.warn("Token manquant : impossible de récupérer les informations utilisateur");
+      setAdminName("Utilisateur inconnu");
+      setInitials("?");
+      return;
+    }
+  
     async function fetchUser() {
       try {
-        const res = await fetch("http://localhost:8000/auth/me", {
+        const res = await apiFetch("/auth/me", {
           credentials: "include",
         });
+  
         if (!res.ok) throw new Error("Non autorisé");
         const data = await res.json();
-
-        setPrenom(data.prenom || "");
-        setNom(data.nom || "");
-        setAdminName(`${data.prenom} ${data.nom}`);
-        setProfileImage(data.image || null);
-        localStorage.setItem("idUser", data.id.toString());
-
-      //Appliquer le thème sauvegardé
-      if (data.theme === "dark") {
-        setDarkMode(true);
-      } else {
-        setDarkMode(false);
-      }
-
-        const initials =
-          (data.prenom?.[0] || "").toUpperCase() +
-          (data.nom?.[0] || "").toUpperCase();
-        setInitials(initials);
-      } catch {
+  
+        // Mise à jour Nom/Prénom
+        const userPrenom = data.prenom || "";
+        const userNom = data.nom || "";
+        setPrenom(userPrenom);
+        setNom(userNom);
+        setAdminName(`${userPrenom} ${userNom}`.trim() || "Utilisateur");
+  
+        // Gestion de l'Image
+        const envUrl = process.env.NEXT_PUBLIC_API_URL;
+        const backendUrl = (envUrl && envUrl !== "undefined" && envUrl !== "None") 
+                           ? envUrl 
+                           : "http://localhost:8000";
+  
+        let finalImageUrl = null;
+        if (data.image && typeof data.image === "string" && !data.image.includes("None")) {
+          finalImageUrl = data.image.startsWith("http") 
+            ? data.image 
+            : `${backendUrl}${data.image.startsWith("/") ? "" : "/"}${data.image}`;
+        }
+        setProfileImage(finalImageUrl);
+  
+        // Stockage et Thème
+        localStorage.setItem("idUser", data.id?.toString() || "");
+        if (data.theme === "dark") {
+          setDarkMode(true);
+          document.documentElement.classList.add('dark');
+        } else {
+          setDarkMode(false);
+          document.documentElement.classList.remove('dark');
+        }
+  
+        const initialsStr = (userPrenom[0] || "").toUpperCase() + (userNom[0] || "").toUpperCase();
+        setInitials(initialsStr || "?");
+  
+      } catch (error) {
+        console.error("Erreur fetchUser:", error);
         setAdminName("Utilisateur inconnu");
         setInitials("?");
+        setProfileImage(null);
       }
     }
+  
     fetchUser();
-  }, [setDarkMode]);
-
-  // Déconnexion
-  const handleLogout = () => {
-    localStorage.clear();
-    document.cookie =
-      "token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT;";
-    router.push("/login");
-  };
-
-  // Changement d'image local
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setProfileImageFile(file);
-      const reader = new FileReader();
-      reader.onload = () => setProfileImage(reader.result as string);
-      reader.readAsDataURL(file);
-    }
-  };
-
-  // Mise à jour du profil
-  const handleProfileUpdate = async () => {
-    try {
-      const formData = new FormData();
-      formData.append("prenom", prenom);
-      formData.append("nom", nom);
-      if (profileImageFile) formData.append("file", profileImageFile);
-
-      const res = await fetch("http://localhost:8000/auth/me/update", {
-        method: "PUT",
-        body: formData,
-        credentials: "include",
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        alert(data.detail || "Erreur lors de la mise à jour du profil");
-        return;
-      }
-
-      setAdminName(`${data.user.prenom} ${data.user.nom}`);
-      if (data.user.image) setProfileImage(data.user.image);
-      setShowSettings(false);
-    } catch (error) {
-      console.error(error);
-      alert("Erreur réseau lors de la mise à jour du profil");
-    }
-  };
+  }, [setDarkMode]); 
+  //   // Déconnexion
+    const handleLogout = () => {
+      localStorage.removeItem("token");
+      localStorage.removeItem("role");
+      localStorage.removeItem("idUser");
+      document.cookie = "token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT;";
+      router.push("/login");
+    };
+    
+      // Changement d'image local
+      const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+          setProfileImageFile(file);
+          const reader = new FileReader();
+          reader.onload = () => setProfileImage(reader.result as string);
+          reader.readAsDataURL(file);
+        }
+      };
+    
+      const handleProfileUpdate = async () => {
+        try {
+          const formData = new FormData();
+          formData.append("prenom", prenom);
+          formData.append("nom", nom);
+          if (profileImageFile) formData.append("file", profileImageFile);
+    
+          const res = await apiFetch("/auth/me/update", {
+            method: "PUT",
+            body: formData,
+            credentials: "include",
+          });
+    
+          const data = await res.json();
+          
+          if (!res.ok) {
+            alert(data.detail || "Erreur lors de la mise à jour du profil");
+            return;
+          }
+    
+          // 1. Mise à jour du nom affiché
+          setAdminName(`${data.user.prenom} ${data.user.nom}`);
+    
+          // 2. Mise à jour de l'image avec reconstruction de l'URL
+          if (data.user.image) {
+            const envUrl = process.env.NEXT_PUBLIC_API_URL;
+            const backendUrl = (envUrl && envUrl !== "undefined" && envUrl !== "None") 
+                               ? envUrl 
+                               : "http://localhost:8000";
+    
+            // On vérifie si l'image renvoyée est déjà une URL complète ou juste un chemin
+            const cleanPath = data.user.image.startsWith("http") 
+              ? data.user.image 
+              : `${backendUrl}${data.user.image.startsWith("/") ? "" : "/"}${data.user.image}`;
+            
+            setProfileImage(cleanPath);
+          }
+    
+          // 3. Fermer le popup et réinitialiser le fichier temporaire
+          setProfileImageFile(null);
+          setShowSettings(false);
+          
+    
+        } catch (error) {
+          console.error("Erreur lors de la mise à jour :", error);
+          alert("Erreur réseau lors de la mise à jour du profil");
+        }
+      };
+  
 
   const handleThemeToggle = async () => {
   const newMode = !darkMode;
@@ -148,7 +199,7 @@ export default function Header({ darkMode, setDarkMode,sidebarOpen, setSidebarOp
     const formData = new FormData();
     formData.append("theme", newMode ? "dark" : "light");
 
-    await fetch("http://localhost:8000/auth/me/theme", {
+    await apiFetch("/auth/me/theme", {
       method: "PUT",
       body: formData,
       credentials: "include",
@@ -221,13 +272,7 @@ export default function Header({ darkMode, setDarkMode,sidebarOpen, setSidebarOp
             <Pencil size={20} color={iconColor} />
           </button>
 
-          <button
-            onClick={() => setShowNotifications(true)}
-            className="p-2 rounded-full border border-purple-500 hover:bg-purple-100 dark:hover:bg-yellow-400 transition relative"
-          >
-            <Bell size={20} color={iconColor} />
-            <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
-          </button>
+         
 
           <button
             onClick={handleThemeToggle}
@@ -289,76 +334,7 @@ export default function Header({ darkMode, setDarkMode,sidebarOpen, setSidebarOp
         </div>
       </div>
 
-       {/* ====== POPUP NOTIFICATIONS ====== */}
-    {(showNotifications || isVisible) &&
-    typeof window !== "undefined" &&
-    createPortal(
-   <div className="fixed inset-0 flex justify-end z-[9999]">
-     {/* Fond semi-transparent pour fermer au clic */}
-     <div
-       className={`absolute inset-0 bg-black/30 dark:bg-black/50 transition-opacity duration-500 ${
-         isVisible ? "opacity-100" : "opacity-0"
-       }`}
-       onClick={handleCloseNotifications}
-     ></div>
-
-     {/* Conteneur popup avec animation slide + fade et effet glass */}
-     <div
-       className={`relative w-full sm:w-96 h-full shadow-2xl rounded-l-2xl transform transition-all duration-500 ease-in-out
-         backdrop-blur-md
-         ${darkMode ? "bg-gray-900/80 text-white" : "bg-gray-100/80 text-gray-900"}
-         ${isVisible ? "translate-x-0 opacity-100" : "translate-x-full opacity-0"}
-       `}
-     >
-            {/* Header notification */}
-      <div className="flex flex-col px-5 py-4 border-b border-transparent relative">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Notifications</h2>
-      <button
-        onClick={handleCloseNotifications}
-        className="p-2 rounded-full border-2 border-purple-500 flex items-center justify-center transition"
-      >
-        <X className="w-5 h-5 text-red-500" />
-      </button>
-        </div>
-
-        {/* Progress bar violette sous le titre */}
-        <div className="mt-8 h-1 w-full rounded-full overflow-hidden">
-          <div
-            className={`h-full w-full rounded-full ${
-              darkMode ? "bg-purple-400" : "bg-purple-600"
-            }`}
-          />
-        </div>
-      </div>
-
-       {/* Contenu notifications avec couleur dynamique selon mode */}
-       <div className="p-5 overflow-y-auto max-h-[calc(100%-4rem)]">
-         <div
-           className={`border rounded-xl p-4 mb-4 shadow-md transition-colors duration-500
-             ${darkMode ? "bg-gray-800 border-gray-700 text-white" : "bg-gray-50 border-gray-200 text-gray-900"}
-           `}
-         >
-           <p>
-             <span className={`font-semibold ${darkMode ? "text-blue-400" : "text-blue-600"}`}>
-               Admin Local - Jean Dupont
-             </span>{" "}
-             vous a envoyé une invitation.
-           </p>
-           <div className="flex justify-end gap-3 mt-3">
-             <button className="px-3 py-1.5 text-sm rounded-lg bg-red-500 hover:bg-red-600 text-white transition">
-               Refuser
-             </button>
-             <button className="px-3 py-1.5 text-sm rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition">
-               Accepter
-             </button>
-           </div>
-         </div>
-       </div>
-     </div>
-   </div>,
-    document.getElementById("portal-root") as HTMLElement
-  )}
+       
       {/* ====== POPUP LOGOUT ====== */}
       {showLogoutConfirm &&
         typeof window !== "undefined" &&

@@ -4,6 +4,7 @@ import { useState,useEffect } from "react";
 import Image from "next/image";
 import { User, Lock, Save, Eye, EyeOff,XIcon, CheckCircle, XCircle, MessageCircle } from "lucide-react";
 import MessagePopup from "@/app/admin/super/dashboard/Message/MessagePopup";
+import { apiFetch } from "@/lib/api";
 
 
 interface MainContentProps {
@@ -26,20 +27,40 @@ export default function MainContent({ darkMode }: MainContentProps) {
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const res = await fetch("http://localhost:8000/auth/me", {
+        const res = await apiFetch("/auth/me", {
           credentials: "include",
         });
         if (!res.ok) throw new Error("Non autorisé");
   
         const data = await res.json();
         localStorage.setItem("id", data.id);
+          // 2. Gestion de l'Image avec détection d'erreur "None"
+          const envUrl = process.env.NEXT_PUBLIC_API_URL;
+          // On force http://localhost:8000 si la variable d'env est absente ou vaut "None"
+          const backendUrl = (envUrl && envUrl !== "undefined" && envUrl !== "None") 
+                             ? envUrl 
+                             : "http://localhost:8000";
+  
+          let finalImageUrl = null;
+  
+          if (data.image && typeof data.image === "string") {
+            // Si l'image contient "None", c'est une donnée corrompue -> on met null
+            if (data.image.includes("None")) {
+              finalImageUrl = null;
+            } else if (data.image.startsWith("http")) {
+              finalImageUrl = data.image;
+            } else {
+              const cleanPath = data.image.startsWith("/") ? data.image : `/${data.image}`;
+              finalImageUrl = `${backendUrl}${cleanPath}`;
+            }
+          }  
         setProfile({
           id: data.id ?? null,
           nom: data.nom,
           prenom: data.prenom,
           email: data.email,
           universite:  `Université ECAT Taratra ${data.province}`,
-          image: data.image,
+          image: finalImageUrl,
         });
       } catch  {
         console.error("Utilisateur inconnu");  
@@ -63,7 +84,7 @@ export default function MainContent({ darkMode }: MainContentProps) {
 
   const verifyOldPassword = async () => {
     const Id = localStorage.getItem("id");
-    const res = await fetch("http://localhost:8000/auth/verifyOldPassword", {
+    const res = await apiFetch("/auth/verifyOldPassword", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id: Id,
@@ -80,10 +101,10 @@ export default function MainContent({ darkMode }: MainContentProps) {
 
 const updatePassword = async () => {
   
-  const userId = profile.id ?? (await fetch("http://localhost:8000/auth/me", { credentials: "include" }).then(r => r.ok ? r.json().then(d => d.id) : null));
+  const userId = profile.id ?? (await apiFetch("/auth/me", { credentials: "include" }).then(r => r.ok ? r.json().then(d => d.id) : null));
   if (!userId) throw new Error("Impossible d'identifier l'utilisateur pour la mise à jour du mot de passe");
 
-  const res = await fetch("http://localhost:8000/auth/modifPassword", {
+  const res = await apiFetch("/auth/modifPassword", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ id: userId, mot_de_passe: passwordData.new }),

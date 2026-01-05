@@ -6,6 +6,8 @@ import { Eye, EyeOff, Loader2, CheckCircle, XCircle} from "lucide-react";
 import { useRouter } from "next/navigation";
 import logo from "../assets/logo.jpeg";
 import Image from "next/image";
+import { apiFetch } from "@/lib/api";
+
 
 const LoginPage = () => {
   const [email, setEmail] = useState("");
@@ -26,7 +28,7 @@ const LoginPage = () => {
     const data = { email, mot_de_passe: password };
 
     try {
-      const res = await fetch("http://127.0.0.1:8000/auth/login", {
+      const res = await apiFetch("/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),

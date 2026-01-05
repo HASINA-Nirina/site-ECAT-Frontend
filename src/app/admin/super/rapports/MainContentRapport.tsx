@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Clock, ChevronLeft, ChevronRight, List } from "lucide-react";
+import { Clock, ChevronLeft, ChevronRight, List,  MessageCircle } from "lucide-react";
+import { apiFetch } from "@/lib/api";
+import MessagePopup from "@/app/admin/super/dashboard/Message/MessagePopup";
 
 interface MainContentProps {
   readonly darkMode: boolean;
@@ -28,6 +30,7 @@ interface PaginationInfo {
 }
 
 export default function MainContentRapport({ darkMode, lang }: MainContentProps) {
+  const [showMessage, setShowMessage] = useState(false);
   const [historiques, setHistoriques] = useState<HistoriqueItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -44,8 +47,7 @@ export default function MainContentRapport({ darkMode, lang }: MainContentProps)
 
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(
-        `http://localhost:8000/admin/super/rapports?page=${page}&page_size=20`,
+      const res = await apiFetch(`/admin/super/rapports?page=${page}&page_size=20`,
         {
           credentials: "include",
           headers: token ? { Authorization: `Bearer ${token}` } : undefined,
@@ -267,8 +269,26 @@ export default function MainContentRapport({ darkMode, lang }: MainContentProps)
                   : "No recent actions in history."}
               </p>
             </div>
+            
   )}
 </div>
+
+      )}
+       {/* Floating message button */}
+       <button
+        className="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-purple-600 hover:bg-purple-700 text-white flex items-center justify-center shadow-xl transition-all duration-300 hover:scale-105"
+        title="Messages"
+        onClick={() => setShowMessage(true)}
+      >
+        <MessageCircle size={28} />
+      </button>
+
+      {/* Utilisation du composant MessagePopup simulé localement */}
+      {showMessage && (
+        <MessagePopup
+          darkMode={darkMode}
+          onClose={() => setShowMessage(false)}
+        />
       )}
     </main>
 );

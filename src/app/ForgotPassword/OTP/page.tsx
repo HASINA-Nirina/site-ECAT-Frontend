@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef, Suspense } from "react";
 import background from "@/app/assets/background.png";
 import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
+import { apiFetch } from "@/lib/api";
 
 const OtpVerificationForm = () => {
   const otpKeys = ["otp-1", "otp-2", "otp-3", "otp-4", "otp-5", "otp-6"];
@@ -29,7 +30,7 @@ const OtpVerificationForm = () => {
         }
 
         try {
-          const res = await fetch("http://127.0.0.1:8000/auth/verify", {
+          const res = await apiFetch("/auth/verify", {
             method: "POST",
             headers: { "Content-type": "application/json" },
             body: JSON.stringify({
@@ -103,7 +104,7 @@ const OtpVerificationForm = () => {
     }
 
     try {
-      const res = await fetch("http://127.0.0.1:8000/auth/sendOtp", {
+      const res = await apiFetch("/auth/sendOtp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),

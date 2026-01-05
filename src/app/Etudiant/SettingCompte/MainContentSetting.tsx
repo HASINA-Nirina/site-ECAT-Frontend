@@ -4,6 +4,7 @@ import { useState,useEffect } from "react";
 import Image from "next/image";
 import { User, Lock, Save, Eye, EyeOff,XIcon, CheckCircle, XCircle, MessageCircle } from "lucide-react";
 import MessagePopup from "@/app/admin/super/dashboard/Message/MessagePopup";
+import { apiFetch } from "@/lib/api";
 
 
 interface MainContentProps {
@@ -27,7 +28,7 @@ export default function MainContent({ darkMode }: MainContentProps) {
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const res = await fetch("http://localhost:8000/auth/me", {
+        const res = await apiFetch("/auth/me", {
           credentials: "include",
         });
         if (!res.ok) throw new Error("Non autorisé");
@@ -64,7 +65,7 @@ export default function MainContent({ darkMode }: MainContentProps) {
 
   const verifyOldPassword = async () => {
     const Id = localStorage.getItem("id");
-    const res = await fetch("http://localhost:8000/auth/verifyOldPassword", {
+    const res = await apiFetch("/auth/verifyOldPassword", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id: Id,
@@ -81,10 +82,10 @@ export default function MainContent({ darkMode }: MainContentProps) {
 
 const updatePassword = async () => {
   
-  const userId = profile.id ?? (await fetch("http://localhost:8000/auth/me", { credentials: "include" }).then(r => r.ok ? r.json().then(d => d.id) : null));
+  const userId = profile.id ?? (await apiFetch("/auth/me", { credentials: "include" }).then(r => r.ok ? r.json().then(d => d.id) : null));
   if (!userId) throw new Error("Impossible d'identifier l'utilisateur pour la mise à jour du mot de passe");
 
-  const res = await fetch("http://localhost:8000/auth/modifPassword", {
+  const res = await apiFetch("/auth/modifPassword", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ id: userId, mot_de_passe: passwordData.new }),

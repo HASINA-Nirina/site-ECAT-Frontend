@@ -24,6 +24,8 @@ import {
   Legend,
 } from "recharts";
 import { useRouter } from "next/navigation";
+import { apiFetch } from "@/lib/api";
+
 
 interface MainContentProps {
   readonly darkMode: boolean;
@@ -56,6 +58,37 @@ function rankToColors(values: number[]) {
   // Si plus d'éléments, ils restent lowest (red)
 
   return colorsByIndex;
+}
+
+/**
+ * Assigne une couleur basée sur le rang pour le graphique en barres (vert = plus élevé, rouge = plus bas).
+ * @param values Tableau de valeurs numériques.
+ * @returns Tableau de couleurs correspondant à chaque index.
+ */
+function rankToBarColors(values: number[]) {
+  if (values.length === 0) return [];
+  
+  const maxValue = Math.max(...values);
+  const minValue = Math.min(...values);
+  const green = "#16a34a"; // Vert
+  const red = "#ef4444";   // Rouge
+  
+  // Si toutes les valeurs sont identiques, toutes en vert
+  if (maxValue === minValue) {
+    return values.map(() => green);
+  }
+  
+  return values.map((value) => {
+    if (value === maxValue) {
+      return green; // Plus élevé = vert
+    } else if (value === minValue) {
+      return red; // Plus bas = rouge
+    } else {
+      // Valeurs intermédiaires : utiliser une couleur intermédiaire ou rouge
+      // Pour simplifier, on utilise rouge pour toutes les valeurs non-maximales
+      return red;
+    }
+  });
 }
 
 /**
@@ -195,31 +228,40 @@ export default function MainContent({ darkMode, lang }: MainContentProps) {
   useEffect(() => {
     // ⚡ PARALLÉLISER toutes les requêtes API au lieu de les faire séquentiellement
     const loadAllData = async () => {
-      const [etudiantsRes, formationsRes, adminsRes, paiementsRes] = await Promise.all([
-        fetch("http://localhost:8000/auth/ReadEtudiantAll").catch(() => null),
-        fetch("http://localhost:8000/formation/ReadFormation").catch(() => null),
-        fetch("http://localhost:8000/auth/GetAdminLocaux").catch(() => null),
-        fetch("http://localhost:8000/paiement/ReadPaiement/").catch(() => null),
+      const [etudiantsCountRes, formationsRes, adminsRes, paiementsRes, inscriptionsRes] = await Promise.all([
+        apiFetch("/stats/countetudiantes").catch(() => null),
+        apiFetch("/formation/ReadFormation").catch(() => null),
+        apiFetch("/auth/GetAdminLocaux").catch(() => null),
+        apiFetch("/paiement/ReadPaiement/").catch(() => null),
+        apiFetch("/stats/inscriptions-antenne").catch(() => null),
       ]);
 
-      // Traiter les étudiants
-      if (etudiantsRes?.ok) {
+      // Traiter le comptage des étudiants
+      if (etudiantsCountRes?.ok) {
         try {
-          const data = await etudiantsRes.json();
-          const list = Array.isArray(data) ? data : [];
-          setStatEtudiants(list.length);
-          const counts: Record<string, number> = {};
-          list.forEach((e: any) => {
-            const key = (e.province || e.antenne || "Inconnue").toString().trim();
-            counts[key] = (counts[key] || 0) + 1;
-          });
-          const arr = Object.entries(counts)
-            .map(([antenne, inscrits]) => ({ antenne, inscrits }))
-            .sort((a, b) => b.inscrits - a.inscrits)
-            .slice(0, 8);
-          setInscriptionData(arr);
+          const data = await etudiantsCountRes.json();
+          setStatEtudiants(data.total || 0);
         } catch (e) {
-          console.warn("Erreur fetch étudiants:", e);
+          console.warn("Erreur fetch comptage étudiants:", e);
+        }
+      }
+
+      // Traiter les inscriptions par antenne (pour le graphique)
+      if (inscriptionsRes?.ok) {
+        try {
+          const data = await inscriptionsRes.json();
+          // Transformer { labels: string[], data: number[] } en [{ antenne: string, inscrits: number }]
+          if (data.labels && data.data && Array.isArray(data.labels) && Array.isArray(data.data)) {
+            const arr = data.labels
+              .map((label: string, index: number) => ({
+                antenne: label,
+                inscrits: data.data[index] || 0,
+              }))
+              .sort((a: { inscrits: number }, b: { inscrits: number }) => b.inscrits - a.inscrits);
+            setInscriptionData(arr);
+          }
+        } catch (e) {
+          console.warn("Erreur fetch inscriptions par antenne:", e);
         }
       }
 
@@ -279,7 +321,7 @@ export default function MainContent({ darkMode, lang }: MainContentProps) {
   // --------------------------
   // Histogramme (inscriptions par antenne)
   // --------------------------
-  const barColors = rankToColors(inscriptionData.map((d) => d.inscrits));
+  const barColors = rankToBarColors(inscriptionData.map((d) => d.inscrits));
 
   return (
     <main className="flex-1 p-6 relative">

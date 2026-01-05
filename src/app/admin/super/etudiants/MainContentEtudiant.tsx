@@ -6,13 +6,16 @@ import {
   ArrowUpNarrowWide,
   Users,
   MapPin,
+  MessageCircle,
 } from "lucide-react";
-
+import { apiFetch } from "@/lib/api";
+import MessagePopup from "@/app/admin/super/dashboard/Message/MessagePopup";
 interface ListeEtudiantsProps {
   readonly darkMode: boolean;
 }
 
 export default function ListeEtudiants({ darkMode }: ListeEtudiantsProps) {
+  const [showMessage, setShowMessage] = useState(false);
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState<"recent" | "az">("recent");
   interface Student {
@@ -38,8 +41,8 @@ export default function ListeEtudiants({ darkMode }: ListeEtudiantsProps) {
       try {
         const token = localStorage.getItem("token");
         // ADAPTER si l'API a un autre chemin
-  const url = `http://localhost:8000/auth/ReadEtudiantAll`;
-        const res = await fetch(url, { headers: token ? { Authorization: `Bearer ${token}` } : undefined });
+  const url = `/auth/ReadEtudiantAll`;
+        const res = await apiFetch(url, { headers: token ? { Authorization: `Bearer ${token}` } : undefined });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
 
@@ -241,7 +244,22 @@ export default function ListeEtudiants({ darkMode }: ListeEtudiantsProps) {
           </table>
         </div>
       </div>
+           {/* Floating message button */}
+      <button
+        className="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-purple-600 hover:bg-purple-700 text-white flex items-center justify-center shadow-xl transition-all duration-300 hover:scale-105"
+        title="Messages"
+        onClick={() => setShowMessage(true)}
+      >
+        <MessageCircle size={28} />
+      </button>
 
+      {/* Utilisation du composant MessagePopup simulé localement */}
+      {showMessage && (
+        <MessagePopup
+          darkMode={darkMode}
+          onClose={() => setShowMessage(false)}
+        />
+      )}    
     </div>
   );
 }

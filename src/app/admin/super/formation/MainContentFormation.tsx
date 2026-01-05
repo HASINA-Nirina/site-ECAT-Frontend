@@ -6,11 +6,13 @@ import {
   ImageIcon,
   Edit,
   Trash2,
-  ClipboardList,
+  ClipboardList, 
+   MessageCircle,
 } from "lucide-react";
 
 import Image from "next/image";
-
+import { apiFetch } from "@/lib/api";
+import MessagePopup from "@/app/admin/super/dashboard/Message/MessagePopup";
 
 interface Formation {
   id: number;
@@ -25,30 +27,35 @@ interface Props {
 }
 
 export default function GererFormation({ darkMode }: Props) {
+  const [showMessage, setShowMessage] = useState(false);
   const [formations, setFormations] = useState<Formation[]>([]);
   const ListeFormation = async () => {
     try {
-      const res = await fetch("http://localhost:8000/formation/ReadFormation");
+      const res = await apiFetch("/formation/ReadFormation");
       const data = await res.json();
       const arr = Array.isArray(data) ? data : data.formations || [];
+  
+      // Récupération de l'URL du backend depuis les variables d'environnement
+      // On définit une valeur de secours si la variable est absente
+      const backendUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+  
       const formatted = arr.map((f: any) => {
         let imageUrl = "";
-        try {
-          if (f && f.image) {
-            const raw = String(f.image);
-            if (raw.startsWith("http://") || raw.startsWith("https://")) {
-              imageUrl = raw;
-            } else if (raw.startsWith("/")) {
-              imageUrl = `http://localhost:8000${raw}`;
-            } else {
-              // valeur inattendue, ignorer
-              imageUrl = "";
-            }
+        
+        if (f && f.image) {
+          const raw = String(f.image);
+  
+          // 1. Si c'est déjà une URL absolue, on la garde
+          if (raw.startsWith("http://") || raw.startsWith("https://")) {
+            imageUrl = raw;
+          } 
+          // 2. Si c'est un chemin relatif, on ajoute le backendUrl
+          else if (raw.trim() !== "" && raw !== "None" && raw !== "null") {
+            const cleanPath = raw.startsWith("/") ? raw : `/${raw}`;
+            imageUrl = `${backendUrl}${cleanPath}`;
           }
-        } catch {
-          imageUrl = "";
         }
-
+  
         return {
           id: f.idFormation,
           titre: f.titre,
@@ -57,12 +64,12 @@ export default function GererFormation({ darkMode }: Props) {
           filename: f.filename || "",
         };
       });
+  
       setFormations(formatted);
     } catch (err) {
-      console.error(err);
+      console.error("Erreur lors du chargement des formations:", err);
     }
   };
-
   // Recuperer les formations
   useEffect(() => {
     ListeFormation();
@@ -104,8 +111,7 @@ export default function GererFormation({ darkMode }: Props) {
           formData.append("image", newFormation.imageFile);
         }
 
-        await fetch(
-          `http://localhost:8000/formation/UpdateFormation/${editFormation.id}`,
+        await apiFetch(`/formation/UpdateFormation/${editFormation.id}`,
           {
             method: "PUT",
             body: formData, 
@@ -123,7 +129,7 @@ export default function GererFormation({ darkMode }: Props) {
         }
 
         // fetch directement avec formData
-        await fetch("http://localhost:8000/formation/NewFormation", {
+        await apiFetch("/formation/NewFormation", {
           method: "POST",
           body: formData, // pas besoin de Content-Type ici
         });
@@ -175,8 +181,7 @@ export default function GererFormation({ darkMode }: Props) {
   const confirmDelete = async () => {
     if (!deleteFormation) return;
     try {
-      await fetch(
-        `http://localhost:8000/formation/DeleteFormation/${deleteFormation.id}`,
+      await apiFetch(`/formation/DeleteFormation/${deleteFormation.id}`,
         { method: "DELETE" }
       );
       setFormations((prev) => prev.filter((f) => f.id !== deleteFormation.id));
@@ -414,6 +419,22 @@ export default function GererFormation({ darkMode }: Props) {
             </div>
           </div>
         </div>
+      )}
+       {/* Floating message button */}
+       <button
+        className="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-purple-600 hover:bg-purple-700 text-white flex items-center justify-center shadow-xl transition-all duration-300 hover:scale-105"
+        title="Messages"
+        onClick={() => setShowMessage(true)}
+      >
+        <MessageCircle size={28} />
+      </button>
+
+      {/* Utilisation du composant MessagePopup simulé localement */}
+      {showMessage && (
+        <MessagePopup
+          darkMode={darkMode}
+          onClose={() => setShowMessage(false)}
+        />
       )}
     </div>
   );

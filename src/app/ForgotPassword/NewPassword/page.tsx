@@ -4,7 +4,7 @@ import React, { useState, Suspense } from "react";
 import background from "@/app/assets/background.png";
 import { Eye, EyeOff, CheckCircle, XCircle } from "lucide-react";
 import {useSearchParams} from "next/navigation";
-
+import { apiFetch } from "@/lib/api";
 
 const NewPasswordForm = () => {
   const [password, setPassword] = useState("");
@@ -99,13 +99,13 @@ const handleSubmit = async (e: React.FormEvent) => {
 
   try {
     // Récupérer l'id utilisateur correspondant à l'email via l'API des étudiants
-    const etuRes = await fetch(`http://127.0.0.1:8000/auth/ReadUser?email=${email}`);
+    const etuRes = await apiFetch("/auth/ReadUser?email=${email}");
 
 
     const etuList = await etuRes.json();
     
 
-    const res = await fetch("http://127.0.0.1:8000/auth/modifPassword", {
+    const res = await apiFetch("/auth/modifPassword", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
